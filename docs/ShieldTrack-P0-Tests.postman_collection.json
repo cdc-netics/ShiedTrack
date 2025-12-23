@@ -1,0 +1,536 @@
+{
+  "info": {
+    "name": "ShieldTrack - Suite P0 Automatizada",
+    "description": "Validación RBAC + IDOR + Operativo/Histórico + Scheduler según Promp.txt",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "owner_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "platform_admin_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "client_admin_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "analyst_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "viewer_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "test_project_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "test_finding_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "other_client_finding_id",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "🔐 SETUP - Login Users",
+      "item": [
+        {
+          "name": "Login OWNER",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Login OWNER successful', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.have.property('accessToken');",
+                  "    pm.collectionVariables.set('owner_token', json.accessToken);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"owner@shieldtrack.com\",\n  \"password\": \"Owner123!\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Login VIEWER",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Login VIEWER successful', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "    const json = pm.response.json();",
+                  "    pm.collectionVariables.set('viewer_token', json.accessToken);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"viewer@shieldtrack.com\",\n  \"password\": \"Viewer123!\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Login ANALYST",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Login ANALYST successful', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "    const json = pm.response.json();",
+                  "    pm.collectionVariables.set('analyst_token', json.accessToken);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"analyst@shieldtrack.com\",\n  \"password\": \"Analyst123!\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Login CLIENT_ADMIN",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Login CLIENT_ADMIN successful', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "    const json = pm.response.json();",
+                  "    pm.collectionVariables.set('client_admin_token', json.accessToken);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"clientadmin@acmecorp.com\",\n  \"password\": \"Client123!\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🔴 TC-RBAC-001: VIEWER no puede crear finding",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('[P0] VIEWER debe recibir 403 Forbidden', () => {",
+              "    pm.response.to.have.status(403);",
+              "});",
+              "",
+              "pm.test('Mensaje correcto de permisos', () => {",
+              "    const json = pm.response.json();",
+              "    pm.expect(json.message).to.include('permisos');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {"key": "Content-Type", "value": "application/json"},
+          {"key": "Authorization", "value": "Bearer {{viewer_token}}"}
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"projectId\": \"{{test_project_id}}\",\n  \"code\": \"FND-VIEWER-001\",\n  \"title\": \"Intento de VIEWER de crear hallazgo\",\n  \"severity\": \"HIGH\",\n  \"status\": \"OPEN\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/findings",
+          "host": ["{{base_url}}"],
+          "path": ["api", "findings"]
+        }
+      }
+    },
+    {
+      "name": "🔴 TC-RBAC-002: ANALYST no puede hard delete",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('[P0] ANALYST debe recibir 403 en hard delete', () => {",
+              "    pm.response.to.have.status(403);",
+              "});",
+              "",
+              "pm.test('Solo OWNER puede hard delete', () => {",
+              "    const json = pm.response.json();",
+              "    pm.expect(json.message).to.include('permisos');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {"key": "Authorization", "value": "Bearer {{analyst_token}}"}
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/findings/{{test_finding_id}}/hard",
+          "host": ["{{base_url}}"],
+          "path": ["api", "findings", "{{test_finding_id}}", "hard"]
+        }
+      }
+    },
+    {
+      "name": "🔴 TC-RBAC-003: IDOR Multi-tenant (CLIENT_ADMIN)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('[P0 CRÍTICO] Cliente A no puede acceder a datos de Cliente B', () => {",
+              "    // Debe ser 404 (no 403 para no revelar existencia)",
+              "    pm.expect(pm.response.code).to.be.oneOf([403, 404]);",
+              "});",
+              "",
+              "pm.test('No se exponen datos de otro tenant', () => {",
+              "    const json = pm.response.json();",
+              "    pm.expect(json).to.not.have.property('title'); // No debe devolver el finding",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {"key": "Authorization", "value": "Bearer {{client_admin_token}}"}
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/findings/{{other_client_finding_id}}",
+          "host": ["{{base_url}}"],
+          "path": ["api", "findings", "{{other_client_finding_id}}"]
+        }
+      }
+    },
+    {
+      "name": "🟢 TC-RBAC-004: ANALYST puede crear finding",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('[P0] ANALYST puede crear finding', () => {",
+              "    pm.response.to.have.status(201);",
+              "});",
+              "",
+              "pm.test('Finding creado correctamente', () => {",
+              "    const json = pm.response.json();",
+              "    pm.expect(json).to.have.property('_id');",
+              "    pm.expect(json.code).to.equal('FND-ANALYST-001');",
+              "    pm.collectionVariables.set('test_finding_id', json._id);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {"key": "Content-Type", "value": "application/json"},
+          {"key": "Authorization", "value": "Bearer {{analyst_token}}"}
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"projectId\": \"{{test_project_id}}\",\n  \"code\": \"FND-ANALYST-001\",\n  \"title\": \"SQL Injection en módulo de autenticación\",\n  \"severity\": \"CRITICAL\",\n  \"status\": \"OPEN\",\n  \"description\": \"Hallazgo de prueba para validar RBAC\",\n  \"retestIncluded\": true\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/findings",
+          "host": ["{{base_url}}"],
+          "path": ["api", "findings"]
+        }
+      }
+    },
+    {
+      "name": "🔴 TC-HIST-001: Cerrar finding (preparación)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Finding cerrado exitosamente', () => {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Status cambiado a CLOSED', () => {",
+              "    const json = pm.response.json();",
+              "    pm.expect(json.status).to.equal('CLOSED');",
+              "    pm.expect(json.closeReason).to.equal('FIXED');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {"key": "Content-Type", "value": "application/json"},
+          {"key": "Authorization", "value": "Bearer {{analyst_token}}"}
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"closeReason\": \"FIXED\",\n  \"comments\": \"Vulnerabilidad corregida en versión 2.1.0\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/findings/{{test_finding_id}}/close",
+          "host": ["{{base_url}}"],
+          "path": ["api", "findings", "{{test_finding_id}}", "close"]
+        }
+      }
+    },
+    {
+      "name": "🔴 TC-HIST-001: Validar finding NO en Operativo",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('[P0] Hallazgo cerrado NO aparece en vista Operativo', () => {",
+              "    pm.response.to.have.status(200);",
+              "    const findings = pm.response.json();",
+              "    ",
+              "    const closedFinding = findings.find(f => f._id === pm.collectionVariables.get('test_finding_id'));",
+              "    pm.expect(closedFinding).to.be.undefined;",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {"key": "Authorization", "value": "Bearer {{analyst_token}}"}
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/findings?includeClosed=false",
+          "host": ["{{base_url}}"],
+          "path": ["api", "findings"],
+          "query": [
+            {"key": "includeClosed", "value": "false"}
+          ]
+        }
+      }
+    },
+    {
+      "name": "🔴 TC-HIST-001: Validar finding SÍ en Histórico",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('[P0] Hallazgo cerrado SÍ aparece en vista Histórico', () => {",
+              "    pm.response.to.have.status(200);",
+              "    const findings = pm.response.json();",
+              "    ",
+              "    const closedFinding = findings.find(f => f._id === pm.collectionVariables.get('test_finding_id'));",
+              "    pm.expect(closedFinding).to.not.be.undefined;",
+              "    pm.expect(closedFinding.status).to.equal('CLOSED');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {"key": "Authorization", "value": "Bearer {{analyst_token}}"}
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/findings?includeClosed=true",
+          "host": ["{{base_url}}"],
+          "path": ["api", "findings"],
+          "query": [
+            {"key": "includeClosed", "value": "true"}
+          ]
+        }
+      }
+    },
+    {
+      "name": "🔴 TC-HIST-002: Cierre masivo al cerrar proyecto",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('[P0 CRÍTICO] Proyecto cerrado exitosamente', () => {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Status cambiado a CLOSED', () => {",
+              "    const json = pm.response.json();",
+              "    pm.expect(json.projectStatus).to.equal('CLOSED');",
+              "});",
+              "",
+              "pm.test('Retest deshabilitado automáticamente', () => {",
+              "    const json = pm.response.json();",
+              "    pm.expect(json.retestPolicy.enabled).to.be.false;",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "PUT",
+        "header": [
+          {"key": "Content-Type", "value": "application/json"},
+          {"key": "Authorization", "value": "Bearer {{client_admin_token}}"}
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"projectStatus\": \"CLOSED\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/projects/{{test_project_id}}",
+          "host": ["{{base_url}}"],
+          "path": ["api", "projects", "{{test_project_id}}"]
+        }
+      }
+    },
+    {
+      "name": "🔴 TC-HIST-002: Validar hallazgos cerrados masivamente",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('[P0 CRÍTICO] Todos los hallazgos del proyecto están cerrados', () => {",
+              "    pm.response.to.have.status(200);",
+              "    const findings = pm.response.json();",
+              "    ",
+              "    findings.forEach(finding => {",
+              "        pm.expect(finding.status).to.equal('CLOSED');",
+              "        pm.expect(finding.closeReason).to.equal('CONTRACT_ENDED');",
+              "    });",
+              "});",
+              "",
+              "pm.test('Al menos 1 hallazgo fue cerrado automáticamente', () => {",
+              "    const findings = pm.response.json();",
+              "    pm.expect(findings.length).to.be.above(0);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {"key": "Authorization", "value": "Bearer {{client_admin_token}}"}
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/findings?projectId={{test_project_id}}&includeClosed=true",
+          "host": ["{{base_url}}"],
+          "path": ["api", "findings"],
+          "query": [
+            {"key": "projectId", "value": "{{test_project_id}}"},
+            {"key": "includeClosed", "value": "true"}
+          ]
+        }
+      }
+    },
+    {
+      "name": "🟢 TC-RBAC-008: OWNER puede hard delete",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('[P0] OWNER puede ejecutar hard delete', () => {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Mensaje de confirmación', () => {",
+              "    const json = pm.response.json();",
+              "    pm.expect(json.message).to.include('eliminado permanentemente');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {"key": "Authorization", "value": "Bearer {{owner_token}}"}
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/findings/{{test_finding_id}}/hard",
+          "host": ["{{base_url}}"],
+          "path": ["api", "findings", "{{test_finding_id}}", "hard"]
+        }
+      }
+    }
+  ]
+}

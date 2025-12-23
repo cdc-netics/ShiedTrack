@@ -1,0 +1,58 @@
+/* Global styles para ShieldTrack - Desktop First */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+}
+
+body {
+  font-family: Roboto, "Helvetica Neue", sans-serif;
+  font-size: 14px;
+  color: #333;
+  background: #f5f5f5;
+}
+
+/* Material Design overrides para diseño denso */
+.mat-mdc-table {
+  font-size: 14px;
+}
+
+.mat-mdc-table .mat-mdc-cell,
+.mat-mdc-table .mat-mdc-header-cell {
+  padding: 8px 12px;
+}
+
+/* Utility classes */
+.full-width {
+  width: 100%;
+}
+
+.text-center {
+  text-align: center;
+}
+
+.mt-16 {
+  margin-top: 16px;
+}
+
+.mb-16 {
+  margin-bottom: 16px;
+}
+
+/* Desktop-first: No optimización para móviles */
+@media (max-width: 1366px) {
+  body::before {
+    content: "⚠️ ShieldTrack está optimizado para pantallas de escritorio ≥1366px";
+    display: block;
+    background: #ff9800;
+    color: white;
+    text-align: center;
+    padding: 8px;
+    font-weight: 600;
+  }
+}

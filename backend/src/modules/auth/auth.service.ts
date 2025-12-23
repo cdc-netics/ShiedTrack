@@ -1,0 +1,273 @@
+import { Injectable, UnauthorizedException, ConflictException, BadRequestException, ForbiddenException, Logger } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+import * as bcrypt from 'bcrypt';
+import * as speakeasy from 'speakeasy';
+import * as qrcode from 'qrcode';
+import { User } from './schemas/user.schema';
+import { RegisterUserDto, LoginDto, EnableMfaDto, UpdateUserDto } from './dto/auth.dto';
+import { UserRole } from '../../common/enums';
+
+/**
+ * Servicio de autenticación y gestión de usuarios
+ * Maneja registro, login, JWT, MFA y RBAC
+ */
+@Injectable()
+export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
+  constructor(
+    @InjectModel(User.name) private userModel: Model<User>,
+    private jwtService: JwtService,
+  ) {}
+
+  /**
+   * Registra un nuevo usuario en el sistema
+   * Los roles administrativos requieren MFA habilitado después del registro
+   * 
+   * RESTRICCIÓN RBAC: CLIENT_ADMIN solo puede crear ANALYST o VIEWER
+   * Si intenta crear ADMIN → 403 Forbidden
+   */
+  async register(dto: RegisterUserDto, currentUser?: any): Promise<User> {
+    // Verificar si el email ya existe
+    const existingUser = await this.userModel.findOne({ email: dto.email });
+    if (existingUser) {
+      throw new ConflictException('El email ya está registrado');
+    }
+
+    // RBAC: CLIENT_ADMIN solo puede crear ANALYST o VIEWER
+    if (currentUser && currentUser.role === UserRole.CLIENT_ADMIN) {
+      const restrictedRoles = [
+        UserRole.OWNER,
+        UserRole.PLATFORM_ADMIN,
+        UserRole.CLIENT_ADMIN,
+        UserRole.AREA_ADMIN
+      ];
+
+      if (restrictedRoles.includes(dto.role)) {
+        throw new ForbiddenException(
+          'CLIENT_ADMIN solo puede crear usuarios con rol ANALYST o VIEWER. ' +
+          'No tiene permisos para crear otros administradores.'
+        );
+      }
+
+      // Forzar mismo clientId que el creador
+      dto.clientId = currentUser.clientId;
+    }
+
+    // Hash de la contraseña
+    const hashedPassword = await bcrypt.hash(dto.password, 10);
+
+    // Crear usuario
+    const user = new this.userModel({
+      ...dto,
+      password: hashedPassword,
+    });
+
+    await user.save();
+    this.logger.log(`Usuario registrado: ${user.email} con rol ${user.role}${currentUser ? ` por ${currentUser.email}` : ''}`);
+
+    return user;
+  }
+
+  /**
+   * Autenticación de usuario con soporte para MFA
+   */
+  async login(dto: LoginDto): Promise<{ accessToken: string; user: Partial<User> }> {
+    // Buscar usuario
+    const user = await this.userModel.findOne({ email: dto.email });
+    if (!user || !user.isActive) {
+      throw new UnauthorizedException('Credenciales inválidas');
+    }
+
+    // Verificar contraseña
+    const isPasswordValid = await bcrypt.compare(dto.password, user.password);
+    if (!isPasswordValid) {
+      throw new UnauthorizedException('Credenciales inválidas');
+    }
+
+    // Verificar MFA si está habilitado
+    if (user.mfaEnabled) {
+      if (!dto.mfaToken) {
+        throw new UnauthorizedException('Se requiere código MFA');
+      }
+
+      if (!user.mfaSecret) {
+        throw new UnauthorizedException('MFA no configurado correctamente');
+      }
+
+      const isMfaValid = speakeasy.totp.verify({
+        secret: user.mfaSecret,
+        encoding: 'base32',
+        token: dto.mfaToken,
+        window: 2, // Acepta tokens dentro de un rango de tiempo
+      });
+
+      if (!isMfaValid) {
+        throw new UnauthorizedException('Código MFA inválido');
+      }
+    }
+
+    // 🚧 VALIDACIÓN MFA DESHABILITADA PARA DESARROLLO
+    // En producción, descomentar para requerir MFA en roles administrativos
+    // const adminRoles = [UserRole.OWNER, UserRole.PLATFORM_ADMIN, UserRole.CLIENT_ADMIN];
+    // if (adminRoles.includes(user.role) && !user.mfaEnabled) {
+    //   this.logger.warn(`Usuario administrativo ${user.email} intenta login sin MFA habilitado`);
+    //   throw new UnauthorizedException('MFA obligatorio para usuarios administrativos. Por favor habilite MFA.');
+    // }
+
+    // Actualizar último login
+    user.lastLogin = new Date();
+    await user.save();
+
+    // Generar JWT
+    const payload = { sub: user._id, email: user.email, role: user.role };
+    const accessToken = this.jwtService.sign(payload);
+
+    this.logger.log(`Login exitoso: ${user.email}`);
+
+    return {
+      accessToken,
+      user: {
+        _id: user._id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role,
+        clientId: user.clientId,
+        mfaEnabled: user.mfaEnabled,
+      },
+    };
+  }
+
+  /**
+   * Genera un secreto MFA y devuelve el QR code para escanear
+   */
+  async setupMfa(userId: string): Promise<{ secret: string; qrCode: string }> {
+    const user = await this.userModel.findById(userId);
+    if (!user) {
+      throw new BadRequestException('Usuario no encontrado');
+    }
+
+    if (user.mfaEnabled) {
+      throw new BadRequestException('MFA ya está habilitado');
+    }
+
+    // Generar secreto
+    const secret = speakeasy.generateSecret({
+      name: `ShieldTrack (${user.email})`,
+      issuer: 'ShieldTrack',
+    });
+
+    // Guardar secreto temporal (se activa después de verificar)
+    user.mfaSecret = secret.base32;
+    await user.save();
+
+    // Generar QR code
+    if (!secret.otpauth_url) {
+      throw new BadRequestException('Error al generar OTP URL');
+    }
+    const qrCode = await qrcode.toDataURL(secret.otpauth_url);
+
+    this.logger.log(`MFA setup iniciado para usuario: ${user.email}`);
+
+    return {
+      secret: secret.base32,
+      qrCode,
+    };
+  }
+
+  /**
+   * Habilita MFA después de verificar el código
+   */
+  async enableMfa(userId: string, dto: EnableMfaDto): Promise<{ success: boolean }> {
+    const user = await this.userModel.findById(userId);
+    if (!user || !user.mfaSecret) {
+      throw new BadRequestException('Setup de MFA no iniciado');
+    }
+
+    // Verificar código
+    const isValid = speakeasy.totp.verify({
+      secret: user.mfaSecret,
+      encoding: 'base32',
+      token: dto.token,
+      window: 2,
+    });
+
+    if (!isValid) {
+      throw new BadRequestException('Código MFA inválido');
+    }
+
+    // Activar MFA
+    user.mfaEnabled = true;
+    await user.save();
+
+    this.logger.log(`MFA habilitado para usuario: ${user.email}`);
+
+    return { success: true };
+  }
+
+  /**
+   * Deshabilita MFA (requiere verificación)
+   */
+  async disableMfa(userId: string, token: string): Promise<{ success: boolean }> {
+    const user = await this.userModel.findById(userId);
+    if (!user || !user.mfaEnabled) {
+      throw new BadRequestException('MFA no está habilitado');
+    }
+
+    if (!user.mfaSecret) {
+      throw new BadRequestException('MFA no configurado correctamente');
+    }
+
+    // Verificar código antes de deshabilitar
+    const isValid = speakeasy.totp.verify({
+      secret: user.mfaSecret,
+      encoding: 'base32',
+      token,
+      window: 2,
+    });
+
+    if (!isValid) {
+      throw new BadRequestException('Código MFA inválido');
+    }
+
+    user.mfaEnabled = false;
+    user.mfaSecret = undefined;
+    await user.save();
+
+    this.logger.log(`MFA deshabilitado para usuario: ${user.email}`);
+
+    return { success: true };
+  }
+
+  /**
+   * Busca usuario por ID
+   */
+  async findById(userId: string): Promise<User> {
+    return this.userModel.findById(userId).select('-password -mfaSecret');
+  }
+
+  /**
+   * Actualiza un usuario
+   */
+  async updateUser(userId: string, dto: UpdateUserDto): Promise<User> {
+    const user = await this.userModel.findByIdAndUpdate(userId, dto, { new: true }).select('-password -mfaSecret');
+    
+    if (!user) {
+      throw new BadRequestException('Usuario no encontrado');
+    }
+
+    this.logger.log(`Usuario actualizado: ${user.email}`);
+    return user;
+  }
+
+  /**
+   * Lista usuarios (con filtros opcionales)
+   */
+  async findAll(clientId?: string): Promise<User[]> {
+    const query = clientId ? { clientId } : {};
+    return this.userModel.find(query).select('-password -mfaSecret');
+  }
+}

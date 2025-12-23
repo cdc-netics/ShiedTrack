@@ -1,0 +1,84 @@
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Testing
+coverage/
+.nyc_output
+
+# Production
+dist/
+build/
+
+# Environment Variables (NUNCA commitear credenciales)
+.env
+.env.local
+.env.*.local
+.env.production
+.env.development
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# OS
+Thumbs.db
+
+# Uploads (evidencias/artifacts - no commitear en repo)
+uploads/
+evidence/
+artifacts/
+backups/
+
+# MongoDB
+*.mongodb
+
+# Temporary
+tmp/
+temp/
+
+# Angular Cache
+frontend/.angular/
+frontend/.angular/cache/
+
+# Scripts de inicio personalizados (pueden contener rutas locales)
+run.ps1
+start-all.ps1
+start-dev.ps1
+start-services.ps1
+START-SHIELD.ps1
+stop-services.ps1
+
+# Documentos de trabajo local
+Promp.txt
+INSTRUCCIONES-INICIO.md
+
+# Archivos de respaldo
+*.bak
+*.backup
+
+# Certificados y claves
+*.pem
+*.key
+*.cert
+*.csr
+*.p12
+*.pfx
+
+# Datos sensibles
+*.db
+*.sqlite
+*.sqlite3
