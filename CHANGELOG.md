@@ -23,6 +23,26 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 - Implementar white-labeling (ThemeService)
 - Agregar animaciones con anime.js
 
+## [1.4.0] - 2026-01-05
+
+### 🔒 Seguridad
+- **CRITICAL**: Corregidas vulnerabilidades IDOR en `ClientService`, `ProjectService` y `FindingService`.
+- **HIGH**: Implementado sistema de auditoría (`AuditLog`) para acciones críticas.
+- **HIGH**: Corregido fallo en `RetestScheduler` que no se detenía al cerrar proyectos.
+- **HIGH**: Validación estricta de `JWT_SECRET` en producción.
+- **MEDIUM**: Implementado Rate Limiting (`@nestjs/throttler`) para descargas.
+
+### 📄 Documentación
+- Actualizada licencia a **Business Source License 1.1**.
+- Actualizado estado del proyecto a **🚧 EN DESARROLLO**.
+- Reorganización de documentación: reportes antiguos movidos a `docs/archive/`.
+- Actualizado `README.md` con instrucciones de instalación consolidadas.
+
+### 🐛 Correcciones
+- Solucionado error 500 en asignación masiva de áreas.
+- Limpieza de datos de prueba y basura en base de datos.
+- Corregida visibilidad de áreas para usuarios sin cliente asignado.
+
 ## [1.0.0] - 2025-12-22
 
 ### ✨ Añadido

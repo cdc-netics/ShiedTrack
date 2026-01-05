@@ -1,6 +1,6 @@
 # 📦 ShieldTrack - Resumen de Implementación
 
-## ✅ Requisitos Cumplidos (100%)
+## 📊 Estado de Implementación
 
 ### 1. Modelo Multi-Tenant y Entidades ✓
 - ✅ Cliente (Tenant) con código único
@@ -9,7 +9,7 @@
 - ✅ Hallazgo con timeline inmutable
 - ✅ FindingUpdate para auditoría completa
 - ✅ Evidence con almacenamiento local
-- ✅ User con RBAC completo
+- ⚠️ **User con RBAC completo** (Ver Issues: Gestión de usuarios y asignación de áreas requiere mejoras de UX)
 
 ### 2. Proyecto (Unidad Contractual) ✓
 - ✅ Enum serviceArchitecture (CLOUD, WEB, FTP, API, ONPREM, HYBRID, OTHER)
@@ -18,8 +18,9 @@
 - ✅ Cierre automático de hallazgos al cerrar proyecto
 - ✅ Detención de cron jobs al cerrar
 
-### 3. Hallazgos (Findings) ✓
+### 3. Hallazgos (Findings) ⚠️
 - ✅ code (ID operativo humano)
+- ⚠️ **Generación de Códigos**: Falta configuración dinámica de prefijos por área (Ver Issues).
 - ✅ severity, status, retestIncluded
 - ✅ closeReason con 6 opciones (FIXED, RISK_ACCEPTED, FALSE_POSITIVE, etc.)
 - ✅ Desaparecen de vistas operativas al cerrar
@@ -30,30 +31,33 @@
 - ✅ Registro automático de cambios de estado
 - ✅ Quién, Cuándo, Qué cambió, Evidencias
 
-### 5. Retest Scheduler ✓
+### 5. Retest Scheduler ⚠️
 - ✅ Cron job diario con @nestjs/schedule
 - ✅ Verifica nextRetestAt contra offsetDays
 - ✅ Envío de emails con Nodemailer
+- ⚠️ **Configuración SMTP**: Falta interfaz segura para configurar credenciales (Ver Issues).
 - ✅ Lista hallazgos con retestIncluded=true
 
-### 6. Roles y Permisos (RBAC) ✓
+### 6. Roles y Permisos (RBAC) ⚠️
 - ✅ 6 Roles: OWNER, PLATFORM_ADMIN, CLIENT_ADMIN, AREA_ADMIN, ANALYST, VIEWER
-- ✅ OWNER único con hard delete
+- ⚠️ **Owner "Modo Dios"**: El Owner requiere asignación explícita a áreas actualmente (Ver Issues).
 - ✅ Guards funcionales en NestJS
 - ✅ Decoradores @Roles() para endpoints
 
 ### 7. Seguridad General ✓
 - ✅ JWT con @nestjs/jwt y passport
 - ✅ MFA obligatorio con speakeasy + QR code
-- ✅ Auditoría en logs para acciones críticas
+- ⚠️ **Auditoría**: Logs implementados pero faltan campos de contexto (Tenant/Area) en algunos eventos.
 - ✅ Guards de autenticación y autorización
 
-### 8. Interfaz de Usuario (Desktop) ✓
+### 8. Interfaz de Usuario (Desktop) ⚠️
 - ✅ Angular 17+ Standalone Components
 - ✅ Angular Signals para state management
 - ✅ Material UI con diseño denso
 - ✅ Vistas Operativas vs Históricas
 - ✅ Warning para pantallas < 1366px
+- ❌ **White-labeling**: No implementado (Logos/Colores por cliente).
+- ❌ **Previsualización**: No se pueden ver evidencias sin descargar.
 
 ### 9. Entregables ✓
 - ✅ Schemas Mongoose con TypeScript estricto
@@ -284,18 +288,18 @@ npm start
 
 ## 🎯 Estado del Proyecto
 
-**Backend**: ✅ 100% Completo
+**Backend**: 🚧 **90% Completo**
 - Todas las entidades implementadas
 - CRUD completo con validación
-- Retest scheduler funcional
+- Retest scheduler funcional (Falta config SMTP en UI)
 - Seguridad JWT + MFA
 - Swagger documentado
 
-**Frontend**: ✅ Base Completa + Dashboard Funcional
+**Frontend**: 🚧 **En Desarrollo**
 - Estructura standalone
 - Signals state management
 - Auth + Login + Dashboard
-- Componentes placeholder para completar
+- Faltan componentes de UI y ajustes de UX (Ver ISSUES.md)
 
 ## 🔄 Próximos Pasos Sugeridos
 
@@ -307,6 +311,5 @@ npm start
 
 ---
 
-**Desarrollado según especificaciones del archivo Promp.txt**
 **Arquitectura: NestJS + MongoDB + Angular 17 + Signals**
-**Fecha: Diciembre 2025**
+**Fecha: Enero 2026**

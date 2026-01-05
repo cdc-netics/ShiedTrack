@@ -1,7 +1,7 @@
 🐛 Issues y Funcionalidades Pendientes - ShieldTrack
 
-**Fecha de Reporte:** 04 de Enero de 2026  
-**Versión:** 1.2  
+**Fecha de Reporte:** 05 de Enero de 2026  
+**Versión:** 1.4  
 **Tipo:** Reporte de Soporte Técnico
 
 ---
@@ -103,6 +103,5 @@ Tras revisar el código actual (`finding.service.ts`, `system-config.schema.ts`)
 2.  Desarrollar pantalla de configuración SMTP funcional.
 3.  Modificar esquema de Área para soportar configuración de códigos.
 
-**Elaborado por:** GitHub Copilot (Asistente AI)  
-**Fecha:** 04 de Enero de 2026  
-**Versión del Documento:** 1.2
+**Fecha:** 05 de Enero de 2026  
+**Versión del Documento:** 1.4
