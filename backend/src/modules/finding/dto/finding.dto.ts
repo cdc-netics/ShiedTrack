@@ -71,6 +71,12 @@ export class CreateFindingDto {
   @IsString({ each: true })
   controls?: string[];
 
+  @ApiPropertyOptional({ type: [String], description: 'Referencias externas' })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  references?: string[];
+
   @ApiPropertyOptional({ type: [String], example: ['web', 'injection'] })
   @IsOptional()
   @IsArray()

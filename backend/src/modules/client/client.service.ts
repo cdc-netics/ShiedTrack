@@ -3,6 +3,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Client } from './schemas/client.schema';
 import { CreateClientDto, UpdateClientDto } from './dto/client.dto';
+import { ProjectStatus } from '../../common/enums';
 
 /**
  * Servicio de gestión de Clientes (Tenants)
@@ -51,7 +52,7 @@ export class ClientService {
       clients.map(async (client) => {
         const projectsCount = await Project.countDocuments({ 
           clientId: client._id,
-          isActive: true 
+          projectStatus: ProjectStatus.ACTIVE 
         });
         return {
           ...client,

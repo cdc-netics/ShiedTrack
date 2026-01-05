@@ -26,6 +26,18 @@ import { HttpClient } from '@angular/common/http';
     <h2 mat-dialog-title>{{ data.area ? 'Editar' : 'Crear' }} Área</h2>
     <mat-dialog-content>
       <form [formGroup]="areaForm">
+        @if (!data.clientId) {
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Cliente</mat-label>
+            <mat-select formControlName="clientId">
+              @for (client of clients; track client._id) {
+                <mat-option [value]="client._id">{{ client.name }}</mat-option>
+              }
+            </mat-select>
+            <mat-error>Debes seleccionar un cliente</mat-error>
+          </mat-form-field>
+        }
+
         <mat-form-field appearance="outline" class="full-width">
           <mat-label>Nombre del Área</mat-label>
           <input matInput formControlName="name" placeholder="Ej: Ciberseguridad">
@@ -84,6 +96,7 @@ import { HttpClient } from '@angular/common/http';
 export class AreaDialogComponent implements OnInit {
   // Formulario de alta/edicion del area
   areaForm: FormGroup;
+  clients: any[] = []; // Lista de clientes para el selector
 
   constructor(
     @Inject(MAT_DIALOG_DATA) public data: { area?: any, clientId: string },
@@ -95,18 +108,32 @@ export class AreaDialogComponent implements OnInit {
     // Configura validaciones base
     this.areaForm = this.fb.group({
       name: ['', [Validators.required, Validators.minLength(3)]],
-      description: ['']
+      description: [''],
+      clientId: [data.clientId || '', data.clientId ? [] : Validators.required]
     });
   }
 
   ngOnInit(): void {
+    // Si no viene clientId, cargar lista de clientes
+    if (!this.data.clientId) {
+      this.loadClients();
+    }
+
     // Si viene area, precarga valores para edicion
     if (this.data.area) {
       this.areaForm.patchValue({
         name: this.data.area.name,
-        description: this.data.area.description || ''
+        description: this.data.area.description || '',
+        clientId: this.data.area.clientId
       });
     }
+  }
+
+  loadClients(): void {
+    this.http.get<any[]>('http://localhost:3000/api/clients').subscribe({
+      next: (data) => this.clients = data,
+      error: () => console.error('Error cargando clientes')
+    });
   }
 
   onSave(): void {
@@ -115,7 +142,8 @@ export class AreaDialogComponent implements OnInit {
 
     const areaData = {
       ...this.areaForm.value,
-      clientId: this.data.clientId
+      // Si data.clientId existe, úsalo (aunque el form lo tenga), sino usa el del form
+      clientId: this.data.clientId || this.areaForm.value.clientId
     };
 
     const request = this.data.area

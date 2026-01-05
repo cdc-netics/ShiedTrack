@@ -1,4 +1,4 @@
-# 🐛 Issues y Funcionalidades Pendientes - ShieldTrack
+🐛 Issues y Funcionalidades Pendientes - ShieldTrack
 
 **Fecha de Reporte:** 22 de Diciembre de 2025  
 **Versión:** 1.0  
@@ -19,14 +19,16 @@ Este documento lista todos los problemas detectados en el sistema ShieldTrack, t
 
 ## 🔴 CRÍTICO - P0 (Impacto Alto, Bloquea funcionalidad principal)
 
-### 1. Clientes muestran 0 proyectos cuando sí existen
+### 1. [SOLUCIONADO] Clientes muestran 0 proyectos cuando sí existen
 **Módulo:** Frontend - Client List  
-**Descripción:** En la vista de clientes, la columna "Proyectos" aparece con valor `0` aunque el cliente tenga proyectos asociados.
+**Descripción:** En la vista de clientes, la columna "Proyectos" aparece con valor `0` aunque el clietenga proyectos asociados.
+
+**Solución:**
+- Se corrigió la query en `ClientService` para usar `projectStatus: ProjectStatus.ACTIVE` en lugar de `isActive: true`.
 
 **Comportamiento Esperado:**
 - Mostrar el conteo real de proyectos por cliente
 - Query debería ser: `projectModel.countDocuments({ clientId: client._id })`
-
 **Impacto:** Alto - Los usuarios no pueden identificar qué clientes tienen actividad
 
 **Archivos Involucrados:**
@@ -41,9 +43,13 @@ Este documento lista todos los problemas detectados en el sistema ShieldTrack, t
 
 ---
 
-### 2. Usuarios pueden ver TODO sin restricciones de Área
+### 2. [SOLUCIONADO] Usuarios pueden ver TODO sin restricciones de Área
 **Módulo:** Backend - RBAC / Area Guards  
 **Descripción:** Un usuario con rol ANALYST sin áreas asignadas puede ver todos los proyectos, hallazgos y clientes del sistema. El sistema de áreas no está funcionando como filtro de visibilidad.
+
+**Solución:**
+- Se verificó que `ProjectService` y `FindingService` implementan correctamente el filtrado por `areaId` para roles restringidos (`ANALYST`, `AREA_ADMIN`, `VIEWER`).
+- Se realizaron pruebas manuales confirmando que un usuario sin áreas ve 0 proyectos, y un usuario con área asignada solo ve los proyectos de esa área.
 
 **Comportamiento Esperado:**
 - Usuario sin áreas asignadas → No puede ver ningún proyecto/hallazgo
@@ -190,6 +196,7 @@ async create(dto: CreateProjectDto) {
 }
 ```
 
+```
 ---
 
 ## 🟠 ALTO - P1 (Funcionalidad importante no implementada)

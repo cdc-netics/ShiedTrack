@@ -9,14 +9,23 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { AuthService } from '../../../core/services/auth.service';
 
+import { MatSelectModule } from '@angular/material/select';
+
 // ============================================================================
 // 🚧 CREDENCIALES DE DESARROLLO - REMOVER EN PRODUCCIÓN
 // ============================================================================
-const DEV_CREDENTIALS = {
-  email: 'admin@shieldtrack.com',
-  password: 'Admin123!',
-  show: true // ⬅️ Cambiar a false para ocultar el banner
-};
+const DEV_USERS = [
+  { label: 'Owner (Dev)', email: 'admin@shieldtrack.com', role: 'OWNER' },
+  { label: 'System Owner', email: 'owner@shieldtrack.com', role: 'OWNER' },
+  { label: 'Platform Admin', email: 'platformadmin@shieldtrack.com', role: 'PLATFORM_ADMIN' },
+  { label: 'Client Admin', email: 'clientadmin@acmecorp.com', role: 'CLIENT_ADMIN' },
+  { label: 'Area Admin', email: 'areaadmin@acmecorp.com', role: 'AREA_ADMIN' },
+  { label: 'Analyst', email: 'analyst@shieldtrack.com', role: 'ANALYST' },
+  { label: 'Viewer', email: 'viewer@shieldtrack.com', role: 'VIEWER' }
+];
+
+const DEFAULT_PASSWORD = 'Password123!';
+const DEV_ADMIN_PASSWORD = 'Admin123!';
 // ============================================================================
 
 /**
@@ -33,7 +42,8 @@ const DEV_CREDENTIALS = {
     MatFormFieldModule,
     MatInputModule,
     MatButtonModule,
-    MatProgressSpinnerModule
+    MatProgressSpinnerModule,
+    MatSelectModule
   ],
   template: `
     <div class="login-container">
@@ -48,16 +58,30 @@ const DEV_CREDENTIALS = {
           <div class="dev-banner">
             <div class="dev-banner-header">🚧 MODO DESARROLLO</div>
             <div class="dev-credentials">
-              <strong>Credenciales OWNER:</strong><br>
-              <span class="credential-line">
-                📧 Email: <code>{{ devEmail }}</code>
-              </span>
-              <span class="credential-line">
-                🔑 Password: <code>{{ devPassword }}</code>
-              </span>
-              <button mat-button class="auto-fill-btn" (click)="fillDevCredentials()">
-                ⚡ Auto-completar
-              </button>
+              <mat-form-field appearance="outline" class="full-width dev-select">
+                <mat-label>Seleccionar Usuario de Prueba</mat-label>
+                <mat-select [(ngModel)]="selectedDevUser" (selectionChange)="fillDevCredentials()">
+                  @for (user of devUsers; track user.email) {
+                    <mat-option [value]="user">
+                      {{ user.label }} ({{ user.role }})
+                    </mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+              
+              @if (selectedDevUser) {
+                <div class="selected-user-info">
+                  <span class="credential-line">
+                    📧 Email: <code>{{ selectedDevUser.email }}</code>
+                  </span>
+                  <span class="credential-line">
+                    🔑 Password: <code>{{ getPassword(selectedDevUser) }}</code>
+                  </span>
+                </div>
+                <button mat-button class="auto-fill-btn" (click)="fillDevCredentials()">
+                  ⚡ Auto-completar
+                </button>
+              }
             </div>
           </div>
         }
@@ -139,26 +163,26 @@ const DEV_CREDENTIALS = {
       line-height: 1.8;
     }
 
+    .dev-select {
+      margin-bottom: 8px;
+      font-size: 12px;
+    }
+    
+    .dev-select .mat-mdc-form-field-subscript-wrapper {
+      display: none;
+    }
+
+    .selected-user-info {
+      margin-bottom: 8px;
+      padding: 8px;
+      background: #f8f9fa;
+      border-radius: 4px;
+    }
+
     .credential-line {
       display: block;
       margin: 4px 0;
     }
-
-  // 🚧 PROPIEDADES DE DESARROLLO - REMOVER EN PRODUCCIÓN
-  showDevCredentials = DEV_CREDENTIALS.show;
-  devEmail = DEV_CREDENTIALS.email;
-  devPassword = DEV_CREDENTIALS.password;
-
-  /**
-   * 🚧 MÉTODO DE DESARROLLO - Auto-completa credenciales
-   * Para remover: borrar este método y su llamada en el template
-   */
-  fillDevCredentials(): void {
-    this.email = DEV_CREDENTIALS.email;
-    this.password = DEV_CREDENTIALS.password;
-  }
-  // FIN CÓDIGO DESARROLLO
-
     .dev-credentials code {
       background: #f1f3f5;
       padding: 2px 8px;
@@ -170,7 +194,7 @@ const DEV_CREDENTIALS = {
 
     .auto-fill-btn {
       width: 100%;
-      margin-top: 8px;
+      margin-top: 4px;
       background: #0984e3 !important;
       color: white !important;
       font-weight: 600;
@@ -188,17 +212,22 @@ export class LoginComponent {
   error = '';
 
   // 🚧 PROPIEDADES DE DESARROLLO - REMOVER EN PRODUCCIÓN
-  showDevCredentials = DEV_CREDENTIALS.show;
-  devEmail = DEV_CREDENTIALS.email;
-  devPassword = DEV_CREDENTIALS.password;
+  showDevCredentials = true;
+  devUsers = DEV_USERS;
+  selectedDevUser: any = DEV_USERS[0]; // Default to first user
 
   /**
    * 🚧 MÉTODO DE DESARROLLO - Auto-completa credenciales
-   * Para remover: borrar este método y su llamada en el template
    */
   fillDevCredentials(): void {
-    this.email = DEV_CREDENTIALS.email;
-    this.password = DEV_CREDENTIALS.password;
+    if (this.selectedDevUser) {
+      this.email = this.selectedDevUser.email;
+      this.password = this.getPassword(this.selectedDevUser);
+    }
+  }
+
+  getPassword(user: any): string {
+    return user.email === 'admin@shieldtrack.com' ? DEV_ADMIN_PASSWORD : DEFAULT_PASSWORD;
   }
   // FIN CÓDIGO DESARROLLO
 

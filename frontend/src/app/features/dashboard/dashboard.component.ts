@@ -5,6 +5,7 @@ import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTableModule } from '@angular/material/table';
+import { HttpClient } from '@angular/common/http';
 import { AuthService } from '../../core/services/auth.service';
 import { FindingService } from '../../core/services/finding.service';
 import { ProjectService } from '../../core/services/project.service';
@@ -28,6 +29,52 @@ import { ProjectService } from '../../core/services/project.service';
   template: `
     <div class="dashboard-container">
       <h1>📊 Dashboard</h1>
+
+      <!-- User Context Banner -->
+      <mat-card class="context-card">
+        <mat-card-content>
+          <div class="context-info">
+            <div class="context-item">
+              <mat-icon>person</mat-icon>
+              <div>
+                <div class="label">Usuario</div>
+                <div class="value">{{ authService.currentUser()?.firstName }} {{ authService.currentUser()?.lastName }}</div>
+                <div class="sub-value">{{ authService.currentUser()?.role }}</div>
+              </div>
+            </div>
+            
+            <div class="context-item">
+              <mat-icon>business</mat-icon>
+              <div>
+                <div class="label">Cliente / Tenant</div>
+                <div class="value">
+                  @if (authService.isAdmin()) {
+                    🏢 Acceso Global (Todos los Clientes)
+                  } @else {
+                    {{ clientName() || 'Cargando...' }}
+                  }
+                </div>
+              </div>
+            </div>
+
+            <div class="context-item">
+              <mat-icon>category</mat-icon>
+              <div>
+                <div class="label">Áreas Asignadas</div>
+                <div class="value">
+                  @if (authService.isAdmin()) {
+                    🌐 Todas las Áreas
+                  } @else if (areaNames().length > 0) {
+                    {{ areaNames().join(', ') }}
+                  } @else {
+                    ⚠️ Sin áreas asignadas
+                  }
+                </div>
+              </div>
+            </div>
+          </div>
+        </mat-card-content>
+      </mat-card>
 
       <div class="quick-nav">
         <button mat-raised-button color="primary" routerLink="/projects">
@@ -165,6 +212,48 @@ import { ProjectService } from '../../core/services/project.service';
       margin: 0 0 24px 0;
       font-size: 28px;
       font-weight: 500;
+    }
+
+    .context-card {
+      margin-bottom: 24px;
+      background: #e3f2fd;
+      border: 1px solid #bbdefb;
+    }
+
+    .context-info {
+      display: flex;
+      gap: 32px;
+      flex-wrap: wrap;
+    }
+
+    .context-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .context-item mat-icon {
+      color: #1976d2;
+      width: 32px;
+      height: 32px;
+      font-size: 32px;
+    }
+
+    .context-item .label {
+      font-size: 12px;
+      color: #546e7a;
+      font-weight: 500;
+    }
+
+    .context-item .value {
+      font-size: 16px;
+      font-weight: 600;
+      color: #263238;
+    }
+
+    .context-item .sub-value {
+      font-size: 12px;
+      color: #78909c;
     }
 
     .quick-nav {
@@ -315,6 +404,10 @@ export class DashboardComponent implements OnInit {
   authService = inject(AuthService);
   findingService = inject(FindingService);
   projectService = inject(ProjectService);
+  private http = inject(HttpClient);
+
+  clientName = signal<string>('');
+  areaNames = signal<string[]>([]);
 
   // Columnas mostradas en la tabla de hallazgos recientes
   displayedColumns = ['code', 'title', 'severity', 'status'];
@@ -328,6 +421,27 @@ export class DashboardComponent implements OnInit {
   });
 
   ngOnInit(): void {
+    // Cargar contexto del usuario
+    const user = this.authService.currentUser();
+    if (user && !this.authService.isAdmin()) {
+      if (user.clientId) {
+        this.http.get<any>(`http://localhost:3000/api/clients/${user.clientId}`).subscribe({
+          next: (client) => this.clientName.set(client.name),
+          error: () => this.clientName.set('Error cargando cliente')
+        });
+
+        // Cargar áreas
+        this.http.get<any[]>(`http://localhost:3000/api/areas?clientId=${user.clientId}`).subscribe({
+          next: (areas) => {
+            // Filtrar solo las áreas asignadas al usuario
+            const myAreas = areas.filter(a => user.areaIds?.includes(a._id));
+            this.areaNames.set(myAreas.map(a => a.name));
+          },
+          error: () => console.error('Error cargando áreas')
+        });
+      }
+    }
+
     // Cargar datos y calcular KPIs simples para el dashboard
     this.findingService.loadFindings({ includeClosed: false }).subscribe(() => {
       const findings = this.findingService.findings();

@@ -73,6 +73,8 @@ export class FindingService {
     includeClosed?: boolean;
   }, currentUser?: any): Promise<Finding[]> {
     const query: any = {};
+    const restrictedByArea = ['AREA_ADMIN', 'ANALYST', 'VIEWER'].includes(currentUser?.role);
+    const allowedAreas = currentUser?.areaIds?.map((id: any) => id.toString()) || [];
 
     if (filters.projectId) query.projectId = filters.projectId;
     if (filters.status) query.status = filters.status;
@@ -92,6 +94,29 @@ export class FindingService {
         const projects = await this.projectModel.find({ clientId: currentUser.clientId }).select('_id');
         const projectIds = projects.map((p: any) => p._id);
         query.projectId = { $in: projectIds };
+      }
+
+      // Aislamiento por áreas
+      if (restrictedByArea) {
+        if (!allowedAreas.length) {
+          return []; // Sin áreas asignadas
+        }
+
+        const projectsByArea = await this.projectModel.find({
+          areaId: { $in: allowedAreas },
+          ...(currentUser.clientId ? { clientId: currentUser.clientId } : {}),
+        }).select('_id');
+
+        const projectIds = projectsByArea.map((p: any) => p._id.toString());
+        if (query.projectId) {
+          // Intersecar si ya hay filtro por proyecto
+          const existingIds = Array.isArray((query.projectId as any).$in)
+            ? (query.projectId as any).$in.map((id: any) => id.toString())
+            : [query.projectId.toString()];
+          query.projectId = { $in: existingIds.filter((id: string) => projectIds.includes(id)) };
+        } else {
+          query.projectId = { $in: projectIds };
+        }
       }
     }
 
@@ -123,6 +148,15 @@ export class FindingService {
       if (restrictedRoles.includes(currentUser.role) && currentUser.clientId) {
         const project = finding.projectId as any;
         if (project.clientId.toString() !== currentUser.clientId.toString()) {
+          throw new ForbiddenException('No tiene permisos para acceder a este hallazgo');
+        }
+      }
+
+      // Aislamiento por áreas para roles restringidos
+      if (['AREA_ADMIN', 'ANALYST', 'VIEWER'].includes(currentUser.role)) {
+        const allowedAreas = currentUser.areaIds?.map((id: any) => id.toString()) || [];
+        const project = finding.projectId as any;
+        if (!allowedAreas.length || !allowedAreas.includes(project.areaId?.toString())) {
           throw new ForbiddenException('No tiene permisos para acceder a este hallazgo');
         }
       }

@@ -18,9 +18,10 @@ import { HttpClient } from '@angular/common/http';
 import { FindingService } from '../../../core/services/finding.service';
 import { ProjectService } from '../../../core/services/project.service';
 import { Observable, startWith, map, of } from 'rxjs';
+import { environment } from '../../../../environments/environment';
 
 interface Template {
-  id: number;
+  id: string | number;
   name: string;
   severity: string;
   description: string;
@@ -72,6 +73,7 @@ interface Template {
                     <input matInput 
                            [matAutocomplete]="templateAuto"
                            [(ngModel)]="templateSearch"
+                           (ngModelChange)="onTemplateSearch($event)"
                            [ngModelOptions]="{standalone: true}"
                            placeholder="Busca: XSS, SQLi, CSRF, etc...">
                     <mat-icon matSuffix>search</mat-icon>
@@ -445,6 +447,7 @@ export class FindingWizardComponent implements OnInit {
   // Archivos adjuntos y estado de envio
   selectedFiles = signal<File[]>([]);
   submitting = signal(false);
+  templateLoading = signal(false);
   
   // Manejo de controles y referencias
   controls = signal<string[]>([]);
@@ -454,6 +457,7 @@ export class FindingWizardComponent implements OnInit {
   newRefUrl = '';
   
   private http = inject(HttpClient);
+  private readonly templateApi = `${environment.apiUrl}/templates`;
 
   ngOnInit(): void {
     // Inicializa formularios y listas base del wizard
@@ -516,6 +520,38 @@ export class FindingWizardComponent implements OnInit {
     });
   }
 
+  onTemplateSearch(term: string): void {
+    this.templateSearch = term;
+
+    if (!term || term.length < 2) {
+      this.filteredTemplates.set(this.templates());
+      return;
+    }
+
+    this.templateLoading.set(true);
+    this.http.get<any[]>(`${this.templateApi}/search`, { params: { q: term } }).subscribe({
+      next: (templates) => {
+        const mapped: Template[] = templates.map((t: any) => ({
+          id: t._id,
+          name: t.title,
+          description: t.description,
+          severity: t.severity,
+          recommendation: t.recommendation,
+          cvssScore: t.cvss_score,
+          cweId: t.cwe_id,
+        }));
+
+        this.templates.set(mapped.length ? mapped : this.templates());
+        this.filteredTemplates.set(mapped.length ? mapped : this.templates());
+        this.templateLoading.set(false);
+      },
+      error: () => {
+        this.templateLoading.set(false);
+        this.filteredTemplates.set(this.templates());
+      }
+    });
+  }
+
   setupClientFilter(): void {
     // Filtra clientes en base al texto ingresado
     this.basicForm.get('clientName')?.valueChanges.subscribe(value => {
@@ -559,7 +595,8 @@ export class FindingWizardComponent implements OnInit {
     });
     this.technicalForm.patchValue({
       cvssScore: template.cvssScore,
-      cweId: template.cweId
+      cweId: template.cweId,
+      recommendation: template.recommendation
     });
     this.templateSearch = '';
   }
@@ -684,9 +721,8 @@ export class FindingWizardComponent implements OnInit {
               // Crear el proyecto
               this.http.post<any>('http://localhost:3000/api/projects', {
                 name: projectName,
-                code: `PROJ-${Date.now().toString().slice(-6)}`,
                 clientId: clientId,
-                areaId: clientId,
+                areaId: clientId, // TODO: Fix this, areaId should not be clientId
                 description: `Proyecto creado automáticamente desde hallazgo`,
                 serviceArchitecture: serviceArchitecture
               }).subscribe({

@@ -1,6 +1,6 @@
-import { Injectable, NotFoundException, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, Logger, BadRequestException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { Area } from './schemas/area.schema';
 import { CreateAreaDto, UpdateAreaDto } from './dto/area.dto';
 
@@ -18,30 +18,47 @@ export class AreaService {
    * Crea una nueva área
    */
   async create(dto: CreateAreaDto): Promise<Area> {
-    // Generar código automáticamente: AREA-001, AREA-002, etc.
-    const lastArea = await this.areaModel
-      .findOne({ clientId: dto.clientId })
-      .sort({ createdAt: -1 })
-      .exec();
-    
-    let nextNumber = 1;
-    if (lastArea && lastArea.code) {
-      const match = lastArea.code.match(/AREA-(\d+)/);
-      if (match) {
-        nextNumber = parseInt(match[1], 10) + 1;
-      }
+    this.logger.log(`Intentando crear área: ${JSON.stringify(dto)}`);
+
+    if (!Types.ObjectId.isValid(dto.clientId)) {
+      throw new BadRequestException(`ID de cliente inválido: ${dto.clientId}`);
     }
-    
-    const code = `AREA-${String(nextNumber).padStart(3, '0')}`;
-    
-    const area = new this.areaModel({
-      ...dto,
-      code
-    });
-    await area.save();
-    
-    this.logger.log(`Área creada: ${area.name} (${code}) para cliente ${area.clientId}`);
-    return area;
+
+    try {
+      // Generar código automáticamente: AREA-001, AREA-002, etc.
+      const lastArea = await this.areaModel
+        .findOne({ clientId: dto.clientId })
+        .sort({ createdAt: -1 })
+        .exec();
+      
+      let nextNumber = 1;
+      if (lastArea && lastArea.code) {
+        const match = lastArea.code.match(/AREA-(\d+)/);
+        if (match) {
+          nextNumber = parseInt(match[1], 10) + 1;
+        }
+      }
+      
+      const code = `AREA-${String(nextNumber).padStart(3, '0')}`;
+      
+      const area = new this.areaModel({
+        ...dto,
+        code
+      });
+      await area.save();
+      
+      this.logger.log(`Área creada: ${area.name} (${code}) para cliente ${area.clientId}`);
+      return area;
+    } catch (error) {
+      this.logger.error(`Error creando área: ${error.message}`, error.stack);
+      if (error.name === 'ValidationError') {
+        throw new BadRequestException(`Error de validación: ${error.message}`);
+      }
+      if (error.code === 11000) {
+        throw new BadRequestException('Ya existe un área con este código o nombre para este cliente');
+      }
+      throw error;
+    }
   }
 
   /**
@@ -49,9 +66,11 @@ export class AreaService {
    */
   async findByClient(clientId?: string, includeInactive = false): Promise<any[]> {
     const query: any = {};
-    
-    // Solo filtrar por clientId si se proporciona
+
     if (clientId) {
+      if (!Types.ObjectId.isValid(clientId)) {
+        throw new BadRequestException('Se requiere un ID de cliente válido.');
+      }
       query.clientId = clientId;
     }
     
@@ -59,7 +78,11 @@ export class AreaService {
       query.isActive = true;
     }
     
-    const areas = await this.areaModel.find(query).sort({ name: 1 }).lean();
+    const areas = await this.areaModel
+      .find(query)
+      .populate('clientId', 'name')
+      .sort({ name: 1 })
+      .lean();
     
     // Para cada área, obtener sus administradores desde UserAreaAssignment
     const AreasWithAdmins = await Promise.all(

@@ -11,8 +11,12 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatCardModule } from '@angular/material/card';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatMenuModule } from '@angular/material/menu';
 import { FormsModule } from '@angular/forms';
+import { HttpClient } from '@angular/common/http';
 import { FindingService } from '../../../core/services/finding.service';
+import { ProjectService } from '../../../core/services/project.service';
+import { environment } from '../../../../environments/environment';
 
 /**
  * Componente de Lista de Hallazgos
@@ -35,7 +39,8 @@ import { FindingService } from '../../../core/services/finding.service';
     MatSelectModule,
     MatCardModule,
     MatTooltipModule,
-    MatProgressSpinnerModule
+    MatProgressSpinnerModule,
+    MatMenuModule
   ],
   template: `
     <div class="finding-list-container">
@@ -60,6 +65,26 @@ import { FindingService } from '../../../core/services/finding.service';
                        (ngModelChange)="searchTerm.set($event); applyFilters()"
                        placeholder="Código, título o CVE...">
                 <mat-icon matSuffix>search</mat-icon>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" class="filter-field">
+                <mat-label>Cliente</mat-label>
+                <mat-select [ngModel]="clientFilter()" (selectionChange)="onClientChange($event.value)">
+                  <mat-option value="">Todos</mat-option>
+                  @for (client of clients(); track client._id) {
+                    <mat-option [value]="client._id">{{ client.name }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" class="filter-field">
+                <mat-label>Proyecto</mat-label>
+                <mat-select [ngModel]="projectFilter()" (selectionChange)="onProjectChange($event.value)" [disabled]="!clientFilter()">
+                  <mat-option value="">Todos</mat-option>
+                  @for (project of projects(); track project._id) {
+                    <mat-option [value]="project._id">{{ project.name }}</mat-option>
+                  }
+                </mat-select>
               </mat-form-field>
               
               <mat-form-field appearance="outline" class="filter-field">
@@ -88,6 +113,27 @@ import { FindingService } from '../../../core/services/finding.service';
               <button mat-icon-button (click)="loadFindings()" matTooltip="Actualizar">
                 <mat-icon>refresh</mat-icon>
               </button>
+
+              <button mat-icon-button [matMenuTriggerFor]="exportMenu" matTooltip="Exportar" [disabled]="!clientFilter() && !projectFilter()">
+                <mat-icon>download</mat-icon>
+              </button>
+              <mat-menu #exportMenu="matMenu">
+                @if (projectFilter()) {
+                  <button mat-menu-item (click)="exportProject('excel')">
+                    <mat-icon>table_view</mat-icon>
+                    <span>Excel</span>
+                  </button>
+                  <button mat-menu-item (click)="exportProject('csv')">
+                    <mat-icon>description</mat-icon>
+                    <span>CSV</span>
+                  </button>
+                } @else if (clientFilter()) {
+                  <button mat-menu-item (click)="exportClient()">
+                    <mat-icon>folder_zip</mat-icon>
+                    <span>Portfolio (ZIP)</span>
+                  </button>
+                }
+              </mat-menu>
             </div>
           </div>
           
@@ -469,6 +515,8 @@ import { FindingService } from '../../../core/services/finding.service';
 export class FindingListComponent implements OnInit {
   // Servicio para traer hallazgos y estado de carga
   findingService = inject(FindingService);
+  projectService = inject(ProjectService);
+  http = inject(HttpClient);
   
   // Columnas visibles de la tabla
   displayedColumns = ['code', 'title', 'severity', 'cvss', 'status', 'project', 'date', 'actions'];
@@ -477,11 +525,47 @@ export class FindingListComponent implements OnInit {
   searchTerm = signal('');
   severityFilter = signal('');
   statusFilter = signal('');
+  clientFilter = signal('');
+  projectFilter = signal('');
+  
+  clients = signal<any[]>([]);
+  projects = signal<any[]>([]);
+  
   filteredFindings = signal<any[]>([]);
+
+  private CLIENTS_URL = `${environment.apiUrl}/clients`;
 
   ngOnInit() {
     // Carga inicial del listado
     this.loadFindings();
+    this.loadClients();
+  }
+
+  loadClients() {
+    this.http.get<any[]>(this.CLIENTS_URL).subscribe({
+      next: (clients) => this.clients.set(clients),
+      error: (err) => console.error('Error loading clients', err)
+    });
+  }
+
+  onClientChange(clientId: string) {
+    this.clientFilter.set(clientId);
+    this.projectFilter.set('');
+    this.projects.set([]);
+    
+    if (clientId) {
+      this.projectService.loadProjects({ clientId }).subscribe(projects => {
+        this.projects.set(projects);
+        this.applyFilters();
+      });
+    } else {
+      this.applyFilters();
+    }
+  }
+
+  onProjectChange(projectId: string) {
+    this.projectFilter.set(projectId);
+    this.applyFilters();
   }
 
   loadFindings() {
@@ -511,8 +595,39 @@ export class FindingListComponent implements OnInit {
     if (this.statusFilter()) {
       findings = findings.filter(f => f.status === this.statusFilter());
     }
+
+    if (this.projectFilter()) {
+      findings = findings.filter(f => {
+        const pId = typeof f.projectId === 'string' ? f.projectId : f.projectId._id;
+        return pId === this.projectFilter();
+      });
+    } else if (this.clientFilter()) {
+      // Filter by client
+      // We use the loaded projects for this client to filter findings
+      const clientProjectIds = this.projects().map(p => p._id);
+      findings = findings.filter(f => {
+        const pId = typeof f.projectId === 'string' ? f.projectId : f.projectId._id;
+        return clientProjectIds.includes(pId);
+      });
+    }
     
     this.filteredFindings.set(findings);
+  }
+
+  exportProject(format: 'excel' | 'csv') {
+    const projectId = this.projectFilter();
+    if (!projectId) return;
+    
+    const url = `${environment.apiUrl}/export/project/${projectId}/${format}`;
+    window.open(url, '_blank');
+  }
+
+  exportClient() {
+    const clientId = this.clientFilter();
+    if (!clientId) return;
+    
+    const url = `${environment.apiUrl}/export/client/${clientId}/portfolio`;
+    window.open(url, '_blank');
   }
 
   getCountBySeverity(severity: string): number {

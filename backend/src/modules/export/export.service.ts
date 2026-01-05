@@ -7,8 +7,9 @@ import { Client } from '../client/schemas/client.schema';
 import { Evidence } from '../evidence/schemas/evidence.schema';
 import * as ExcelJS from 'exceljs';
 import archiver from 'archiver';
-import { createReadStream } from 'fs';
+import { createReadStream, existsSync, mkdirSync } from 'fs';
 import { PassThrough } from 'stream';
+import { exec } from 'child_process';
 
 /**
  * Servicio de Exportación
@@ -251,6 +252,50 @@ export class ExportService {
   }
 
   /**
+   * A. NIVEL PROYECTO - Exportar proyecto y sus evidencias en ZIP
+   */
+  async exportProjectAsZip(projectId: string, currentUser: any): Promise<PassThrough> {
+    const project = await this.projectModel.findById(projectId).populate('clientId areaId');
+    if (!project) {
+      throw new NotFoundException('Proyecto no encontrado');
+    }
+
+    // RBAC
+    if (!['OWNER', 'PLATFORM_ADMIN'].includes(currentUser.role)) {
+      if (project.clientId._id.toString() !== currentUser.clientId?.toString()) {
+        throw new ForbiddenException('No tiene permisos para exportar este proyecto');
+      }
+    }
+
+    const archive = archiver('zip', { zlib: { level: 9 } });
+    const stream = new PassThrough();
+    archive.pipe(stream);
+
+    // Agregar Excel
+    const excelStream = await this.exportProjectToExcel(projectId, currentUser);
+    archive.append(excelStream, { name: `${project.name}/hallazgos.xlsx` });
+
+    // Agregar evidencias
+    const findings = await this.findingModel.find({ projectId }).select('_id code').lean();
+    const findingIds = findings.map((f: any) => f._id);
+    const evidences = await this.evidenceModel.find({ findingId: { $in: findingIds } }).lean();
+
+    for (const evidence of evidences as any[]) {
+      if (!existsSync(evidence.filePath)) {
+        this.logger.warn(`Evidencia no encontrada en disco: ${evidence.filePath}`);
+        continue;
+      }
+      const evidenceName = `evidencias/${evidence.filename || evidence.storedFilename}`;
+      archive.append(createReadStream(evidence.filePath), {
+        name: `${project.name}/${evidenceName}`,
+      });
+    }
+
+    await archive.finalize();
+    return stream;
+  }
+
+  /**
    * B. NIVEL TENANT - Exportar todos los proyectos de un cliente en ZIP
    * Roles: CLIENT_ADMIN, OWNER
    * Estructura: /ClientName/Project1/findings.xlsx, /ClientName/Project1/evidencias/
@@ -281,11 +326,19 @@ export class ExportService {
       const excelStream = await this.exportProjectToExcel(project._id.toString(), currentUser);
       archive.append(excelStream, { name: `${client.name}/${project.name}/findings.xlsx` });
 
-      // TODO: Agregar carpeta de evidencias si existen
-      // const evidences = await this.evidenceModel.find({ projectId: project._id });
-      // for (const evidence of evidences) {
-      //   archive.file(evidence.filePath, { name: `${client.name}/${project.name}/evidencias/${evidence.filename}` });
-      // }
+      // Agregar evidencias si existen
+      const projectFindings = await this.findingModel.find({ projectId: project._id }).select('_id code').lean();
+      const projectFindingIds = projectFindings.map((f: any) => f._id);
+      const evidences = await this.evidenceModel.find({ findingId: { $in: projectFindingIds } }).lean();
+
+      for (const evidence of evidences as any[]) {
+        if (!existsSync(evidence.filePath)) {
+          this.logger.warn(`Evidencia no encontrada: ${evidence.filePath}`);
+          continue;
+        }
+        const evidenceName = `${client.name}/${project.name}/evidencias/${evidence.filename || evidence.storedFilename}`;
+        archive.append(createReadStream(evidence.filePath), { name: evidenceName });
+      }
     }
 
     await archive.finalize();
@@ -334,5 +387,34 @@ export class ExportService {
         totalEvidences: evidences.length
       }
     };
+  }
+
+  /**
+   * C. NIVEL SISTEMA - Backup completo vía mongodump
+   */
+  async createSystemBackup(currentUser: any): Promise<{ filename: string }> {
+    if (currentUser.role !== 'OWNER') {
+      throw new ForbiddenException('Solo OWNER puede ejecutar backup completo');
+    }
+
+    const backupsDir = 'backups';
+    if (!existsSync(backupsDir)) {
+      mkdirSync(backupsDir, { recursive: true });
+    }
+
+    const timestamp = new Date().toISOString().replace(/:/g, '-');
+    const filename = `shieldtrack_backup_${timestamp}.tar.gz`;
+    const command = `mongodump --uri="${process.env.MONGODB_URI}" --archive=${backupsDir}/${filename} --gzip`;
+
+    return new Promise((resolve, reject) => {
+      exec(command, (error) => {
+        if (error) {
+          this.logger.error(`Error ejecutando backup: ${error.message}`);
+          return reject(error);
+        }
+        this.logger.log(`Backup de sistema generado: ${backupsDir}/${filename}`);
+        resolve({ filename });
+      });
+    });
   }
 }

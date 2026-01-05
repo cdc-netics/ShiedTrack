@@ -4,6 +4,8 @@ import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import * as multer from 'multer';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { AuditInterceptor } from './modules/audit/audit.interceptor';
+import { AuditService } from './modules/audit/audit.service';
 
 /**
  * Punto de entrada de la aplicación ShieldTrack
@@ -26,6 +28,10 @@ async function bootstrap() {
 
   // Filtro global de excepciones para manejo consistente de errores
   app.useGlobalFilters(new HttpExceptionFilter());
+
+  // Interceptor global de auditoría
+  const auditService = app.get(AuditService);
+  app.useGlobalInterceptors(new AuditInterceptor(auditService));
 
   // SECURITY FIX M3: Límite de tamaño de archivo global (50MB)
   const uploadLimits = {

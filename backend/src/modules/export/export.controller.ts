@@ -67,6 +67,21 @@ export class ExportController {
     return this.exportService.exportProjectToJSON(projectId, user);
   }
 
+  @Get('project/:id/zip')
+  @Roles(UserRole.ANALYST, UserRole.AREA_ADMIN, UserRole.CLIENT_ADMIN, UserRole.PLATFORM_ADMIN, UserRole.OWNER)
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @ApiOperation({ summary: 'Exportar proyecto a ZIP con evidencias (ANALYST+)' })
+  async exportProjectZip(
+    @Param('id') projectId: string,
+    @CurrentUser() user: any,
+    @Res() res: Response
+  ) {
+    const zipStream = await this.exportService.exportProjectAsZip(projectId, user);
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition', `attachment; filename="project_${projectId}_${Date.now()}.zip"`);
+    zipStream.pipe(res);
+  }
+
   /**
    * B. NIVEL TENANT - Exportar portfolio completo del cliente
    */
@@ -103,5 +118,15 @@ export class ExportController {
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Content-Disposition', `attachment; filename="shieldtrack_backup_${Date.now()}.json"`);
     res.send(JSON.stringify(backup, null, 2));
+  }
+
+  @Post('system/backup')
+  @Roles(UserRole.OWNER)
+  @Throttle({ default: { limit: 1, ttl: 3600000 } })
+  @ApiOperation({ summary: 'Ejecutar mongodump y generar archivo .tar.gz (SOLO OWNER)' })
+  async createSystemBackup(
+    @CurrentUser() user: any,
+  ) {
+    return this.exportService.createSystemBackup(user);
   }
 }

@@ -36,8 +36,8 @@ export class ProjectController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Obtener proyecto por ID' })
-  async findById(@Param('id') id: string) {
-    return this.projectService.findById(id);
+  async findById(@Param('id') id: string, @CurrentUser() user?: any) {
+    return this.projectService.findById(id, user);
   }
 
   @Put(':id')
@@ -46,7 +46,7 @@ export class ProjectController {
     summary: 'Actualizar proyecto',
     description: 'Al cambiar a CLOSED, cierra automáticamente todos los hallazgos abiertos'
   })
-  async update(@Param('id') id: string, @Body() dto: UpdateProjectDto) {
+  async update(@Param('id') id: string, @Body() dto: UpdateProjectDto, @CurrentUser() user?: any) {
     return this.projectService.update(id, dto);
   }
 

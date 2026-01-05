@@ -313,10 +313,9 @@ export class AreaListComponent implements OnInit {
     this.http.get<any[]>('http://localhost:3000/api/clients').subscribe({
       next: (data) => {
         this.clients.set(data);
-        if (data.length > 0) {
-          this.selectedClient = data[0]._id;
-          this.loadAreas();
-        }
+        // Por defecto mostrar todas las áreas ("Todos")
+        this.selectedClient = '';
+        this.loadAreas();
       },
       error: (err) => {
         console.error('Error al cargar clientes:', err);
@@ -327,10 +326,14 @@ export class AreaListComponent implements OnInit {
 
   loadAreas(): void {
     // Recupera areas del cliente seleccionado con inactivas
-    if (!this.selectedClient) return;
-    
     this.loading.set(true);
-    this.http.get<Area[]>(`http://localhost:3000/api/areas?clientId=${this.selectedClient}&includeInactive=true`).subscribe({
+    
+    let url = 'http://localhost:3000/api/areas?includeInactive=true';
+    if (this.selectedClient) {
+      url += \`&clientId=\${this.selectedClient}\`;
+    }
+    
+    this.http.get<Area[]>(url).subscribe({
       next: (data) => {
         this.areas.set(data);
         this.filteredAreas.set(data);

@@ -23,6 +23,13 @@ export class ProjectService {
    * Crea un nuevo proyecto
    */
   async create(dto: CreateProjectDto): Promise<Project> {
+    // Generar código automático si no viene en el DTO
+    if (!dto.code) {
+      const year = new Date().getFullYear();
+      const count = await this.projectModel.countDocuments();
+      dto.code = `PROJ-${year}-${String(count + 1).padStart(3, '0')}`;
+    }
+
     const project = new this.projectModel(dto);
     await project.save();
     
@@ -36,6 +43,8 @@ export class ProjectService {
    */
   async findAll(clientId?: string, status?: ProjectStatus, currentUser?: any): Promise<Project[]> {
     const query: any = {};
+    const restrictedByArea = ['AREA_ADMIN', 'ANALYST', 'VIEWER'].includes(currentUser?.role);
+    const areaIds = currentUser?.areaIds?.map((id: any) => id.toString()) || [];
     
     // SEGURIDAD MULTI-TENANT: Validar scope del usuario
     if (currentUser) {
@@ -60,6 +69,14 @@ export class ProjectService {
       query.clientId = clientId;
     }
     
+    // Filtro por áreas para roles restringidos
+    if (restrictedByArea) {
+      if (!areaIds.length) {
+        return []; // Sin áreas asignadas => sin acceso
+      }
+      query.areaId = { $in: areaIds };
+    }
+    
     if (status) query.projectStatus = status;
 
     return this.projectModel.find(query)
@@ -71,13 +88,21 @@ export class ProjectService {
   /**
    * Busca proyecto por ID
    */
-  async findById(id: string): Promise<Project> {
+  async findById(id: string, currentUser?: any): Promise<Project> {
     const project = await this.projectModel.findById(id)
       .populate('clientId', 'name code')
       .populate('areaId', 'name');
     
     if (!project) {
       throw new NotFoundException(`Proyecto con ID ${id} no encontrado`);
+    }
+
+    // Validar aislamiento por área para roles restringidos
+    if (currentUser && ['AREA_ADMIN', 'ANALYST', 'VIEWER'].includes(currentUser.role)) {
+      const allowedAreas = currentUser.areaIds?.map((a: any) => a.toString()) || [];
+      if (!allowedAreas.length || !allowedAreas.includes((project.areaId as any)?.toString())) {
+        throw new BadRequestException('No tiene acceso a este proyecto');
+      }
     }
     return project;
   }

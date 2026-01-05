@@ -455,7 +455,7 @@ interface FindingUpdate {
                                   <mat-icon>description</mat-icon>
                                 </button>
                               }
-                              @if (evidence.mimetype?.includes('pdf')) {
+                              @if (evidence.mimetype.includes('pdf')) {
                                 <button mat-icon-button color="accent" (click)="viewEvidence(evidence)" matTooltip="Abrir PDF">
                                   <mat-icon>picture_as_pdf</mat-icon>
                                 </button>
@@ -469,7 +469,7 @@ interface FindingUpdate {
                             </div>
                           </div>
                           <!-- Preview de imagen -->
-                          @if (evidence.mimetype?.startsWith('image/')) {
+                          @if (evidence.mimetype.startsWith('image/')) {
                             <div class="image-preview">
                               @if (imageUrls[evidence._id]) {
                                 <img [src]="imageUrls[evidence._id]" [alt]="evidence.originalName" (click)="viewEvidence(evidence)" />

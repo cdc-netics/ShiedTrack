@@ -93,6 +93,20 @@ export class AuthController {
   // ENDPOINTS DE ASIGNACIÓN DE ÁREAS
   // ============================================
 
+  @Post('users/:userId/areas/bulk')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.OWNER)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Asignar múltiples áreas a un usuario de una vez (solo OWNER)' })
+  @ApiResponse({ status: 201, description: 'Áreas asignadas exitosamente' })
+  async assignMultipleAreas(
+    @Param('userId') userId: string,
+    @Body() body: { areaIds: string[] },
+    @CurrentUser() currentUser: any,
+  ) {
+    return this.userAreaService.replaceUserAreas(userId, body.areaIds, currentUser.userId);
+  }
+
   @Post('users/:userId/areas/:areaId')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.OWNER)
@@ -118,20 +132,6 @@ export class AuthController {
     @Param('areaId') areaId: string,
   ) {
     return this.userAreaService.removeArea(userId, areaId);
-  }
-
-  @Post('users/:userId/areas/bulk')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.OWNER)
-  @ApiBearerAuth('JWT-auth')
-  @ApiOperation({ summary: 'Asignar múltiples áreas a un usuario de una vez (solo OWNER)' })
-  @ApiResponse({ status: 201, description: 'Áreas asignadas exitosamente' })
-  async assignMultipleAreas(
-    @Param('userId') userId: string,
-    @Body() body: { areaIds: string[] },
-    @CurrentUser() currentUser: any,
-  ) {
-    return this.userAreaService.replaceUserAreas(userId, body.areaIds, currentUser.userId);
   }
 
   @Get('users/:userId/areas')

@@ -79,7 +79,8 @@ export class RetestSchedulerService {
     const daysUntilRetest = Math.ceil((retestDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 
     // Verificar si alguno de los offsetDays coincide
-    const shouldNotify = retestPolicy.notify.offsetDays.includes(daysUntilRetest);
+    const uniqueOffsets = [...new Set(retestPolicy.notify.offsetDays)];
+    const shouldNotify = uniqueOffsets.includes(daysUntilRetest);
 
     if (shouldNotify) {
       await this.sendRetestNotification(project, daysUntilRetest);

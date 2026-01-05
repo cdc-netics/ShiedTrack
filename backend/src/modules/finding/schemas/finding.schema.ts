@@ -78,14 +78,8 @@ export class Finding extends Document {
   @Prop({ type: [String], default: [] })
   controls: string[]; // Controles CIS, NIST, OWASP, etc.
 
-  @Prop({ 
-    type: [{ 
-      label: { type: String, required: true },
-      url: { type: String, required: true }
-    }],
-    default: []
-  })
-  references: { label: string; url: string }[];
+  @Prop({ type: [String], default: [] })
+  references: string[];
 
   @Prop({ type: [String], default: [] })
   tags: string[];

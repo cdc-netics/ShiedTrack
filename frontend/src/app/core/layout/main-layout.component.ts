@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, OnInit, AfterViewInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { MatSidenavModule } from '@angular/material/sidenav';
@@ -9,6 +9,7 @@ import { MatListModule } from '@angular/material/list';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatDividerModule } from '@angular/material/divider';
 import { AuthService } from '../services/auth.service';
+import { ThemeService } from '../services/theme.service';
 
 /**
  * Layout principal con sidebar y navegación
@@ -33,7 +34,10 @@ import { AuthService } from '../services/auth.service';
           [attr.role]="'navigation'"
           mode="side"
           opened>
-        <mat-toolbar color="primary">ShieldTrack</mat-toolbar>
+        <mat-toolbar class="dynamic-primary">
+          <img class="brand-logo" [src]="theme.currentLogo" alt="Logo" />
+          <span class="brand-name">ShieldTrack</span>
+        </mat-toolbar>
         <mat-nav-list>
           <a mat-list-item routerLink="/dashboard" routerLinkActive="active">
             <mat-icon>dashboard</mat-icon>
@@ -82,7 +86,7 @@ import { AuthService } from '../services/auth.service';
         </mat-nav-list>
       </mat-sidenav>
       <mat-sidenav-content>
-        <mat-toolbar color="primary">
+        <mat-toolbar class="dynamic-primary">
           <span class="toolbar-spacer"></span>
           <span class="user-name">{{ authService.currentUser()?.firstName }} {{ authService.currentUser()?.lastName }}</span>
           <button mat-icon-button [matMenuTriggerFor]="userMenu">
@@ -116,6 +120,7 @@ import { AuthService } from '../services/auth.service';
 
     .sidenav .mat-toolbar {
       background: inherit;
+      gap: 8px;
     }
 
     .mat-toolbar.mat-primary {
@@ -178,8 +183,46 @@ import { AuthService } from '../services/auth.service';
     mat-divider {
       margin: 8px 0;
     }
+
+    .brand-logo {
+      width: 28px;
+      height: 28px;
+      object-fit: contain;
+    }
+
+    .brand-name {
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+
+    .dynamic-primary {
+      background-color: var(--primary-color, #3f51b5) !important;
+      color: #fff;
+    }
   `]
 })
-export class MainLayoutComponent {
-  constructor(public authService: AuthService) {}
+export class MainLayoutComponent implements OnInit, AfterViewInit {
+  constructor(public authService: AuthService, public theme: ThemeService) {}
+
+  ngOnInit(): void {
+    const clientSettings = (this.authService.currentUser() as any)?.clientSettings;
+    this.theme.applyTheme({
+      primaryColor: clientSettings?.primaryColor,
+      logoUrl: clientSettings?.logoUrl,
+    });
+  }
+
+  async ngAfterViewInit(): Promise<void> {
+    try {
+      const { animate } = await import('animejs');
+      animate('.content', {
+        opacity: [0, 1],
+        translateY: [12, 0],
+        duration: 450,
+        easing: 'easeOutQuad',
+      });
+    } catch (err) {
+      console.warn('Animación no cargada (anime.js):', err);
+    }
+  }
 }

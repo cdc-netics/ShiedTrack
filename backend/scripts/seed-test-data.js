@@ -15,7 +15,7 @@ const bcrypt = require('bcrypt');
 // Modelos (importar según estructura del proyecto)
 // const { User, Client, Area, Project, Finding } = require('../src/modules');
 
-const MONGO_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/shieldtrack-test';
+const MONGO_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/shieldtrack';
 
 // Colores para output
 const colors = {
@@ -37,8 +37,13 @@ async function seedTestData() {
 
     // Limpiar datos previos
     log('\n🗑️  Limpiando colecciones de test...', 'yellow');
-    await mongoose.connection.db.collection('users').deleteMany({ email: /@shieldtrack\.com$/ });
+    await mongoose.connection.db.collection('users').deleteMany({ 
+      email: { $regex: /@(shieldtrack\.com|acmecorp\.com)$/ } 
+    });
     await mongoose.connection.db.collection('clients').deleteMany({ code: /^TEST-/ });
+    await mongoose.connection.db.collection('areas').deleteMany({ code: /^TEST-/ });
+    await mongoose.connection.db.collection('projects').deleteMany({ code: /^TEST-/ });
+    await mongoose.connection.db.collection('findings').deleteMany({ code: /^FND-(TEST|EVIL)-/ });
     
     log('✅ Colecciones limpias', 'green');
 
@@ -65,6 +70,7 @@ async function seedTestData() {
     // === ÁREAS ===
     const areaInfra = await mongoose.connection.db.collection('areas').insertOne({
       name: 'Infraestructura',
+      code: 'TEST-INFRA',
       clientId: clientA.insertedId,
       isActive: true,
       createdAt: new Date()
@@ -72,6 +78,7 @@ async function seedTestData() {
 
     const areaApps = await mongoose.connection.db.collection('areas').insertOne({
       name: 'Aplicaciones',
+      code: 'TEST-APPS',
       clientId: clientA.insertedId,
       isActive: true,
       createdAt: new Date()
@@ -81,8 +88,19 @@ async function seedTestData() {
     log('\n🔐 Creando usuarios con los 6 roles RBAC...', 'blue');
     
     const hashedPassword = await bcrypt.hash('Password123!', 10);
+    const hashedDevPassword = await bcrypt.hash('Admin123!', 10);
     
     const users = await mongoose.connection.db.collection('users').insertMany([
+      {
+        email: 'admin@shieldtrack.com',
+        password: hashedDevPassword,
+        firstName: 'Dev',
+        lastName: 'Admin',
+        role: 'OWNER',
+        mfaEnabled: false,
+        isActive: true,
+        createdAt: new Date()
+      },
       {
         email: 'owner@shieldtrack.com',
         password: hashedPassword,
@@ -151,6 +169,35 @@ async function seedTestData() {
     ]);
 
     log('✅ 6 usuarios creados (password: Password123!)', 'green');
+
+    // === ASIGNACIONES DE ÁREA ===
+    log('\n🔗 Asignando usuarios a áreas...', 'blue');
+    
+    const ownerId = users.insertedIds[0];
+    const areaAdminId = users.insertedIds[3];
+
+    await mongoose.connection.db.collection('userareaassignments').insertMany([
+      {
+        userId: areaAdminId,
+        areaId: areaInfra.insertedId,
+        assignedBy: ownerId,
+        assignedAt: new Date(),
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      },
+      {
+        userId: areaAdminId,
+        areaId: areaApps.insertedId,
+        assignedBy: ownerId,
+        assignedAt: new Date(),
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      }
+    ]);
+    
+    log('✅ Area Admin asignado a Infraestructura y Aplicaciones', 'green');
 
     // === PROYECTOS ===
     log('\n📂 Creando proyectos de prueba...', 'blue');

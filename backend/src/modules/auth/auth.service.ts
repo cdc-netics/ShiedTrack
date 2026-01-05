@@ -8,6 +8,7 @@ import * as qrcode from 'qrcode';
 import { User } from './schemas/user.schema';
 import { RegisterUserDto, LoginDto, EnableMfaDto, UpdateUserDto } from './dto/auth.dto';
 import { UserRole } from '../../common/enums';
+import { UserAreaService } from './user-area.service';
 
 /**
  * Servicio de autenticación y gestión de usuarios
@@ -20,6 +21,7 @@ export class AuthService {
   constructor(
     @InjectModel(User.name) private userModel: Model<User>,
     private jwtService: JwtService,
+    private userAreaService: UserAreaService,
   ) {}
 
   /**
@@ -65,10 +67,25 @@ export class AuthService {
       password: hashedPassword,
     });
 
-    await user.save();
-    this.logger.log(`Usuario registrado: ${user.email} con rol ${user.role}${currentUser ? ` por ${currentUser.email}` : ''}`);
+    const savedUser = await user.save();
 
-    return user;
+    // Si se proporcionaron áreas, asignarlas
+    if (dto.areaIds && dto.areaIds.length > 0) {
+      try {
+        const assignedBy = currentUser ? currentUser.userId : savedUser._id.toString();
+        await this.userAreaService.assignMultipleAreas(
+          savedUser._id.toString(),
+          dto.areaIds,
+          assignedBy
+        );
+      } catch (areaError) {
+        this.logger.error(`Error asignando áreas al usuario ${savedUser._id}: ${areaError.message}`);
+      }
+    }
+
+    this.logger.log(`Usuario registrado: ${savedUser.email} con rol ${savedUser.role}${currentUser ? ` por ${currentUser.email}` : ''}`);
+
+    return savedUser;
   }
 
   /**
@@ -253,10 +270,19 @@ export class AuthService {
    * Actualiza un usuario
    */
   async updateUser(userId: string, dto: UpdateUserDto): Promise<User> {
-    const user = await this.userModel.findByIdAndUpdate(userId, dto, { new: true }).select('-password -mfaSecret');
+    const { areaIds, ...updateData } = dto;
+    const user = await this.userModel.findByIdAndUpdate(userId, updateData, { new: true }).select('-password -mfaSecret');
     
     if (!user) {
       throw new BadRequestException('Usuario no encontrado');
+    }
+
+    if (areaIds) {
+      try {
+        await this.userAreaService.replaceUserAreas(userId, areaIds, userId);
+      } catch (error) {
+        this.logger.error(`Error actualizando áreas para usuario ${userId}: ${error.message}`);
+      }
     }
 
     this.logger.log(`Usuario actualizado: ${user.email}`);

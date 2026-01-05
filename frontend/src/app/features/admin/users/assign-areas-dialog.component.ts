@@ -217,8 +217,16 @@ export class AssignAreasDialogComponent implements OnInit {
     // Trae catalogo de areas y asignaciones actuales del usuario
     this.loading.set(true);
     try {
+      const clientId = this.data.user.clientId;
+      
+      // Construir URL dependiendo de si hay cliente o no
+      let url = '/api/areas';
+      if (clientId) {
+        url += `?clientId=${clientId}`;
+      }
+
       // Cargar todas las áreas disponibles
-      const areas = await this.http.get<Area[]>('/api/areas').toPromise();
+      const areas = await this.http.get<Area[]>(url).toPromise();
       this.availableAreas.set(areas || []);
 
       // Cargar áreas ya asignadas al usuario
