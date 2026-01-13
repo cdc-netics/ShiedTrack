@@ -330,7 +330,7 @@ export class AreaListComponent implements OnInit {
     
     let url = 'http://localhost:3000/api/areas?includeInactive=true';
     if (this.selectedClient) {
-      url += \`&clientId=\${this.selectedClient}\`;
+      url += `&clientId=${this.selectedClient}`;
     }
     
     this.http.get<Area[]>(url).subscribe({
@@ -389,7 +389,7 @@ export class AreaListComponent implements OnInit {
   toggleAreaStatus(area: Area): void {
     // Activa o desactiva un area con confirmacion
     const action = area.isActive ? 'desactivar' : 'activar';
-    const confirmed = confirm(`¿Está seguro de ${action} el área "${area.name}"?`);
+    const confirmed = confirm(`Confirmar: desea ${action} el area "${area.name}"?`);
     if (!confirmed) return;
 
     this.http.put(`http://localhost:3000/api/areas/${area._id}`, { isActive: !area.isActive }).subscribe({
@@ -407,12 +407,12 @@ export class AreaListComponent implements OnInit {
   deleteArea(area: Area): void {
     // Eliminacion fuerte con doble confirmacion manual
     const confirmed = confirm(
-      `¿Está seguro de eliminar permanentemente el área "${area.name}"?\n\n` +
-      `Esta acción NO se puede deshacer y eliminará:\n` +
-      `- El área y su configuración\n` +
-      `- Las asignaciones de usuarios a esta área\n` +
+      `Esta seguro de eliminar permanentemente el area "${area.name}"?\n\n` +
+      `Esta accion NO se puede deshacer y eliminara:\n` +
+      `- El area y su configuracion\n` +
+      `- Las asignaciones de usuarios a esta area\n` +
       `- Los proyectos asociados (si los hay)\n\n` +
-      `Escriba el nombre del área para confirmar.`
+      `Escriba el nombre del area para confirmar.`
     );
     
     if (!confirmed) return;

@@ -1,7 +1,7 @@
 🐛 Issues y Funcionalidades Pendientes - ShieldTrack
 
-**Fecha de Reporte:** 05 de Enero de 2026  
-**Versión:** 1.4  
+**Fecha de Reporte:** 13 de Enero de 2026  
+**Versión:** 1.5  
 **Tipo:** Reporte de Soporte Técnico
 
 ---
@@ -102,6 +102,30 @@ Tras revisar el código actual (`finding.service.ts`, `system-config.schema.ts`)
 1.  Implementar lógica "Modo Dios" para Owner en todos los Guards y Services.
 2.  Desarrollar pantalla de configuración SMTP funcional.
 3.  Modificar esquema de Área para soportar configuración de códigos.
+4.  Ampliar esquema de AuditLog para incluir contexto completo.
+5.  Poder Cerrar los hallazgos masivamente (uso de check y cerrar  varios).
+6.  poder hacer un drop completo de la BD desde la interfaz de administración (con confirmación).
+7.  en los hallazgos, agregar un campo de "fecha de cierre" que se llene automáticamente al cerrar un hallazgo.
+8.  en los proyectos, agregar un filtro por estado (ACTIVE, CLOSED, ARCHIVED) en la UI.
+9.  en hallazgos faltaria  campos de recomendaciones ante esos riesgos que se puedan poner viñetas.
+10. en hallazgos fataria un campo de riesgo con nivel de riesgo (bajo, medio, alto, critico)  y justificacion de riesgo , un campo de texto. 
+11.  en hallazgos  en el campo de afectado, permitir agregar  multiples opciones (tags) y que separe con coma ya que los afectados  pueden multiples  IP,  URL.
+12. poder descargar un reporte  en PDF  de un hallazgo  individual  con toda su informacion  y evidencias incluidas.
+13. poder descargar un reporte  en PDF  de un proyecto  con todos los hallazgos  y evidencias incluidas.
+14. poder asignar  multiples areas  a un proyecto  ya que un proyecto puede involucrar  multiples areas de una empresa.
+15. poder descargar  todas las evidencias  de un proyecto  en un archivo ZIP  desde la interfaz de usuario.
+16. poder descargar  Todos los hallazgos de un cliente en CSV desde la interfaz de usuario. 
+17. poder descargar  todo los hallazgos de un proyecto especifico  en CSV desde la interfaz de usuario.
+18. agregar animaciones  suaves  en las transiciones  de pantallas  usando anime.js  para mejorar la experiencia de usuario.
+19. implementar un sistema de backup  completo  de la base de datos MongoDB  desde la interfaz de usuario  con opciones de programacion  diaria, semanal, mensual.
+20. implementar un sistema de restauracion  de backups  de la base de datos MongoDB  desde la interfaz de usuario  para recuperar datos en caso de perdida o corrupcion.
+21. mejorar el sistema de auditoria  para que registre  todas las acciones criticas  de los usuarios  incluyendo cambios en configuraciones, creacion y eliminacion de usuarios, cambios en roles y permisos.
+22. agregar un sistema de notificaciones  por email  para informar a los usuarios  sobre cambios importantes  en sus proyectos o hallazgos asignados.
+23. implementar un sistema de filtrado avanzado  en la interfaz de usuario  para que los usuarios puedan buscar  y filtrar proyectos y hallazgos  por multiples criterios (estado, severidad, fecha, area, etc).
+24. mejorar la asignacion de proyectos hacia usuarios que no son area admin  para que puedan ver  solo los proyectos  que les han sido asignados  sin necesidad de ser administradores de area.
+25. mejorar la asignacin de clientes a usuarios  para que los usuarios puedan tener acceso  a multiples clientes  sin necesidad de ser administradores de cliente.
+26. Customizar mediante IU  que adminstradores de area  puedan asignar proyectos a  los usuarios  que no son area admin  pero que necesitan ver esos proyectos.
+27. que todo  el panel de configuracion de areas y proyectos   este centralizado en una sola pantalla  para facilitar la gestion  y visualizacion de estos elementos.
 
-**Fecha:** 05 de Enero de 2026  
-**Versión del Documento:** 1.4
+**Fecha:** 13 de Enero de 2026  
+**Versión del Documento:** 1.5

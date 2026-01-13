@@ -30,6 +30,7 @@ Para instalar y ejecutar el proyecto, sigue la guía detallada:
 # Backend (Terminal 1)
 cd backend
 npm install
+npm run seed:test    # (Opcional) Cargar datos de prueba iniciales
 npm run start:dev
 
 # Frontend (Terminal 2)

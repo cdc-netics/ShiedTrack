@@ -70,13 +70,21 @@ npm install
 
 ### 4. Inicializar Base de Datos
 
-El backend crea automáticamente los índices necesarios al iniciar. Opcionalmente, puedes crear un usuario OWNER inicial:
+El backend crea automáticamente los índices necesarios al iniciar. Para un entorno de desarrollo completo con datos de prueba (Clientes, Áreas, Usuarios con distintos roles), ejecuta:
 
 ```bash
 cd backend
 
-# Crear usuario owner (opcional)
-node scripts/create-owner.js
+# Cargar datos de prueba completos (P0)
+# Crea usuarios: admin@shieldtrack.com, client-admin@acmecorp.com, etc.
+npm run seed:test
+```
+
+Si solo necesitas un usuario administrador básico:
+
+```bash
+# Crear solo usuario owner
+npm run seed:owner
 ```
 
 ## ▶️ Ejecución
