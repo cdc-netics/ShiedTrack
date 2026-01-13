@@ -98,7 +98,7 @@ Tras revisar el código actual (`finding.service.ts`, `system-config.schema.ts`)
 
 ---
 
-**Próximos Pasos Sugeridos:**
+**Próximos Pasos:**
 1.  Implementar lógica "Modo Dios" para Owner en todos los Guards y Services.
 2.  Desarrollar pantalla de configuración SMTP funcional.
 3.  Modificar esquema de Área para soportar configuración de códigos.
