@@ -44,6 +44,13 @@ import { HttpClient } from '@angular/common/http';
           <mat-hint>Nombre descriptivo del área (TI, RRHH, Legal, etc.)</mat-hint>
         </mat-form-field>
 
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Prefijo para Hallazgos (Opcional)</mat-label>
+          <input matInput formControlName="findingCodePrefix" placeholder="Ej: CIBER" oninput="this.value = this.value.toUpperCase()">
+          <mat-hint>Sobrescribe configuración global. Ej: CIBER-001</mat-hint>
+          <mat-error>Solo letras mayúsculas, números y guiones (2-10 caracteres)</mat-error>
+        </mat-form-field>
+
         @if (data.area) {
           <mat-form-field appearance="outline" class="full-width">
             <mat-label>Código</mat-label>
@@ -109,7 +116,8 @@ export class AreaDialogComponent implements OnInit {
     this.areaForm = this.fb.group({
       name: ['', [Validators.required, Validators.minLength(3)]],
       description: [''],
-      clientId: [data.clientId || '', data.clientId ? [] : Validators.required]
+      clientId: [data.clientId || '', data.clientId ? [] : Validators.required],
+      findingCodePrefix: ['', [Validators.pattern('^[A-Z0-9-]{2,10}$')]]
     });
   }
 
@@ -124,7 +132,8 @@ export class AreaDialogComponent implements OnInit {
       this.areaForm.patchValue({
         name: this.data.area.name,
         description: this.data.area.description || '',
-        clientId: this.data.area.clientId
+        clientId: this.data.area.clientId,
+        findingCodePrefix: this.data.area.findingCodePrefix || ''
       });
     }
   }

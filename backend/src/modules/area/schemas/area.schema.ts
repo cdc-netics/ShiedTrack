@@ -23,6 +23,13 @@ export class Area extends Document {
   @Prop({ default: true })
   isActive: boolean;
 
+  // Configuración de nomenclatura
+  @Prop()
+  findingCodePrefix?: string; // Prefijo personalizado (ej: CIBER)
+
+  @Prop({ default: 1 })
+  nextFindingNumber: number; // Consecutivo para hallazgos en esta área
+
   // Timestamps automáticos: createdAt, updatedAt
 }
 

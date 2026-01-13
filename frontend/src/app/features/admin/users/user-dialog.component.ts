@@ -83,13 +83,14 @@ import { AuthService } from '../../../core/services/auth.service';
         @if (showClientSelect()) {
           <mat-form-field appearance="outline" class="full-width">
             <mat-label>Cliente</mat-label>
-            <mat-select formControlName="clientId" required>
+            <mat-select formControlName="clientId" [required]="isClientRequired()">
+              <mat-option [value]="null">-- Sin Asignación (Global) --</mat-option>
               @for (client of clients(); track client._id) {
                 <mat-option [value]="client._id">{{ client.name }}</mat-option>
               }
             </mat-select>
             @if (userForm.get('clientId')?.hasError('required')) {
-              <mat-error>El cliente es obligatorio</mat-error>
+              <mat-error>El cliente es obligatorio para este rol</mat-error>
             }
           </mat-form-field>
         }
@@ -254,6 +255,20 @@ export class UserDialogComponent {
     const needsAreasOnInit = ['AREA_ADMIN', 'ANALYST', 'VIEWER'].includes(currentRole);
     this.showAreaSelect.set(needsAreasOnInit);
     
+    // Configurar validacion dinamica de Cliente
+    this.userForm.get('role')?.valueChanges.subscribe(role => {
+       const isGlobalRole = ['OWNER', 'PLATFORM_ADMIN'].includes(role);
+       const clientControl = this.userForm.get('clientId');
+       
+       if (isGlobalRole) {
+         clientControl?.clearValidators();
+         clientControl?.updateValueAndValidity();
+       } else {
+         clientControl?.setValidators(Validators.required);
+         clientControl?.updateValueAndValidity();
+       }
+    });
+
     // Cargar áreas si el rol las necesita
     if (needsAreasOnInit) {
       const initialClientId = this.userForm.get('clientId')?.value || currentUser?.clientId;
@@ -295,6 +310,11 @@ export class UserDialogComponent {
         this.areas.set([]);
       }
     });
+  }
+
+  isClientRequired(): boolean {
+    const role = this.userForm.get('role')?.value;
+    return !['OWNER', 'PLATFORM_ADMIN'].includes(role);
   }
 
   onSave(): void {

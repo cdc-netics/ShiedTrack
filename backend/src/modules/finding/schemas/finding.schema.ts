@@ -47,7 +47,16 @@ export class Finding extends Document {
 
   // Información técnica adicional
   @Prop()
-  affectedAsset?: string; // Sistema/aplicación afectado
+  affectedAsset?: string; // DEPRECATED: Usar affectedAssets
+
+  @Prop({ type: [String], default: [] })
+  affectedAssets: string[]; // Activos afectados (IPs, URLs, Hostnames)
+
+  @Prop({ enum: FindingSeverity })
+  businessRisk?: FindingSeverity; // Nivel de riesgo de negocio
+
+  @Prop()
+  riskJustification?: string; // Justificación del riesgo
 
   @Prop({ min: 0, max: 10 })
   cvss_score?: number; // CVSS Score validado 0-10 con decimales

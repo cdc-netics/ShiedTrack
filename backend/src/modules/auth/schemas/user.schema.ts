@@ -39,6 +39,15 @@ export class User extends Document {
   @Prop({ default: true })
   isActive: boolean;
 
+  @Prop({ default: false })
+  isDeleted: boolean; // Soft delete - No eliminar usuarios, solo desactivar
+
+  @Prop()
+  deletedAt?: Date; // Fecha de eliminación lógica
+
+  @Prop({ type: Types.ObjectId, ref: 'User' })
+  deletedBy?: Types.ObjectId; // Usuario que realizó la eliminación
+
   @Prop()
   lastLogin?: Date;
 

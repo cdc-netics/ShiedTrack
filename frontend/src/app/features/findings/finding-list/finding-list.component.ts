@@ -12,6 +12,12 @@ import { MatCardModule } from '@angular/material/card';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatMenuModule } from '@angular/material/menu';
+import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatExpansionModule } from '@angular/material/expansion';
+import { MatDatepickerModule } from '@angular/material/datepicker';
+import { MatNativeDateModule } from '@angular/material/core';
+import { MatBadgeModule } from '@angular/material/badge';
+import { SelectionModel } from '@angular/cdk/collections';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { FindingService } from '../../../core/services/finding.service';
@@ -20,8 +26,9 @@ import { environment } from '../../../../environments/environment';
 
 /**
  * Componente de Lista de Hallazgos
- * Tabla con filtros por severidad, estado y búsqueda
+ * Tabla con filtros avanzados por severidad, estado, fecha, CVSS y búsqueda
  * Colores visuales según criticidad
+ * Panel de filtros expandible con animaciones
  */
 @Component({
   selector: 'app-finding-list',
@@ -40,7 +47,12 @@ import { environment } from '../../../../environments/environment';
     MatCardModule,
     MatTooltipModule,
     MatProgressSpinnerModule,
-    MatMenuModule
+    MatMenuModule,
+    MatCheckboxModule,
+    MatExpansionModule,
+    MatDatepickerModule,
+    MatNativeDateModule,
+    MatBadgeModule
   ],
   template: `
     <div class="finding-list-container">
@@ -53,10 +65,19 @@ import { environment } from '../../../../environments/environment';
         </mat-card-header>
         <mat-card-content>
           <div class="actions-bar">
-            <button mat-raised-button color="primary" routerLink="/findings/new">
-              <mat-icon>add</mat-icon>
-              Nuevo Hallazgo
-            </button>
+            <div class="buttons">
+              <button mat-raised-button color="primary" routerLink="/findings/new">
+                <mat-icon>add</mat-icon>
+                Nuevo Hallazgo
+              </button>
+
+              @if (selection.hasValue()) {
+                <button mat-raised-button color="warn" (click)="bulkClose()">
+                  <mat-icon>done_all</mat-icon>
+                  Cerrar ({{ selection.selected.length }})
+                </button>
+              }
+            </div>
             
             <div class="filters">
               <mat-form-field appearance="outline" class="filter-field">
@@ -177,6 +198,23 @@ import { environment } from '../../../../environments/environment';
           </div>
         } @else {
           <table mat-table [dataSource]="filteredFindings()" class="findings-table">
+            
+            <!-- Checkbox Column -->
+            <ng-container matColumnDef="select">
+              <th mat-header-cell *matHeaderCellDef>
+                <mat-checkbox (change)="$event ? toggleAllRows() : null"
+                              [checked]="selection.hasValue() && isAllSelected()"
+                              [indeterminate]="selection.hasValue() && !isAllSelected()">
+                </mat-checkbox>
+              </th>
+              <td mat-cell *matCellDef="let row">
+                <mat-checkbox (click)="$event.stopPropagation()"
+                              (change)="$event ? selection.toggle(row) : null"
+                              [checked]="selection.isSelected(row)">
+                </mat-checkbox>
+              </td>
+            </ng-container>
+
             <!-- Columna Código -->
             <ng-container matColumnDef="code">
               <th mat-header-cell *matHeaderCellDef>Código</th>
@@ -519,7 +557,8 @@ export class FindingListComponent implements OnInit {
   http = inject(HttpClient);
   
   // Columnas visibles de la tabla
-  displayedColumns = ['code', 'title', 'severity', 'cvss', 'status', 'project', 'date', 'actions'];
+  displayedColumns = ['select', 'code', 'title', 'severity', 'cvss', 'status', 'project', 'date', 'actions'];
+  selection = new SelectionModel<any>(true, []);
   
   // Estado local de filtros y resultados
   searchTerm = signal('');
@@ -534,6 +573,39 @@ export class FindingListComponent implements OnInit {
   filteredFindings = signal<any[]>([]);
 
   private CLIENTS_URL = `${environment.apiUrl}/clients`;
+
+  /** Si todos los elementos filtrados están seleccionados */
+  isAllSelected() {
+    const numSelected = this.selection.selected.length;
+    const numRows = this.filteredFindings().length;
+    return numSelected === numRows && numRows > 0;
+  }
+
+  /** Selecciona o deselecciona todas las filas */
+  toggleAllRows() {
+    if (this.isAllSelected()) {
+      this.selection.clear();
+      return;
+    }
+
+    this.selection.select(...this.filteredFindings());
+  }
+
+  /** Cierra masivamente los hallazgos seleccionados */
+  bulkClose() {
+    const selectedIds = this.selection.selected.map(f => f.id);
+    if (!selectedIds.length) return;
+
+    if (confirm(`¿Estás seguro de cerrar ${selectedIds.length} hallazgos?`)) {
+      this.findingService.bulkClose(selectedIds).subscribe({
+        next: () => {
+          this.selection.clear();
+          // Opcional: mostrar notificación de éxito
+        },
+        error: (err) => console.error('Error closing findings', err)
+      });
+    }
+  }
 
   ngOnInit() {
     // Carga inicial del listado
@@ -598,36 +670,95 @@ export class FindingListComponent implements OnInit {
 
     if (this.projectFilter()) {
       findings = findings.filter(f => {
-        const pId = typeof f.projectId === 'string' ? f.projectId : f.projectId._id;
+        const pId = typeof f.projectId === 'string' ? f.projectId : f.projectId?._id;
         return pId === this.projectFilter();
       });
-    } else if (this.clientFilter()) {
-      // Filter by client
-      // We use the loaded projects for this client to filter findings
+    } else if (this.clientFilter() && this.projects().length > 0) {
+      // Filter by client ONLY if we have loaded projects
+      // Otherwise, don't apply client filter (avoid empty list)
       const clientProjectIds = this.projects().map(p => p._id);
       findings = findings.filter(f => {
-        const pId = typeof f.projectId === 'string' ? f.projectId : f.projectId._id;
+        const pId = typeof f.projectId === 'string' ? f.projectId : f.projectId?._id;
         return clientProjectIds.includes(pId);
       });
     }
     
     this.filteredFindings.set(findings);
+    console.log(`🔍 Filtros aplicados: ${findings.length} hallazgos mostrados de ${this.findingService.findings().length} totales`);
   }
 
   exportProject(format: 'excel' | 'csv') {
     const projectId = this.projectFilter();
-    if (!projectId) return;
+    if (!projectId) {
+      alert('Por favor selecciona un proyecto para exportar');
+      return;
+    }
     
     const url = `${environment.apiUrl}/export/project/${projectId}/${format}`;
-    window.open(url, '_blank');
+    console.log('📥 Exportando proyecto:', projectId, 'formato:', format);
+    
+    // Usar HttpClient para incluir el token de autenticación
+    this.http.get(url, { 
+      responseType: 'blob',
+      observe: 'response'
+    }).subscribe({
+      next: (response) => {
+        console.log('✅ Respuesta recibida, tamaño:', response.body?.size, 'bytes');
+        const blob = response.body;
+        if (blob && blob.size > 0) {
+          const downloadUrl = window.URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = downloadUrl;
+          const extension = format === 'excel' ? 'xlsx' : 'csv';
+          link.download = `proyecto_${projectId}_${Date.now()}.${extension}`;
+          link.click();
+          window.URL.revokeObjectURL(downloadUrl);
+        } else {
+          console.error('❌ Archivo vacío recibido');
+          alert('El archivo exportado está vacío. Verifica que el proyecto tenga hallazgos.');
+        }
+      },
+      error: (err) => {
+        console.error('❌ Error exportando proyecto:', err);
+        alert(`Error al exportar: ${err.error?.message || err.message || 'Error desconocido'}`);
+      }
+    });
   }
 
   exportClient() {
     const clientId = this.clientFilter();
-    if (!clientId) return;
+    if (!clientId) {
+      alert('Por favor selecciona un cliente para exportar');
+      return;
+    }
     
     const url = `${environment.apiUrl}/export/client/${clientId}/portfolio`;
-    window.open(url, '_blank');
+    console.log('📥 Exportando portfolio de cliente:', clientId);
+    
+    // Usar HttpClient para incluir el token de autenticación
+    this.http.get(url, { 
+      responseType: 'blob'
+    }).subscribe({
+      next: (blob) => {
+        console.log('✅ Portfolio recibido, tamaño:', blob.size, 'bytes');
+        if (blob && blob.size > 0) {
+          const downloadUrl = window.URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = downloadUrl;
+          link.download = `cliente_${clientId}_portfolio_${Date.now()}.zip`;
+          link.click();
+          window.URL.revokeObjectURL(downloadUrl);
+        } else {
+          console.error('❌ Archivo vacío recibido');
+          alert('El portfolio está vacío. Verifica que el cliente tenga proyectos con hallazgos.');
+        }
+      },
+      error: (err) => {
+        console.error('❌ Error exportando cliente:', err);
+        const errorMsg = err.error?.message || err.message || 'Error desconocido';
+        alert(`Error al exportar: ${errorMsg}\n\nVerifica que tengas permisos de CLIENT_ADMIN o superior.`);
+      }
+    });
   }
 
   getCountBySeverity(severity: string): number {

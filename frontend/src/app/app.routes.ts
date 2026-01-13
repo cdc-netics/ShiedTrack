@@ -50,7 +50,7 @@ export const routes: Routes = [
       },
       {
         path: 'admin/users',
-        loadComponent: () => import('./features/admin/users/user-list.component').then(m => m.UserListComponent)
+        loadComponent: () => import('./features/admin/users/user-list-improved.component').then(m => m.UserListImprovedComponent)
       },
       {
         path: 'admin/areas',
@@ -67,6 +67,10 @@ export const routes: Routes = [
       {
         path: 'admin/config',
         loadComponent: () => import('./features/admin/config/system-config.component').then(m => m.SystemConfigComponent)
+      },
+      {
+        path: 'admin/branding',
+        loadComponent: () => import('./features/admin/branding/branding-config.component').then(m => m.BrandingConfigComponent)
       },
     ]
   },

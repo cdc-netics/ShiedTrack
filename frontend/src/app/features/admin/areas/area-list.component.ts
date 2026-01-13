@@ -14,6 +14,7 @@ import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { AuthService } from '../../../core/services/auth.service';
 import { AreaDialogComponent } from './area-dialog.component';
+import { environment } from '../../../../environments/environment';
 
 interface Area {
   _id: string;
@@ -423,7 +424,7 @@ export class AreaListComponent implements OnInit {
       return;
     }
 
-    this.http.delete(`http://localhost:3000/api/areas/${area._id}/hard`).subscribe({
+    this.http.delete(`${environment.apiUrl}/areas/${area._id}/hard`).subscribe({
       next: () => {
         this.snackBar.open('Área eliminada permanentemente', 'Cerrar', { duration: 3000 });
         this.loadAreas();

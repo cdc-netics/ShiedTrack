@@ -56,6 +56,13 @@ import { HttpClient } from '@angular/common/http';
           <mat-label>Descripción</mat-label>
           <textarea matInput formControlName="description" rows="3"></textarea>
         </mat-form-field>
+
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Prefijo de Hallazgos (Opcional)</mat-label>
+          <input matInput formControlName="findingCodePrefix" placeholder="Ej: CIBER, APP, CLOUD" style="text-transform: uppercase">
+          <mat-icon matSuffix matTooltip="Prefijo personalizado para los códigos de hallazgos de este área">help_outline</mat-icon>
+          <mat-hint>Si se deja vacío, se usará la configuración global</mat-hint>
+        </mat-form-field>
       </form>
     </mat-dialog-content>
 
@@ -109,7 +116,8 @@ export class AreaDialogComponent {
     this.areaForm = this.fb.group({
       clientId: [this.data?.clientId || this.data?.area?.clientId || '', Validators.required],
       name: [this.data?.area?.name || '', Validators.required],
-      description: [this.data?.area?.description || '']
+      description: [this.data?.area?.description || ''],
+      findingCodePrefix: [this.data?.area?.findingCodePrefix || '']
     });
 
     // Si no viene clientId fijo, cargar lista para selector

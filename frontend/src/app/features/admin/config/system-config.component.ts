@@ -1,4 +1,4 @@
-import { Component, signal, inject } from '@angular/core';
+import { Component, signal, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { MatExpansionModule } from '@angular/material/expansion';
@@ -8,8 +8,10 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule } from '@angular/material/select';
+import { MatDividerModule } from '@angular/material/divider';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../../core/services/auth.service';
+import { environment } from '../../../../environments/environment';
 
 @Component({
   selector: 'app-system-config',
@@ -23,6 +25,7 @@ import { AuthService } from '../../../core/services/auth.service';
     MatButtonModule,
     MatIconModule,
     MatSelectModule,
+    MatDividerModule,
     FormsModule
   ],
   template: `
@@ -122,8 +125,61 @@ import { AuthService } from '../../../core/services/auth.service';
             </mat-select>
           </mat-form-field>
 
+          <mat-divider></mat-divider>
+
+          <!-- CONFIGURACIÓN DE TENANT/CLIENTE (Display Name, Favicon, Logo, Colores) -->
+          <h3 style="margin-top: 20px; margin-bottom: 10px;">Configuración de Tenant</h3>
+
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Nombre Mostrado del Tenant</mat-label>
+            <input matInput placeholder="ej: ACME" [(ngModel)]="tenantConfig().displayName">
+            <mat-icon matSuffix>business</mat-icon>
+            <mat-hint>Este nombre aparecerá en la interfaz del usuario</mat-hint>
+          </mat-form-field>
+
+          <!-- Favicon -->
+          <div class="form-field" style="margin-top: 16px;">
+            <label>Favicon del Sistema</label>
+            <div style="border: 2px dashed #ccc; padding: 16px; border-radius: 4px; margin-top: 8px;">
+              @if (tenantConfig().faviconPreview) {
+                <img [src]="tenantConfig().faviconPreview" alt="Favicon" style="width: 64px; height: 64px; margin-bottom: 12px;">
+              }
+              <input type="file" accept="image/*" (change)="onFaviconSelected($event)" #faviconInput hidden>
+              <button mat-raised-button color="primary" (click)="faviconInput.click()">
+                <mat-icon>upload</mat-icon>
+                Subir Favicon
+              </button>
+            </div>
+          </div>
+
+          <!-- Logo -->
+          <div class="form-field" style="margin-top: 16px;">
+            <label>Logo del Sistema</label>
+            <div style="border: 2px dashed #ccc; padding: 16px; border-radius: 4px; margin-top: 8px;">
+              @if (tenantConfig().logoPreview) {
+                <img [src]="tenantConfig().logoPreview" alt="Logo" style="max-width: 150px; max-height: 150px; margin-bottom: 12px;">
+              }
+              <input type="file" accept="image/*" (change)="onLogoSelected($event)" #logoInput hidden>
+              <button mat-raised-button color="primary" (click)="logoInput.click()">
+                <mat-icon>upload</mat-icon>
+                Subir Logo
+              </button>
+            </div>
+          </div>
+
+          <!-- Color Primario -->
+          <mat-form-field appearance="outline" class="full-width" style="margin-top: 16px;">
+            <mat-label>Color Primario del Sistema</mat-label>
+            <input matInput type="color" [(ngModel)]="tenantConfig().primaryColor" placeholder="#1976D2">
+            <mat-icon matSuffix>palette</mat-icon>
+          </mat-form-field>
+
+          @if (tenantConfig().primaryColor) {
+            <div style="width: 100%; height: 60px; background-color: {{ tenantConfig().primaryColor }}; border-radius: 4px; margin-top: 8px;"></div>
+          }
+
           <mat-action-row>
-            <button mat-button color="primary" (click)="saveAreaConfig()">Guardar</button>
+            <button mat-button color="primary" (click)="saveAreaConfig(); saveTenantConfig();">Guardar</button>
           </mat-action-row>
         </mat-expansion-panel>
 
@@ -216,6 +272,81 @@ import { AuthService } from '../../../core/services/auth.service';
           </mat-action-row>
         </mat-expansion-panel>
 
+        <!-- CONFIGURACIÓN SMTP (EMAIL) -->
+        <mat-expansion-panel>
+          <mat-expansion-panel-header>
+            <mat-panel-title>
+              <mat-icon>email</mat-icon>
+              Servidor SMTP
+            </mat-panel-title>
+            <mat-panel-description>
+              Configuración de credenciales de correo
+            </mat-panel-description>
+          </mat-expansion-panel-header>
+          
+          <div class="smtp-form">
+            <p class="info-text">
+              <mat-icon class="info-icon">lock</mat-icon>
+              Las credenciales se guardan encriptadas en la base de datos.
+            </p>
+
+            <!-- Host & Port Row -->
+            <div class="form-row">
+              <mat-form-field appearance="outline">
+                <mat-label>SMTP Host</mat-label>
+                <input matInput [(ngModel)]="smtpConfig().host" placeholder="smtp.gmail.com">
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>Puerto</mat-label>
+                <input matInput type="number" [(ngModel)]="smtpConfig().port" placeholder="587">
+              </mat-form-field>
+            </div>
+
+            <!-- User & Pass Row -->
+             <div class="form-row">
+              <mat-form-field appearance="outline">
+                <mat-label>Usuario</mat-label>
+                <input matInput [(ngModel)]="smtpConfig().user" placeholder="user@example.com">
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>Contraseña</mat-label>
+                <input matInput [type]="hidePassword() ? 'password' : 'text'" [(ngModel)]="smtpConfig().pass">
+                <button mat-icon-button matSuffix (click)="hidePassword.set(!hidePassword())">
+                  <mat-icon>{{hidePassword() ? 'visibility_off' : 'visibility'}}</mat-icon>
+                </button>
+              </mat-form-field>
+            </div>
+            
+            <div class="form-row">
+              <mat-form-field appearance="outline">
+                <mat-label>Email Remitente</mat-label>
+                <input matInput [(ngModel)]="smtpConfig().fromEmail" placeholder="noreply@shieldtrack.com">
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>Nombre Remitente</mat-label>
+                <input matInput [(ngModel)]="smtpConfig().fromName" placeholder="ShieldTrack Security">
+              </mat-form-field>
+            </div>
+
+            <!-- Security Toggle -->
+             <div class="form-field">
+              <mat-slide-toggle [(ngModel)]="smtpConfig().secure">
+                Usar SSL/TLS
+              </mat-slide-toggle>
+            </div>
+            
+            <div class="actions">
+                <button mat-stroked-button color="accent" (click)="testSmtp()">
+                    <mat-icon>send</mat-icon> Probar Conexión
+                </button>
+                <button mat-raised-button color="primary" (click)="saveSmtpConfig()">Guardar Configuración</button>
+            </div>
+          </div>
+        </mat-expansion-panel>
+
         <!-- NOTIFICACIONES -->
         <mat-expansion-panel>
           <mat-expansion-panel-header>
@@ -233,19 +364,8 @@ import { AuthService } from '../../../core/services/auth.service';
               Notificaciones por email
             </mat-slide-toggle>
           </div>
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Servidor SMTP</mat-label>
-            <input matInput [(ngModel)]="config().smtpServer" placeholder="smtp.gmail.com">
-          </mat-form-field>
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Puerto SMTP</mat-label>
-            <input matInput type="number" [(ngModel)]="config().smtpPort" placeholder="587">
-          </mat-form-field>
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Email remitente</mat-label>
-            <input matInput type="email" [(ngModel)]="config().fromEmail" placeholder="noreply@shieldtrack.com">
-          </mat-form-field>
-
+          <p class="hint-text">Configure las credenciales en el panel "Servidor SMTP" arriba.</p>
+          
           <mat-action-row>
             <button mat-button color="primary" (click)="saveConfig()">Guardar</button>
           </mat-action-row>
@@ -301,6 +421,46 @@ import { AuthService } from '../../../core/services/auth.service';
             <button mat-button color="primary" (click)="saveConfig()">Guardar</button>
           </mat-action-row>
         </mat-expansion-panel>
+        <!-- DANGER ZONE -->
+        <mat-expansion-panel class="danger-zone" *ngIf="isOwner()">
+          <mat-expansion-panel-header>
+            <mat-panel-title style="color: #f44336;">
+              <mat-icon color="warn">warning</mat-icon>
+              Zone de Peligro (Danger Zone)
+            </mat-panel-title>
+            <mat-panel-description>
+              Acciones destructivas y reset de base de datos
+            </mat-panel-description>
+          </mat-expansion-panel-header>
+
+          <div style="background: #ffebee; border: 1px solid #ffcdd2; color: #b71c1c; padding: 16px; border-radius: 4px; margin-bottom: 16px;">
+             <h3 style="margin-top:0">⚠️ Reset Completo de Base de Datos</h3>
+             <p>Esta acción eliminará <strong>permanentemente</strong>:</p>
+             <ul>
+               <li>Todos los Hallazgos</li>
+               <li>Todos los Proyectos</li>
+               <li>Todos los Clientes</li>
+               <li>Todas las Áreas</li>
+               <li>Registros de Auditoría</li>
+             </ul>
+             <p>No eliminará Usuarios ni la Configuración de Sistema.</p>
+          </div>
+
+          <div style="display: flex; gap: 16px; align-items: center;">
+            <mat-form-field appearance="outline" style="flex: 1;">
+              <mat-label>Escribe "DELETE" para confirmar</mat-label>
+              <input matInput [(ngModel)]="resetConfirmation">
+            </mat-form-field>
+
+            <button mat-flat-button color="warn" 
+                    [disabled]="resetConfirmation !== 'DELETE'"
+                    (click)="resetDatabase()">
+              <mat-icon>delete_forever</mat-icon>
+              ELIMINAR TODO
+            </button>
+          </div>
+        </mat-expansion-panel>
+
       </mat-accordion>
     </div>
   `,
@@ -320,9 +480,29 @@ import { AuthService } from '../../../core/services/auth.service';
       display: grid;
       grid-template-columns: repeat(2, 1fr);
       gap: 16px;
+      align-items: start;
     }
 
-    @media (max-width: 900px) {
+    .smtp-form {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .actions {
+      display: flex;
+      gap: 16px;
+      justify-content: flex-end;
+      margin-top: 16px;
+    }
+
+    @media (max-width: 800px) {
       .config-accordion {
         grid-template-columns: 1fr;
       }
@@ -413,10 +593,24 @@ import { AuthService } from '../../../core/services/auth.service';
     }
   `]
 })
-export class SystemConfigComponent {
+export class SystemConfigComponent implements OnInit {
   // Servicio HTTP y estado de permisos
   private http = inject(HttpClient);
   authService = inject(AuthService);
+
+  // Estado UI
+  hidePassword = signal(true);
+  
+  // Configuracion SMTP
+  smtpConfig = signal({
+    host: '',
+    port: 587,
+    user: '',
+    pass: '',
+    secure: false,
+    fromEmail: 'noreply@shieldtrack.com',
+    fromName: 'ShieldTrack Security'
+  });
 
   // Configuracion general del sistema (mock/placeholder)
   config = signal({
@@ -427,9 +621,9 @@ export class SystemConfigComponent {
     maxLoginAttempts: 5,
     sessionTimeout: 30,
     emailNotifications: true,
-    smtpServer: 'smtp.gmail.com',
-    smtpPort: 587,
-    fromEmail: 'noreply@shieldtrack.com',
+    smtpServer: 'smtp.gmail.com', // DEPRECATED
+    smtpPort: 587, // DEPRECATED
+    fromEmail: 'noreply@shieldtrack.com', // DEPRECATED
     autoBackup: true,
     backupFrequency: 'daily',
     retentionDays: 30,
@@ -451,12 +645,100 @@ export class SystemConfigComponent {
     hierarchyLevels: 2
   });
 
+  // Configuracion de tenant/cliente (favicon, logo, colores, etc)
+  tenantConfig = signal({
+    displayName: '',
+    favicon: null as File | null,
+    faviconPreview: '',
+    logo: null as File | null,
+    logoPreview: '',
+    primaryColor: '#1976D2'
+  });
+
   // Lista mock de proyectos para la UI
   projects = signal([
     { id: '1', name: 'Proyecto Web App' },
     { id: '2', name: 'Proyecto Móvil' },
     { id: '3', name: 'Proyecto API Rest' }
   ]);
+
+  ngOnInit() {
+    if (this.isOwner()) {
+      this.loadSmtpConfig();
+    }
+    this.loadProjects();
+  }
+
+  loadProjects(): void {
+    this.http.get<any[]>('http://localhost:3000/api/projects').subscribe({
+      next: (projects) => {
+        this.projects.set(projects.map(p => ({ id: p._id, name: p.name })));
+      },
+      error: (err) => console.error('Error loading projects:', err)
+    });
+  }
+
+  loadSmtpConfig(): void {
+    this.http.get<any>('http://localhost:3000/api/system-config/smtp').subscribe({
+      next: (config) => {
+        this.smtpConfig.set({
+          host: config.smtp_host || '',
+          port: config.smtp_port || 587,
+          user: config.smtp_user || '', // Masked *******
+          pass: config.smtp_pass || '', // Masked *******
+          secure: config.smtp_secure || false,
+          fromEmail: config.smtp_from_email || '',
+          fromName: config.smtp_from_name || ''
+        });
+      },
+      error: (err) => console.error('Error loading SMTP config:', err)
+    });
+  }
+
+  saveSmtpConfig(): void {
+    const data = {
+      smtp_host: this.smtpConfig().host,
+      smtp_port: this.smtpConfig().port,
+      smtp_secure: this.smtpConfig().secure,
+      smtp_user: this.smtpConfig().user,
+      smtp_pass: this.smtpConfig().pass,
+      smtp_from_email: this.smtpConfig().fromEmail,
+      smtp_from_name: this.smtpConfig().fromName
+    };
+
+    // Validar si es una contraseña mascara
+    if (data.smtp_pass && data.smtp_pass.includes('***')) {
+        // TODO: Handle password update logic (send only if changed)
+        // For now, API handles encryption, but we should not re-encrypt masked password
+        // Backend should check if pass == '*******' then ignore update
+    }
+
+    console.log('📤 Guardando SMTP:', data);
+    this.http.put('http://localhost:3000/api/system-config/smtp', data).subscribe({
+      next: () => {
+        alert('✅ Configuración SMTP guardada exitosamente');
+      },
+      error: (error) => {
+        console.error('❌ Error saving SMTP:', error);
+        alert(`❌ Error: ${error?.error?.message || 'Error al guardar'}`);
+      }
+    });
+  }
+
+  testSmtp(): void {
+    this.http.post('http://localhost:3000/api/system-config/smtp/test', {}).subscribe({
+      next: (res: any) => {
+        if (res.success) {
+          alert('✅ ' + res.message);
+        } else {
+          alert('❌ ' + res.message);
+        }
+      },
+      error: (error) => {
+        alert(`❌ Error de conexión: ${error?.error?.message || error.message}`);
+      }
+    });
+  }
 
   isOwner(): boolean {
     // Permiso para configuracion global
@@ -480,6 +762,27 @@ export class SystemConfigComponent {
     }
   }
 
+  resetConfirmation = '';
+
+  resetDatabase(): void {
+    if (this.resetConfirmation !== 'DELETE') return;
+
+    if (confirm('☠️ ¿ESTÁS ABSOLUTAMENTE SEGURO? ESTA ACCIÓN NO SE PUEDE DESHACER.')) {
+      this.http.delete(`${environment.apiUrl}/system-config/database/reset`, {
+        body: { confirmation: 'DELETE' } // Delete requests with body need this syntax in HttpClient
+      }).subscribe({
+        next: (res: any) => {
+          alert(`✅ ${res.message}. Se eliminaron ${JSON.stringify(res.details)} registros.`);
+          this.resetConfirmation = '';
+        },
+        error: (error) => {
+          console.error('Error resetting DB:', error);
+          alert(`❌ Error: ${error.error?.message || 'Error desconocido'}`);
+        }
+      });
+    }
+  }
+
   canMerge(): boolean {
     // Valida que ambos proyectos sean distintos
     const config = this.mergeConfig();
@@ -490,10 +793,39 @@ export class SystemConfigComponent {
     // Accion destructiva; se confirma antes de ejecutar
     if (!this.canMerge()) return;
     
-    if (confirm('¿Estás seguro de fusionar estos proyectos? Esta acción NO se puede deshacer.')) {
+    const config = this.mergeConfig();
+    const sourceProject = this.projects().find(p => p.id === config.sourceProject);
+    const targetProject = this.projects().find(p => p.id === config.targetProject);
+
+    const confirmMessage = `¿Estás seguro de fusionar estos proyectos?\n\n` +
+      `📁 ORIGEN (será eliminado): ${sourceProject?.name}\n` +
+      `📂 DESTINO (recibirá hallazgos): ${targetProject?.name}\n\n` +
+      `⚠️ Esta acción NO se puede deshacer. Todos los hallazgos del proyecto origen se moverán al destino.`;
+
+    if (confirm(confirmMessage)) {
       console.log('Fusionando proyectos:', this.mergeConfig());
-      // TODO: Implementar llamada al backend
-      alert('Proyectos fusionados exitosamente');
+      
+      this.http.post('http://localhost:3000/api/projects/merge', {
+        sourceProjectId: config.sourceProject,
+        targetProjectId: config.targetProject
+      }).subscribe({
+        next: (response: any) => {
+          console.log('✅ Fusión exitosa:', response);
+          alert(`✅ Proyectos fusionados exitosamente!\n\n` +
+            `Hallazgos movidos: ${response.findingsMoved}\n` +
+            `Nuevo total en "${response.targetProject.name}": ${response.targetProject.newFindingsCount}`);
+          
+          // Limpiar selección
+          this.mergeConfig.update(cfg => ({ sourceProject: '', targetProject: '' }));
+          
+          // Recargar lista de proyectos
+          this.loadProjects();
+        },
+        error: (error) => {
+          console.error('❌ Error fusionando proyectos:', error);
+          alert(`❌ Error al fusionar proyectos:\n${error.error?.message || 'Error desconocido'}`);
+        }
+      });
     }
   }
 
@@ -523,6 +855,79 @@ export class SystemConfigComponent {
       error: (error) => {
         console.error('❌ Error al guardar configuración de áreas:', error);
         alert(`❌ Error: ${error?.error?.message || 'No se pudo guardar'}`);
+      }
+    });
+  }
+
+  // MÉTODOS PARA CONFIGURACIÓN DE TENANT
+  
+  onFaviconSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const preview = e.target?.result as string;
+        this.tenantConfig.update(config => ({
+          ...config,
+          favicon: file,
+          faviconPreview: preview
+        }));
+      };
+      reader.readAsDataURL(file);
+    }
+  }
+
+  onLogoSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const preview = e.target?.result as string;
+        this.tenantConfig.update(config => ({
+          ...config,
+          logo: file,
+          logoPreview: preview
+        }));
+      };
+      reader.readAsDataURL(file);
+    }
+  }
+
+  saveTenantConfig(): void {
+    // Guarda configuracion de tenant (favicon, logo, colores) en backend
+    console.log('📤 Guardando configuración de tenant:', this.tenantConfig());
+    
+    const formData = new FormData();
+    formData.append('displayName', this.tenantConfig().displayName || '');
+    formData.append('primaryColor', this.tenantConfig().primaryColor || '#1976D2');
+    
+    const favicon = this.tenantConfig().favicon;
+    if (favicon) {
+      formData.append('favicon', favicon);
+    }
+    
+    const logo = this.tenantConfig().logo;
+    if (logo) {
+      formData.append('logo', logo);
+    }
+
+    this.http.post('/api/clients/me/branding', formData).subscribe({
+      next: (response: any) => {
+        console.log('✅ Configuración de tenant guardada:', response);
+        alert('✅ Configuración de tenant guardada exitosamente');
+        
+        // Actualizar localStorage con nuevo color primario
+        if (this.tenantConfig().primaryColor) {
+          localStorage.setItem('primaryColor', this.tenantConfig().primaryColor);
+        }
+      },
+      error: (error) => {
+        console.error('❌ Error al guardar configuración de tenant:', error);
+        alert(`❌ Error: ${error?.error?.message || 'No se pudo guardar la configuración'}`);
       }
     });
   }

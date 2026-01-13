@@ -29,15 +29,19 @@ export class AuditInterceptor implements NestInterceptor {
           entityType: isExport ? 'EXPORT' : 'HTTP',
           entityId: body?.id || body?._id || params?.id || params?._id || 'N/A',
           performedBy: user?.userId || 'anonymous',
+          clientId: user?.clientId,
+          // Si el usuario tiene un área principal, usarla? O extraer del body?
+          // Por ahora nos limitamos al contexto seguro del usuario.
+          // areaId: user?.areaIds?.[0] || undefined, 
           ip,
           userAgent: headers['user-agent'],
           metadata: {
-            body: isExport ? {} : body, // No logear body en exports (usualmente vacío)
+            body: isExport ? {} : body, // No logear body en exports
             params,
-            // response: isExport ? 'Stream' : response, // Evitar logear streams grandes
           },
         });
       }),
     );
   }
 }
+

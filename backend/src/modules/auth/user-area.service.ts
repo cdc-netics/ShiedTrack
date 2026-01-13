@@ -1,16 +1,23 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { UserAreaAssignment } from './schemas/user-area-assignment.schema';
 import { User } from './schemas/user.schema';
+import { Area } from '../area/schemas/area.schema';
+import { EmailService } from '../email/email.service';
 
 @Injectable()
 export class UserAreaService {
+  private readonly logger = new Logger(UserAreaService.name);
+
   constructor(
     @InjectModel(UserAreaAssignment.name)
     private userAreaModel: Model<UserAreaAssignment>,
     @InjectModel(User.name)
     private userModel: Model<User>,
+    @InjectModel(Area.name)
+    private areaModel: Model<Area>,
+    private emailService: EmailService,
   ) {}
 
   /**
@@ -59,6 +66,21 @@ export class UserAreaService {
     await this.userModel.findByIdAndUpdate(userId, {
       $addToSet: { areaIds: new Types.ObjectId(areaId) },
     });
+
+    // 📧 Enviar notificación de asignación
+    try {
+      const area = await this.areaModel.findById(areaId).lean();
+      if (area) {
+        await this.emailService.notifyUserAssignedToArea(
+          user.email,
+          `${user.firstName} ${user.lastName}`,
+          area.name
+        );
+        this.logger.log(`Email de asignación de área enviado a ${user.email}`);
+      }
+    } catch (emailError) {
+      this.logger.warn(`No se pudo enviar email de asignación: ${emailError.message}`);
+    }
 
     return saved;
   }

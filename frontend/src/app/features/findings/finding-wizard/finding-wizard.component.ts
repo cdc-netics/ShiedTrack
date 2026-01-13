@@ -246,17 +246,77 @@ interface Template {
                   </mat-form-field>
                 </div>
 
-                <mat-form-field appearance="outline" class="full-width">
-                  <mat-label>Activo Afectado</mat-label>
+                <div class="risk-section">
+                  <div class="form-row">
+                    <mat-form-field appearance="outline">
+                      <mat-label>Riesgo de Negocio</mat-label>
+                      <mat-select formControlName="businessRisk">
+                        <mat-option value="CRITICAL">🔴 Crítico</mat-option>
+                        <mat-option value="HIGH">🟠 Alto</mat-option>
+                        <mat-option value="MEDIUM">🟡 Medio</mat-option>
+                        <mat-option value="LOW">🔵 Bajo</mat-option>
+                        <mat-option value="INFO">⚪ Informativo</mat-option>
+                      </mat-select>
+                    </mat-form-field>
+                  </div>
+
+                  <mat-form-field appearance="outline" class="full-width">
+                     <mat-label>Justificación del Riesgo</mat-label>
+                     <textarea matInput formControlName="riskJustification" rows="3"
+                               placeholder="Explique el impacto al negocio..."></textarea>
+                  </mat-form-field>
+                </div>
+
+                <!-- Activos Afectados (New Multi-select) -->
+                <div class="controls-section">
+                  <label><mat-icon>devices</mat-icon> Activos Afectados</label>
+                  <p class="hint">Ingrese IPs, URLs o Hostnames y presione ENTER</p>
+                  <mat-chip-listbox>
+                    @for (asset of affectedAssets(); track asset) {
+                      <mat-chip>
+                        {{ asset }}
+                        <button matChipRemove (click)="removeAsset($index)">
+                          <mat-icon>cancel</mat-icon>
+                        </button>
+                      </mat-chip>
+                    }
+                  </mat-chip-listbox>
+                  <div class="add-control">
+                    <mat-form-field appearance="outline" style="flex: 1;">
+                      <mat-label>Agregar activo</mat-label>
+                      <input matInput [(ngModel)]="newAsset" [ngModelOptions]="{standalone: true}"
+                             (keyup.enter)="addAsset()" placeholder="Ej: 192.168.1.10, https://api.prod.com">
+                    </mat-form-field>
+                     <button mat-raised-button color="accent" (click)="addAsset()">
+                      <mat-icon>add</mat-icon>
+                    </button>
+                  </div>
+                </div>
+
+                <mat-form-field appearance="outline" class="full-width" style="display: none">
+                  <mat-label>Activo Afectado (Legacy)</mat-label>
                   <textarea matInput formControlName="affectedAsset" rows="2" 
-                            placeholder="Sistema o aplicación afectada"></textarea>
+                            placeholder="Descontinuado - Use Activos Afectados arriba"></textarea>
                 </mat-form-field>
 
-                <mat-form-field appearance="outline" class="full-width">
-                  <mat-label>Recomendación de Remediación</mat-label>
-                  <textarea matInput formControlName="recommendation" rows="4"
-                            placeholder="Describe las acciones recomendadas para remediar este hallazgo..."></textarea>
-                </mat-form-field>
+                <div class="rich-section">
+                  <label>Recomendación de Remediación</label>
+                  <div class="toolbar">
+                    <button type="button" mat-icon-button (click)="format('bold')" matTooltip="Negrita">
+                      <mat-icon>format_bold</mat-icon>
+                    </button>
+                    <button type="button" mat-icon-button (click)="format('italic')" matTooltip="Cursiva">
+                      <mat-icon>format_italic</mat-icon>
+                    </button>
+                    <button type="button" mat-icon-button (click)="format('insertUnorderedList')" matTooltip="Lista">
+                      <mat-icon>format_list_bulleted</mat-icon>
+                    </button>
+                  </div>
+                  <div contenteditable="true" 
+                       class="editor"
+                       (input)="onRecommendationChange($event)"
+                       [innerHTML]="technicalForm.get('recommendation')?.value || ''"></div>
+                </div>
 
                 <mat-form-field appearance="outline" class="full-width">
                   <mat-label>Impacto</mat-label>
@@ -456,6 +516,10 @@ export class FindingWizardComponent implements OnInit {
   newRefLabel = '';
   newRefUrl = '';
   
+  // Activos afectados
+  affectedAssets = signal<string[]>([]);
+  newAsset = '';
+  
   private http = inject(HttpClient);
   private readonly templateApi = `${environment.apiUrl}/templates`;
 
@@ -488,6 +552,8 @@ export class FindingWizardComponent implements OnInit {
       cveId: [''],
       detectionSource: [''],
       cweId: [''],
+      businessRisk: [''], 
+      riskJustification: [''],
       affectedAsset: [''],
       recommendation: [''],
       impact: [''],
@@ -635,6 +701,11 @@ export class FindingWizardComponent implements OnInit {
     this.basicForm.patchValue({ description: event.target.innerHTML });
   }
 
+  onRecommendationChange(event: any): void {
+    // Sincroniza el contenido editable de recomendación
+    this.technicalForm.patchValue({ recommendation: event.target.innerHTML });
+  }
+
   onFileSelected(event: any): void {
     // Agrega archivos seleccionados al buffer local
     const files = Array.from(event.target.files) as File[];
@@ -644,6 +715,17 @@ export class FindingWizardComponent implements OnInit {
   removeFile(index: number): void {
     // Remueve un archivo de la lista
     this.selectedFiles.update(files => files.filter((_, i) => i !== index));
+  }
+
+  addAsset(): void {
+    if (this.newAsset && !this.affectedAssets().includes(this.newAsset)) {
+      this.affectedAssets.update(assets => [...assets, this.newAsset]);
+      this.newAsset = '';
+    }
+  }
+
+  removeAsset(index: number): void {
+    this.affectedAssets.update(assets => assets.filter((_, i) => i !== index));
   }
 
   addControl(): void {
@@ -774,8 +856,11 @@ export class FindingWizardComponent implements OnInit {
       cvssScore: technicalData.cvssScore ? Number(technicalData.cvssScore) : undefined,
       cve_id: technicalData.cveId || undefined,
       cweId: technicalData.cweId || undefined,
+      businessRisk: technicalData.businessRisk || undefined,
+      riskJustification: technicalData.riskJustification || undefined,
       detection_source: technicalData.detectionSource || undefined,
-      affectedAsset: technicalData.affectedAsset || undefined,
+      affectedAssets: this.affectedAssets(),
+      affectedAsset: technicalData.affectedAsset || (this.affectedAssets().length > 0 ? this.affectedAssets()[0] : undefined),
       recommendation: technicalData.recommendation || undefined,
       impact: technicalData.impact || undefined,
       implications: technicalData.implications || undefined,

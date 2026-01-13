@@ -1,4 +1,4 @@
-import { Component, OnInit, AfterViewInit } from '@angular/core';
+import { Component, OnInit, AfterViewInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { MatSidenavModule } from '@angular/material/sidenav';
@@ -8,8 +8,12 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatListModule } from '@angular/material/list';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatDividerModule } from '@angular/material/divider';
+import { MatChipsModule } from '@angular/material/chips';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { AuthService } from '../services/auth.service';
 import { ThemeService } from '../services/theme.service';
+import { HttpClient } from '@angular/common/http';
+import { firstValueFrom } from 'rxjs';
 
 /**
  * Layout principal con sidebar y navegación
@@ -26,7 +30,9 @@ import { ThemeService } from '../services/theme.service';
     MatIconModule,
     MatListModule,
     MatMenuModule,
-    MatDividerModule
+    MatDividerModule,
+    MatChipsModule,
+    MatTooltipModule
   ],
   template: `
     <mat-sidenav-container class="sidenav-container">
@@ -87,6 +93,14 @@ import { ThemeService } from '../services/theme.service';
       </mat-sidenav>
       <mat-sidenav-content>
         <mat-toolbar class="dynamic-primary">
+          @if (currentTenant) {
+            <mat-chip-set class="tenant-chip">
+              <mat-chip [matTooltip]="'Cliente actual: ' + currentTenant.name">
+                <mat-icon matChipAvatar>business</mat-icon>
+                {{ currentTenant.displayName || currentTenant.name }}
+              </mat-chip>
+            </mat-chip-set>
+          }
           <span class="toolbar-spacer"></span>
           <span class="user-name">{{ authService.currentUser()?.firstName }} {{ authService.currentUser()?.lastName }}</span>
           <button mat-icon-button [matMenuTriggerFor]="userMenu">
@@ -199,9 +213,27 @@ import { ThemeService } from '../services/theme.service';
       background-color: var(--primary-color, #3f51b5) !important;
       color: #fff;
     }
+
+    .tenant-chip {
+      margin-right: 16px;
+    }
+
+    .tenant-chip mat-chip {
+      background-color: rgba(255, 255, 255, 0.2) !important;
+      color: #fff;
+      font-weight: 500;
+      font-size: 13px;
+    }
+
+    .tenant-chip mat-chip mat-icon {
+      color: #fff;
+    }
   `]
 })
 export class MainLayoutComponent implements OnInit, AfterViewInit {
+  private http = inject(HttpClient);
+  currentTenant: any = null;
+
   constructor(public authService: AuthService, public theme: ThemeService) {}
 
   ngOnInit(): void {
@@ -210,12 +242,31 @@ export class MainLayoutComponent implements OnInit, AfterViewInit {
       primaryColor: clientSettings?.primaryColor,
       logoUrl: clientSettings?.logoUrl,
     });
+
+    // Cargar información del tenant actual
+    this.loadCurrentTenant();
+  }
+
+  async loadCurrentTenant(): Promise<void> {
+    const user = this.authService.currentUser();
+    const clientId = (user as any)?.clientId;
+    
+    if (clientId) {
+      try {
+        this.currentTenant = await firstValueFrom(
+          this.http.get(`/api/clients/${clientId}`)
+        );
+      } catch (err) {
+        console.error('Error al cargar tenant actual:', err);
+      }
+    }
   }
 
   async ngAfterViewInit(): Promise<void> {
     try {
-      const { animate } = await import('animejs');
-      animate('.content', {
+      const anime = (await import('animejs')).default;
+      anime({
+        targets: '.content',
         opacity: [0, 1],
         translateY: [12, 0],
         duration: 450,

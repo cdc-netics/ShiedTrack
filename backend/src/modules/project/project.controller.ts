@@ -74,4 +74,16 @@ export class ProjectController {
     await this.projectService.hardDelete(id);
     return { message: 'Proyecto eliminado permanentemente' };
   }
+
+  @Post('merge')
+  @Roles(UserRole.OWNER, UserRole.PLATFORM_ADMIN)
+  @ApiOperation({ 
+    summary: 'Fusionar dos proyectos (mueve hallazgos de origen a destino y elimina origen)',
+    description: 'Acción destructiva: todos los hallazgos del proyecto origen se mueven al destino y el proyecto origen se elimina'
+  })
+  async mergeProjects(
+    @Body() body: { sourceProjectId: string; targetProjectId: string }
+  ) {
+    return this.projectService.mergeProjects(body.sourceProjectId, body.targetProjectId);
+  }
 }

@@ -147,6 +147,9 @@ interface FindingUpdate {
                       Cerrar Hallazgo
                     </button>
                   }
+                  <button mat-icon-button color="primary" matTooltip="Descargar Reporte PDF" (click)="downloadPdf()">
+                    <mat-icon>picture_as_pdf</mat-icon>
+                  </button>
                 } @else {
                   <button mat-raised-button (click)="cancelEdit()">
                     <mat-icon>cancel</mat-icon>
@@ -1724,6 +1727,13 @@ export class FindingDetailComponent implements OnInit {
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+  }
+
+  downloadPdf() {
+    // Descargar reporte PDF del hallazgo
+    // Asume que el backend expone /api/export/finding/:id/pdf
+    const url = `http://localhost:3000/api/export/finding/${this.finding()!._id}/pdf`;
+    window.open(url, '_blank');
   }
 
   /**

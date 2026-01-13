@@ -42,8 +42,14 @@ export class Project extends Document {
   @Prop({ type: Types.ObjectId, ref: 'Client', required: true })
   clientId: Types.ObjectId;
 
-  @Prop({ type: Types.ObjectId, ref: 'Area', required: true })
-  areaId: Types.ObjectId;
+  @Prop({ type: [{ type: Types.ObjectId, ref: 'Area' }] })
+  areaIds: Types.ObjectId[];
+
+  /**
+   * @deprecated Use areaIds instead. Kept for backward compatibility.
+   */
+  @Prop({ type: Types.ObjectId, ref: 'Area' })
+  areaId?: Types.ObjectId;
 
   @Prop({ required: true, enum: ServiceArchitecture })
   serviceArchitecture: ServiceArchitecture;
@@ -60,6 +66,22 @@ export class Project extends Document {
   @Prop()
   endDate?: Date;
 
+  @Prop({ type: [Object], default: [] })
+  mergeHistory?: Array<{
+    sourceProject: {
+      _id: Types.ObjectId;
+      name: string;
+      code?: string;
+      description?: string;
+      clientId: Types.ObjectId;
+      areaIds?: Types.ObjectId[];
+      serviceArchitecture?: string;
+      findingsCount?: number;
+    };
+    mergedAt: Date;
+    findingsMoved: number;
+  }>;
+
   // Timestamps automáticos: createdAt, updatedAt
 }
 
@@ -68,5 +90,6 @@ export const ProjectSchema = SchemaFactory.createForClass(Project);
 // Índices para consultas frecuentes
 ProjectSchema.index({ clientId: 1, projectStatus: 1 });
 ProjectSchema.index({ areaId: 1 });
+ProjectSchema.index({ areaIds: 1 });
 ProjectSchema.index({ code: 1 });
 ProjectSchema.index({ 'retestPolicy.enabled': 1, 'retestPolicy.nextRetestAt': 1 }); // Para el scheduler

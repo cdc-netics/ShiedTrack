@@ -11,6 +11,9 @@ export class Client extends Document {
   @Prop({ required: true, unique: true })
   name: string;
 
+  @Prop()
+  displayName?: string; // Nombre corto para mostrar en UI (ej: "ACME")
+
   @Prop({ unique: true, sparse: true })
   code?: string; // Código identificador corto (ej: CLI001)
 

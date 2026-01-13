@@ -13,6 +13,9 @@ import { AuditModule } from './modules/audit/audit.module';
 import { SystemConfigModule } from './modules/system-config/system-config.module';
 import { ExportModule } from './modules/export/export.module';
 import { TemplateModule } from './modules/template/template.module';
+import { BackupModule } from './modules/backup/backup.module';
+import { EmailModule } from './modules/email/email.module';
+import { CustomRoleModule } from './modules/custom-role/custom-role.module';
 
 /**
  * Módulo raíz de la aplicación ShieldTrack
@@ -44,6 +47,9 @@ import { TemplateModule } from './modules/template/template.module';
     SystemConfigModule,
     ExportModule,
     TemplateModule,
+    BackupModule,
+    EmailModule,
+    CustomRoleModule,
   ],
 })
 export class AppModule {}

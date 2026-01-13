@@ -14,6 +14,7 @@ export interface User {
   areaIds?: string[];
   mfaEnabled: boolean;
   isActive: boolean;
+  isDeleted?: boolean; // Soft delete flag
   lastLogin?: Date;
 }
 

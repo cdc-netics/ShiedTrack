@@ -152,4 +152,42 @@ export class AuthController {
   async getAreaUsers(@Param('areaId') areaId: string) {
     return this.userAreaService.getAreaUsers(areaId);
   }
+
+  // ============================================
+  // SOFT DELETE - Desactivar usuarios
+  // ============================================
+
+  @Delete('users/:id/soft')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.OWNER, UserRole.PLATFORM_ADMIN)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Desactivar usuario (soft delete - no eliminación física)' })
+  @ApiResponse({ status: 200, description: 'Usuario desactivado' })
+  async softDeleteUser(@Param('id') id: string, @CurrentUser() currentUser: any) {
+    return this.authService.deleteUser(id, currentUser);
+  }
+
+  @Post('users/:id/reactivate')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.OWNER, UserRole.PLATFORM_ADMIN)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Reactivar usuario previamente desactivado' })
+  @ApiResponse({ status: 200, description: 'Usuario reactivado' })
+  async reactivateUser(@Param('id') id: string) {
+    return this.authService.reactivateUser(id);
+  }
+
+  // ============================================
+  // TENANT SWITCHING - Solo para OWNER
+  // ============================================
+
+  @Post('switch-tenant/:clientId')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.OWNER, UserRole.PLATFORM_ADMIN)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Cambiar contexto de tenant sin logout (OWNER/PLATFORM_ADMIN)' })
+  @ApiResponse({ status: 200, description: 'Contexto cambiado, nuevo token JWT emitido' })
+  async switchTenant(@Param('clientId') clientId: string, @CurrentUser() currentUser: any) {
+    return this.authService.switchTenant(clientId, currentUser);
+  }
 }

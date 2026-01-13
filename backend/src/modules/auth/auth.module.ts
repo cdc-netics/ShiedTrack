@@ -9,6 +9,8 @@ import { AuthController } from './auth.controller';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { User, UserSchema } from './schemas/user.schema';
 import { UserAreaAssignment, UserAreaAssignmentSchema } from './schemas/user-area-assignment.schema';
+import { Area, AreaSchema } from '../area/schemas/area.schema';
+import { EmailModule } from '../email/email.module';
 
 /**
  * Módulo de autenticación
@@ -19,7 +21,9 @@ import { UserAreaAssignment, UserAreaAssignmentSchema } from './schemas/user-are
     MongooseModule.forFeature([
       { name: User.name, schema: UserSchema },
       { name: UserAreaAssignment.name, schema: UserAreaAssignmentSchema },
+      { name: Area.name, schema: AreaSchema },
     ]),
+    EmailModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.registerAsync({
       imports: [ConfigModule],

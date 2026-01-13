@@ -66,9 +66,16 @@ export class CreateProjectDto {
   @IsString()
   clientId: string;
 
-  @ApiProperty({ description: 'ID del área' })
+  @ApiPropertyOptional({ description: 'ID del área (Legacy)' })
+  @IsOptional()
   @IsString()
-  areaId: string;
+  areaId?: string;
+
+  @ApiPropertyOptional({ description: 'IDs de las áreas asignadas', type: [String] })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  areaIds?: string[];
 
   @ApiProperty({ enum: ServiceArchitecture, example: ServiceArchitecture.WEB })
   @IsEnum(ServiceArchitecture)
@@ -119,6 +126,12 @@ export class UpdateProjectDto {
   @IsOptional()
   @IsEnum(ProjectStatus)
   projectStatus?: ProjectStatus;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  areaIds?: string[];
 
   @ApiPropertyOptional({ type: RetestPolicyDto })
   @IsOptional()

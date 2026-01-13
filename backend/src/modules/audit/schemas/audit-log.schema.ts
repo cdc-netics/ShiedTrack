@@ -16,6 +16,12 @@ export class AuditLog extends Document {
   @Prop({ required: true })
   entityId: string; // ID de la entidad afectada
 
+  @Prop({ type: Types.ObjectId, ref: 'Client' })
+  clientId?: Types.ObjectId; // Contexto de tenant
+
+  @Prop({ type: Types.ObjectId, ref: 'Area' })
+  areaId?: Types.ObjectId; // Contexto de área
+
   @Prop({ type: Types.ObjectId, ref: 'User', required: true })
   performedBy: Types.ObjectId; // Usuario que ejecutó la acción
 
