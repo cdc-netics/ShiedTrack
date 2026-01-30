@@ -94,7 +94,7 @@ import { AnimationService } from '../../../core/services/animation.service';
               <mat-option value="OWNER">Owner</mat-option>
               <mat-option value="PLATFORM_ADMIN">Platform Admin</mat-option>
               <mat-option value="CLIENT_ADMIN">Client Admin</mat-option>
-              <mat-option value="TENANT_ADMIN">Tenant Admin</mat-option>
+              <mat-option value="AREA_ADMIN">Area Admin</mat-option>
               <mat-option value="ANALYST">Analyst</mat-option>
               <mat-option value="VIEWER">Viewer</mat-option>
             </mat-select>
@@ -387,7 +387,7 @@ import { AnimationService } from '../../../core/services/animation.service';
       color: white;
     }
 
-    .role-tenant_admin {
+    .role-area_admin {
       background: #388e3c;
       color: white;
     }
@@ -532,7 +532,7 @@ export class UserCardsComponent implements OnInit, AfterViewInit {
       'OWNER': 'Owner',
       'PLATFORM_ADMIN': 'Platform Admin',
       'CLIENT_ADMIN': 'Client Admin',
-      'TENANT_ADMIN': 'Tenant Admin',
+      'AREA_ADMIN': 'Area Admin',
       'ANALYST': 'Analyst',
       'VIEWER': 'Viewer'
     };
@@ -544,7 +544,7 @@ export class UserCardsComponent implements OnInit, AfterViewInit {
       'OWNER': 'stars',
       'PLATFORM_ADMIN': 'admin_panel_settings',
       'CLIENT_ADMIN': 'business_center',
-      'TENANT_ADMIN': 'folder',
+      'AREA_ADMIN': 'folder',
       'ANALYST': 'analytics',
       'VIEWER': 'visibility'
     };
@@ -561,7 +561,7 @@ export class UserCardsComponent implements OnInit, AfterViewInit {
 
   getAdminCount(): number {
     return this.users().filter(u =>
-      ['OWNER', 'PLATFORM_ADMIN', 'CLIENT_ADMIN', 'TENANT_ADMIN'].includes(u.role)
+      ['OWNER', 'PLATFORM_ADMIN', 'CLIENT_ADMIN', 'AREA_ADMIN'].includes(u.role)
     ).length;
   }
 

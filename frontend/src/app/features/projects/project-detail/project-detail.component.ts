@@ -625,8 +625,8 @@ export class ProjectDetailComponent implements OnInit {
     // OWNER puede cambiar cualquier estado
     if (user.role === UserRole.OWNER) return true;
     
-    // CLIENT_ADMIN y TENANT_ADMIN pueden cambiar estado de proyectos de su tenant
-    if (user.role === UserRole.CLIENT_ADMIN || user.role === UserRole.TENANT_ADMIN) {
+    // CLIENT_ADMIN y AREA_ADMIN pueden cambiar estado de proyectos de su tenant
+    if (user.role === UserRole.CLIENT_ADMIN || user.role === UserRole.AREA_ADMIN) {
       // TODO: Verificar que el proyecto pertenece al mismo tenant del admin
       return true;
     }

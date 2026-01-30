@@ -1739,13 +1739,13 @@ export class FindingDetailComponent implements OnInit {
 
   /**
    * Verifica si el usuario puede cerrar hallazgos
-   * Solo OWNER, PLATFORM_ADMIN, CLIENT_ADMIN, TENANT_ADMIN y ANALYST pueden cerrar
+   * Solo OWNER, PLATFORM_ADMIN, CLIENT_ADMIN, AREA_ADMIN y ANALYST pueden cerrar
    */
   canCloseFinding(): boolean {
     const currentUser = this.authService.currentUser();
     if (!currentUser) return false;
     
-    const allowedRoles = ['OWNER', 'PLATFORM_ADMIN', 'CLIENT_ADMIN', 'TENANT_ADMIN', 'ANALYST'];
+    const allowedRoles = ['OWNER', 'PLATFORM_ADMIN', 'CLIENT_ADMIN', 'AREA_ADMIN', 'ANALYST'];
     return allowedRoles.includes(currentUser.role);
   }
 

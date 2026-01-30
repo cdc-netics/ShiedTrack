@@ -74,7 +74,7 @@ import { UserAssignmentDialogComponent } from './user-assignment-dialog.componen
               <mat-option value="OWNER">Owner</mat-option>
               <mat-option value="PLATFORM_ADMIN">Platform Admin</mat-option>
               <mat-option value="CLIENT_ADMIN">Client Admin</mat-option>
-              <mat-option value="TENANT_ADMIN">Tenant Admin</mat-option>
+              <mat-option value="AREA_ADMIN">Area Admin</mat-option>
               <mat-option value="ANALYST">Analyst</mat-option>
               <mat-option value="VIEWER">Viewer</mat-option>
             </mat-select>
@@ -257,7 +257,7 @@ import { UserAssignmentDialogComponent } from './user-assignment-dialog.componen
     .role-owner { background: #d32f2f; color: white; }
     .role-platform_admin { background: #ff6f00; color: white; }
     .role-client_admin { background: #1976d2; color: white; }
-    .role-tenant_admin { background: #388e3c; color: white; }
+    .role-area_admin { background: #388e3c; color: white; }
     .role-analyst { background: #7b1fa2; color: white; }
     .role-viewer { background: #616161; color: white; }
 
@@ -410,7 +410,7 @@ export class UserListImprovedComponent implements OnInit {
       'OWNER': 'Owner',
       'PLATFORM_ADMIN': 'Platform Admin',
       'CLIENT_ADMIN': 'Client Admin',
-      'TENANT_ADMIN': 'Tenant Admin',
+      'AREA_ADMIN': 'Area Admin',
       'ANALYST': 'Analyst',
       'VIEWER': 'Viewer'
     };
@@ -422,7 +422,7 @@ export class UserListImprovedComponent implements OnInit {
       'OWNER': 'stars',
       'PLATFORM_ADMIN': 'admin_panel_settings',
       'CLIENT_ADMIN': 'business_center',
-      'TENANT_ADMIN': 'folder',
+      'AREA_ADMIN': 'folder',
       'ANALYST': 'analytics',
       'VIEWER': 'visibility'
     };

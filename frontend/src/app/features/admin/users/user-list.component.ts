@@ -60,7 +60,7 @@ import { AuthService } from '../../../core/services/auth.service';
             <mat-option value="">Todos</mat-option>
             <mat-option value="OWNER">Owner</mat-option>
 
-            <mat-option value="TENANT_ADMIN">Admin Tenant</mat-option>
+            <mat-option value="AREA_ADMIN">Area Admin</mat-option>
             <mat-option value="ANALYST">Analista</mat-option>
             <mat-option value="VIEWER">Visor</mat-option>
           </mat-select>
@@ -185,7 +185,7 @@ import { AuthService } from '../../../core/services/auth.service';
       color: #1565c0;
     }
 
-    .role-tenant_admin {
+    .role-area_admin {
       background: #e1f5fe;
       color: #0277bd;
     }
@@ -311,7 +311,7 @@ export class UserListComponent implements OnInit {
     const roleMap: Record<string, string> = {
       'OWNER': 'Owner',
 
-      'TENANT_ADMIN': 'Admin Tenant',
+      'AREA_ADMIN': 'Area Admin',
       'ANALYST': 'Analista',
       'VIEWER': 'Visor'
     };

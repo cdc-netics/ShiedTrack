@@ -100,7 +100,7 @@ import { AuthService } from '../../../core/services/auth.service';
           <mat-label>Rol</mat-label>
           <mat-select formControlName="role" required>
             <mat-option value="OWNER">Owner</mat-option>
-            <mat-option value="TENANT_ADMIN">Admin Tenant</mat-option>
+            <mat-option value="AREA_ADMIN">Area Admin</mat-option>
             <mat-option value="ANALYST">Analista</mat-option>
             <mat-option value="VIEWER">Viewer</mat-option>
           </mat-select>
@@ -109,7 +109,7 @@ import { AuthService } from '../../../core/services/auth.service';
           }
         </mat-form-field>
 
-        <!-- Tenants (para TENANT_ADMIN, ANALYST, VIEWER) -->
+        <!-- Tenants (para AREA_ADMIN, ANALYST, VIEWER) -->
         @if (showAreaSelect()) {
           <mat-form-field appearance="outline" class="full-width">
             <mat-label>Tenants asignados</mat-label>
@@ -233,7 +233,7 @@ export class UserDialogComponent {
     // Mostrar selector de tenants según el rol
     this.userForm.get('role')?.valueChanges.subscribe(role => {
       console.log(`[UserDialog] Rol del formulario cambió a: ${role}`);
-      const needsAreas = ['TENANT_ADMIN', 'ANALYST', 'VIEWER'].includes(role);
+      const needsAreas = ['AREA_ADMIN', 'ANALYST', 'VIEWER'].includes(role);
       
       this.showAreaSelect.set(needsAreas);
       
@@ -252,7 +252,7 @@ export class UserDialogComponent {
 
     // Inicializar la visibilidad del selector de áreas
     const currentRole = this.userForm.get('role')?.value;
-    const needsAreasOnInit = ['TENANT_ADMIN', 'ANALYST', 'VIEWER'].includes(currentRole);
+    const needsAreasOnInit = ['AREA_ADMIN', 'ANALYST', 'VIEWER'].includes(currentRole);
     this.showAreaSelect.set(needsAreasOnInit);
     
     // Configurar validacion dinamica de Cliente

@@ -14,6 +14,24 @@ cd frontend && npm install && npm start
 # Acceder: http://localhost:4200
 ```
 
+## 🔐 Datos de prueba (modo desarrollo)
+
+Primero carga los datos de prueba en la BD:
+
+```bash
+cd backend
+npm run seed:test
+```
+
+**Credenciales de login de prueba:**
+- `admin@shieldtrack.com` / `Admin123!` (Owner Dev)
+- `owner@shieldtrack.com` / `Password123!`
+- `platformadmin@shieldtrack.com` / `Password123!`
+- `clientadmin@acmecorp.com` / `Password123!`
+- `areaadmin@acmecorp.com` / `Password123!`
+- `analyst@shieldtrack.com` / `Password123!`
+- `viewer@shieldtrack.com` / `Password123!`
+
 ## 📋 Pre-requisitos
 
 - Node.js 18.x o superior

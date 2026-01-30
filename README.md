@@ -15,6 +15,31 @@ Sistema de gestión de hallazgos de ciberseguridad para reemplazar Excel. Plataf
 
 Este proyecto se encuentra completado. Todas las funcionalidades principales están implementadas y probadas. El sistema está listo para ser desplegado.
 
+## 🎯 Sentido de la aplicación
+
+ShieldTrack existe para reemplazar planillas y flujos informales en la gestión de hallazgos. Centraliza el ciclo completo: registro, asignación, evidencia, seguimiento, cierre y auditoría, con control de acceso por roles y aislamiento por tenant.  
+El objetivo es que equipos distintos trabajen con un flujo trazable, seguro y consistente, reduciendo errores operativos y mejorando la visibilidad para decisiones técnicas y de negocio.
+
+Aunque nació para ciberseguridad, es transversal: puede usarse para hallazgos de QA, pentesting, auditorías internas, revisiones de cumplimiento, post‑mortems, verificaciones operativas y cualquier proceso donde se deba documentar, priorizar y cerrar findings con evidencia.
+
+En resumen: es un sistema de gestión de hallazgos reusable por múltiples áreas, no limitado a un dominio específico.
+
+### 🧩 Cómo lo usaría un equipo de QA
+- Registrar bugs y hallazgos de pruebas con severidad, estado y evidencia (capturas, logs).
+- Asignar responsables, hacer seguimiento y cerrar con motivo/observaciones.
+- Usar el historial (timeline) para auditoría y trazabilidad de cambios.
+- Separar dominios por **Área** (por ejemplo: Frontend, Backend, Mobile) y limitar visibilidad por rol.
+
+### 🧪 Cómo lo usaría un pentester / equipo de ciber
+- Registrar hallazgos con severidad y evidencias técnicas, y controlar su ciclo de vida.
+- Aplicar retest para validar correcciones y medir cumplimiento.
+- Exportar por proyecto/cliente y mantener auditoría de cambios.
+
+### 🏢 Separación por tenant y áreas
+- **Tenant**: separa clientes u organizaciones (multi-tenant real).
+- **Áreas**: separa dominios internos (QA vs Ciber, o por sistemas/áreas de negocio).
+- Los usuarios solo ven lo que corresponde a su tenant y área, evitando cruces de información.
+
 ## 📚 Documentación
 
 **¿No sabes dónde empezar?** → Ver **[INDEX.md](INDEX.md)** para guía de documentos
@@ -36,6 +61,24 @@ cd frontend && npm install && npm start
 ```
 
 Para más detalles, ver [SETUP.md](SETUP.md) o [DOCUMENTATION.md](DOCUMENTATION.md#-inicio-rápido)
+
+## 🔐 Datos de prueba (modo desarrollo)
+
+Carga los datos de prueba:
+
+```bash
+cd backend
+npm run seed:test
+```
+
+**Credenciales de login de prueba:**
+- `admin@shieldtrack.com` / `Admin123!` (Owner Dev)
+- `owner@shieldtrack.com` / `Password123!`
+- `platformadmin@shieldtrack.com` / `Password123!`
+- `clientadmin@acmecorp.com` / `Password123!`
+- `areaadmin@acmecorp.com` / `Password123!`
+- `analyst@shieldtrack.com` / `Password123!`
+- `viewer@shieldtrack.com` / `Password123!`
 
 ## 📋 Características Principales
 

@@ -432,8 +432,8 @@ export class ProjectListComponent implements OnInit {
        return projClientId === userClientId;
     }
 
-    // TENANT_ADMIN: Verificar tenants
-    if (user.role === UserRole.TENANT_ADMIN) {
+    // AREA_ADMIN: Verificar tenants
+    if (user.role === UserRole.AREA_ADMIN) {
       const userAreas = user.areaIds || [];
       const projAreas = project.areaIds?.map((a: any) => a._id || a) || [];
       const projLegacyArea = project.areaId?._id || project.areaId;

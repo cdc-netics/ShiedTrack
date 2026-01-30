@@ -17,6 +17,24 @@ Revisión completa de backend (NestJS) y frontend (Angular) al 13/01/2026. Se ma
 
 ---
 
+## 🧭 Tabla de reparaciones sugeridas (qué y cómo arreglar)
+
+| Área | Problema | Impacto | Cómo repararlo | Prioridad |
+|---|---|---|---|---|
+| Asignaciones | UI llama `/api/auth/users/:id/assignments` pero el backend no lo expone | Bloquea asignación centralizada | Crear endpoint en backend o ajustar UI a endpoints reales; definir contrato DTO y sincronizar ambos lados | Alta |
+| Auditoría | UI usa datos mock y el endpoint real no está bajo `/api` | Auditoría no usable en UI | Exponer endpoint con prefijo `/api/audit/logs` y conectar UI a esa API con filtros reales | Alta |
+| Branding/Favicon | UI apunta a endpoints/keys incorrectos | Configuración no funciona | Unificar nombres de campos y rutas; agregar menú/ruta de branding en UI | Alta |
+| Backup/Restore | Componente existe pero no está en rutas/menú | Función inaccesible | Agregar ruta `/admin/backup` y entry en menú admin | Media |
+| Export/Descargas | URLs hardcodeadas a localhost | Falla en otros entornos | Usar `environment.apiUrl` en todos los enlaces de descarga | Alta |
+| Tenant onboarding | UI no expone `displayName` ni `initialAdmin` | Alta fricción para crear tenants | Agregar campos en UI y enviar a backend | Media |
+| ServiceArchitecture | UI lista menos opciones que el enum backend | Inconsistencias | Alinear opciones UI con enum del backend | Baja |
+| Roles/Visibilidad | Reglas de visibilidad por área no están documentadas en UI | Confusión de permisos | Agregar ayuda contextual y validaciones en formularios de usuario | Baja |
+| Colección Postman | Credenciales no coinciden con el seed | Tests P0 fallan | Actualizar contraseñas del collection o del seed para que sean consistentes | Media |
+| Retest + SMTP | Scheduler usa `SMTP_*` y no SystemConfig en algunos casos | Configuración inconsistente | Usar SystemConfig como fuente única y refrescar al cambiar credenciales | Media |
+| Angular | Versión no está en la última estable | Deuda técnica | Subir Angular/CLI/Material a la última versión estable y ajustar compatibilidad | Media |
+
+---
+
 ## ✅ / ⚠️ / ❌ Estado verificado por ítem (numeración original)
 
 1/19/20. **Backup & Restore completo**  
