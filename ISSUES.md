@@ -43,6 +43,7 @@ Además, antes de arreglar todo, se definió como prioridad **actualizar el fron
 | M1 | Mejoras | SMTP test falla (Outlook 535) | Pendiente | Falta guía |
 | M2 | Mejoras | Multi‑tenancy inconsistente | Pendiente | CLS vs AsyncLocalStorage |
 | M3 | Mejoras | Permisos de lectura por proyecto para clientes | Pendiente | Asignar proyectos visibles por admin |
+| M4 | Mejoras | Exceso de scripts / duplicidad | Pendiente | Revisar y consolidar scripts |
 
 ---
 
@@ -298,6 +299,15 @@ Además, antes de arreglar todo, se definió como prioridad **actualizar el fron
   - Crear una tabla/colección de asignaciones `UserProjectAssignment` (userId, projectId, role=READ_ONLY, isActive).  
   - En backend, filtrar consultas de proyectos/hallazgos por proyectos asignados al usuario.  
   - En UI de admin, agregar pantalla para asignar proyectos a un usuario cliente.  
+
+#### **M4 — Exceso de scripts / duplicidad**
+- **Estado:** Pendiente  
+- **Descripción:** Hay demasiados scripts y cuesta saber cuál usar.  
+- **Solución sugerida (simple):** Auditar scripts, eliminar duplicados y dejar un set mínimo.  
+- **Recomendación técnica:**  
+  - Revisar carpeta raíz y `backend/scripts/` para identificar scripts redundantes.  
+  - Consolidar en 1–2 scripts canónicos (start/seed/fix).  
+  - Documentar el flujo correcto en `SETUP.md`.  
 
 ---
 
