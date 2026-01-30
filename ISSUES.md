@@ -17,21 +17,106 @@ Revisión completa de backend (NestJS) y frontend (Angular) al 13/01/2026. Se ma
 
 ---
 
-## 🧭 Tabla de reparaciones sugeridas (qué y cómo arreglar)
+## 🧭 Tabla de Issues QA (ordenados por prioridad)
 
-| Área | Problema | Impacto | Cómo repararlo | Prioridad |
+| ID | Área | Problema | Impacto | Prioridad |
 |---|---|---|---|---|
-| Asignaciones | UI llama `/api/auth/users/:id/assignments` pero el backend no lo expone | Bloquea asignación centralizada | Crear endpoint en backend o ajustar UI a endpoints reales; definir contrato DTO y sincronizar ambos lados | Alta |
-| Auditoría | UI usa datos mock y el endpoint real no está bajo `/api` | Auditoría no usable en UI | Exponer endpoint con prefijo `/api/audit/logs` y conectar UI a esa API con filtros reales | Alta |
-| Branding/Favicon | UI apunta a endpoints/keys incorrectos | Configuración no funciona | Unificar nombres de campos y rutas; agregar menú/ruta de branding en UI | Alta |
-| Backup/Restore | Componente existe pero no está en rutas/menú | Función inaccesible | Agregar ruta `/admin/backup` y entry en menú admin | Media |
-| Export/Descargas | URLs hardcodeadas a localhost | Falla en otros entornos | Usar `environment.apiUrl` en todos los enlaces de descarga | Alta |
-| Tenant onboarding | UI no expone `displayName` ni `initialAdmin` | Alta fricción para crear tenants | Agregar campos en UI y enviar a backend | Media |
-| ServiceArchitecture | UI lista menos opciones que el enum backend | Inconsistencias | Alinear opciones UI con enum del backend | Baja |
-| Roles/Visibilidad | Reglas de visibilidad por área no están documentadas en UI | Confusión de permisos | Agregar ayuda contextual y validaciones en formularios de usuario | Baja |
-| Colección Postman | Credenciales no coinciden con el seed | Tests P0 fallan | Actualizar contraseñas del collection o del seed para que sean consistentes | Media |
-| Retest + SMTP | Scheduler usa `SMTP_*` y no SystemConfig en algunos casos | Configuración inconsistente | Usar SystemConfig como fuente única y refrescar al cambiar credenciales | Media |
-| Angular | Versión no está en la última estable | Deuda técnica | Subir Angular/CLI/Material a la última versión estable y ajustar compatibilidad | Media |
+| ST-001 | Evidencias | Frontend espera `originalName` y `mimetype` pero backend retorna `filename` y `mimeType` | Listado de evidencias queda “en blanco”, previews de imágenes no cargan → parece que “no sube” | Alta |
+| ST-002 | Evidencias | Wizard de creación no sube archivos seleccionados (solo quedan en memoria) | Se pierde evidencia inicial al crear un hallazgo | Alta |
+| ST-003 | Seguimiento | Botón “Ver timeline” en listado apunta a ruta inexistente | Botón roto / navegación 404 | Alta |
+| ST-004 | UX Seguimiento | “Agregar Seguimiento” desaparece en modo edición | Confusión: parece que no se pueden agregar seguimientos | Media |
+| ST-005 | Asignaciones | UI llama `/api/auth/users/:id/assignments` pero backend no lo expone | Bloquea asignación centralizada | Alta |
+| ST-006 | Auditoría | UI usa datos mock y el endpoint real no está bajo `/api` | Auditoría no usable en UI | Alta |
+| ST-007 | Branding/Favicon | UI apunta a endpoints/keys incorrectos | Configuración no funciona | Alta |
+| ST-008 | Export/Descargas | URLs hardcodeadas a localhost en `finding-detail` | Falla en otros entornos | Alta |
+| ST-009 | Backup/Restore | Componente existe pero no estaba en rutas/menú (ya agregado) | Función inaccesible si menú no se actualiza | Media |
+| ST-010 | Tenant onboarding | UI no expone `displayName` ni `initialAdmin` | Alta fricción para crear tenants | Media |
+| ST-011 | ServiceArchitecture | UI lista menos opciones que el enum backend | Inconsistencias | Baja |
+| ST-012 | Roles/Visibilidad | Reglas de visibilidad por área no están claras en UI | Confusión de permisos | Baja |
+| ST-013 | Colección Postman | Credenciales no coinciden con el seed | Tests P0 fallan | Media |
+| ST-014 | Retest + SMTP | Scheduler usa `SMTP_*` y no SystemConfig en algunos casos | Configuración inconsistente | Media |
+| ST-015 | Angular | Versión no está en la última estable | Deuda técnica | Media |
+
+---
+
+## 🛠️ Reparaciones sugeridas (por código de issue)
+
+**ST-001 - Evidencias: mismatch de campos**  
+Actualizar frontend para usar `filename` y `mimeType`, o mapear en backend a `originalName` y `mimetype`.
+
+Ejemplo (frontend):
+```ts
+// frontend/src/app/features/findings/finding-detail/finding-detail.component.ts
+interface Evidence {
+  _id: string;
+  filename: string;     // nombre original
+  mimeType: string;     // tipo MIME real
+  // ...
+}
+```
+
+Ejemplo (backend DTO):
+```ts
+// backend: mapear salida
+return {
+  _id: evidence._id,
+  originalName: evidence.filename,
+  mimetype: evidence.mimeType,
+  // ...
+};
+```
+
+**ST-002 - Evidencias: wizard no sube archivos**  
+Después de crear el hallazgo, iterar `selectedFiles()` y subir a `/api/evidence/upload?findingId=...`.
+
+Ejemplo:
+```ts
+for (const file of this.selectedFiles()) {
+  const formData = new FormData();
+  formData.append('file', file);
+  await firstValueFrom(this.http.post(
+    `${environment.apiUrl}/evidence/upload?findingId=${createdFinding._id}`,
+    formData
+  ));
+}
+```
+
+**ST-003 - Botón timeline roto**  
+O bien agregar ruta `findings/:id/timeline`, o cambiar el botón para abrir `findings/:id` y enfocar tab “Seguimiento”.
+
+Ejemplo:
+```ts
+[routerLink]="['/findings', finding._id]"
+```
+
+**ST-004 - UX Seguimiento**  
+Mostrar “Agregar Seguimiento” también en modo edición (deshabilitado si corresponde), o dejarlo visible con tooltip.
+
+---
+
+**ST-005 - Asignaciones**  
+Crear endpoints reales o ajustar la UI a los existentes. Definir DTO común.
+
+**ST-006 - Auditoría**  
+Exponer endpoint con prefijo `/api/audit/logs` y conectar UI real.
+
+**ST-007 - Branding/Favicon**  
+Unificar nombres de campos y endpoints entre backend y frontend.
+
+**ST-008 - Export/Descargas**  
+Reemplazar URLs hardcodeadas por `environment.apiUrl`.
+
+**ST-010 - Tenant onboarding**  
+Agregar campos `displayName` e `initialAdmin` en UI de creación/edición.
+
+**ST-011 - ServiceArchitecture**  
+Alinear opciones UI con enum backend.
+
+**ST-013 - Postman**  
+Actualizar contraseñas para que coincidan con seed (o viceversa).
+
+**ST-015 - Angular**  
+Actualizar Angular/CLI/Material a la última versión estable y corregir breaking changes.
 
 ---
 
