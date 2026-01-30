@@ -252,7 +252,7 @@ npm install
 - **Swagger** - Documentación de API
 
 **Frontend:**
-- **Angular** 18.x - Framework modular
+- **Angular** 17.x - Framework modular
 - **Angular Material** - Componentes UI
 - **RxJS** - Programación reactiva
 - **TypeScript** - Lenguaje tipado

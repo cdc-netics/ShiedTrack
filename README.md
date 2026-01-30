@@ -6,14 +6,15 @@ Sistema de gestión de hallazgos de ciberseguridad para reemplazar Excel. Plataf
 [![Status: Development](https://img.shields.io/badge/Status-Development-orange.svg)](ISSUES.md)
 [![Node.js](https://img.shields.io/badge/Node.js-18.x-green.svg)](https://nodejs.org/)
 [![NestJS](https://img.shields.io/badge/NestJS-10.x-red.svg)](https://nestjs.com/)
-[![Angular](https://img.shields.io/badge/Angular-18.x-red.svg)](https://angular.io/)
+[![Angular](https://img.shields.io/badge/Angular-17.x-red.svg)](https://angular.io/)
 [![MongoDB](https://img.shields.io/badge/MongoDB-6.x-green.svg)](https://www.mongodb.com/)
 
 ## ⚠️ Estado del Proyecto
 
-**✅ LISTO PARA PRODUCCIÓN**
+**⚠️ EN DESARROLLO / NO LISTO PARA PRODUCCIÓN**
 
-Este proyecto se encuentra completado. Todas las funcionalidades principales están implementadas y probadas. El sistema está listo para ser desplegado.
+Este proyecto está en desarrollo activo y aún presenta issues abiertos (ver `ISSUES.md`).  
+No se recomienda su uso en producción hasta resolver los pendientes críticos y completar la validación QA.
 
 ## 🎯 Sentido de la aplicación
 
