@@ -52,6 +52,13 @@ export class User extends Document {
   lastLogin?: Date;
 
   // Timestamps automáticos: createdAt, updatedAt
+    // Multi-tenant: lista de tenants permitidos para el usuario
+    @Prop({ type: [Types.ObjectId], ref: 'Tenant', default: [] })
+    tenantIds?: Types.ObjectId[];
+
+    // Tenant activo (contexto actual)
+    @Prop({ type: Types.ObjectId, ref: 'Tenant' })
+    activeTenantId?: Types.ObjectId;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

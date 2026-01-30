@@ -152,6 +152,18 @@ export class AuthService {
 
     // Actualizar último login
     user.lastLogin = new Date();
+    
+    // Asegurar que el usuario tiene un activeTenantId configurado
+    // Para OWNER/PLATFORM_ADMIN: no es obligatorio
+    // Para otros roles: usar clientId, o el primer tenantId disponible
+    if (!user.activeTenantId && (user.clientId || (user.tenantIds && user.tenantIds.length > 0))) {
+      if (user.clientId) {
+        user.activeTenantId = user.clientId;
+      } else if (user.tenantIds && user.tenantIds.length > 0) {
+        user.activeTenantId = user.tenantIds[0];
+      }
+    }
+    
     await user.save();
 
     // Generar JWT
@@ -169,6 +181,8 @@ export class AuthService {
         lastName: user.lastName,
         role: user.role,
         clientId: user.clientId,
+        tenantIds: user.tenantIds,
+        activeTenantId: user.activeTenantId,
         mfaEnabled: user.mfaEnabled,
       },
     };

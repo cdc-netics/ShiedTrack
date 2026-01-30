@@ -71,9 +71,9 @@ import { firstValueFrom } from 'rxjs';
                 <mat-icon>people</mat-icon>
                 <span>Usuarios</span>
               </a>
-              <a mat-list-item routerLink="/admin/areas" routerLinkActive="active">
+              <a mat-list-item routerLink="/admin/tenants" routerLinkActive="active">
                 <mat-icon>business</mat-icon>
-                <span>Áreas</span>
+                <span>Tenants</span>
               </a>
               <a mat-list-item routerLink="/admin/templates" routerLinkActive="active">
                 <mat-icon>description</mat-icon>
@@ -82,6 +82,14 @@ import { firstValueFrom } from 'rxjs';
               <a mat-list-item routerLink="/admin/audit" routerLinkActive="active">
                 <mat-icon>history</mat-icon>
                 <span>Auditoría</span>
+              </a>
+              <a mat-list-item routerLink="/admin/branding" routerLinkActive="active">
+                <mat-icon>palette</mat-icon>
+                <span>Branding</span>
+              </a>
+              <a mat-list-item routerLink="/admin/backup" routerLinkActive="active">
+                <mat-icon>backup</mat-icon>
+                <span>Backup</span>
               </a>
               <a mat-list-item routerLink="/admin/config" routerLinkActive="active">
                 <mat-icon>settings</mat-icon>

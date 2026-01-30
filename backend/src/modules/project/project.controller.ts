@@ -24,14 +24,16 @@ export class ProjectController {
 
   @Get()
   @ApiOperation({ summary: 'Listar proyectos con filtros opcionales' })
-  @ApiQuery({ name: 'clientId', required: false })
+  @ApiQuery({ name: 'tenantId', required: false })
   @ApiQuery({ name: 'status', required: false, enum: ProjectStatus })
   async findAll(
-    @Query('clientId') clientId?: string,
+    @Query('tenantId') tenantId?: string,
     @Query('status') status?: ProjectStatus,
     @CurrentUser() user?: any
   ) {
-    return this.projectService.findAll(clientId, status, user);
+    // Backward compatibility: allow legacy clientId query as tenantId
+    const effectiveTenantId = tenantId ?? (user?.clientId?.toString());
+    return this.projectService.findAll(effectiveTenantId, status, user);
   }
 
   @Get(':id')

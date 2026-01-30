@@ -3,6 +3,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { RetestSchedulerService } from './retest-scheduler.service';
 import { Project, ProjectSchema } from '../project/schemas/project.schema';
 import { Finding, FindingSchema } from '../finding/schemas/finding.schema';
+import { SystemConfigModule } from '../system-config/system-config.module';
 
 /**
  * Módulo del programador de Retest
@@ -14,6 +15,7 @@ import { Finding, FindingSchema } from '../finding/schemas/finding.schema';
       { name: Project.name, schema: ProjectSchema },
       { name: Finding.name, schema: FindingSchema },
     ]),
+    SystemConfigModule,
   ],
   providers: [RetestSchedulerService],
   exports: [RetestSchedulerService],

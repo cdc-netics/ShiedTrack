@@ -61,7 +61,7 @@ Revisión completa de backend (NestJS) y frontend (Angular) al 13/01/2026. Se ma
 ⚠️ Backend `/api/system-config/branding` espera campo `file` para favicon/logo. UI `branding-config` y `tenant-config` usan claves `favicon`/`logo` y endpoint `/api/clients/me/branding` (inexistente), además no hay enlace en el menú.
 
 18. **Fusión de proyectos**  
-✅ Endpoint `POST /api/projects/merge` operativo y expuesto en Configuración.
+⚠️ Endpoint `POST /api/projects/merge` funcional y expuesto en Configuración, faltareia  una configuracion de  lo mismo pero para cada tenant.
 
 19. **Eliminar áreas**  
 ✅ Endpoint `DELETE /api/areas/:id/hard` y botón en `/admin/areas`.

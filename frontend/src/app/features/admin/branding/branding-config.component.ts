@@ -221,7 +221,7 @@ export class BrandingConfigComponent implements OnInit {
     if (file) {
       this.brandingService.uploadFavicon(file).subscribe({
         next: (response) => {
-          this.branding.faviconUrl = response.url;
+          this.branding.faviconUrl = response.faviconUrl;
           this.snackBar.open('Favicon subido exitosamente', 'Cerrar', { duration: 3000 });
         },
         error: (error) => {
@@ -236,7 +236,7 @@ export class BrandingConfigComponent implements OnInit {
     if (file) {
       this.brandingService.uploadLogo(file).subscribe({
         next: (response) => {
-          this.branding.logoUrl = response.url;
+          this.branding.logoUrl = response.logoUrl;
           this.snackBar.open('Logo subido exitosamente', 'Cerrar', { duration: 3000 });
         },
         error: (error) => {

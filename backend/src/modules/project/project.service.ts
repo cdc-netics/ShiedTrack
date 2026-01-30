@@ -55,26 +55,11 @@ export class ProjectService {
     const areaIds = currentUser?.areaIds?.map((id: any) => id.toString()) || [];
     
     // SEGURIDAD MULTI-TENANT: Validar scope del usuario
-    if (currentUser) {
-      const isGlobalAdmin = ['OWNER', 'PLATFORM_ADMIN'].includes(currentUser.role);
-      
-      if (!isGlobalAdmin) {
-        // Usuario limitado a su tenant
-        if (!currentUser.clientId) {
-          throw new BadRequestException('Usuario sin clientId asignado');
-        }
-        query.clientId = currentUser.clientId;
-        
-        // Validar que no intente acceder a otro cliente
-        if (clientId && clientId !== currentUser.clientId.toString()) {
-          throw new BadRequestException('No tiene acceso a este cliente');
-        }
-      } else if (clientId) {
-        // Admin global puede filtrar por cliente específico
-        query.clientId = clientId;
-      }
-    } else if (clientId) {
-      query.clientId = clientId;
+    // Nota: El aislamiento por tenant se aplica automáticamente por el plugin de Mongoose.
+    // No forzamos clientId aquí para evitar dependencias al modelo "Client".
+    // Si se recibe clientId como parámetro (uso legacy), lo usamos para filtrar por tenantId.
+    if (clientId) {
+      query.tenantId = clientId;
     }
     
     // Filtro por áreas para roles restringidos

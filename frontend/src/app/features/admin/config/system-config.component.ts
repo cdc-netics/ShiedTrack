@@ -79,49 +79,49 @@ import { environment } from '../../../../environments/environment';
           </mat-action-row>
         </mat-expansion-panel>
 
-        <!-- CONFIGURACIÓN DE ÁREAS/TENANTS -->
+        <!-- CONFIGURACIÓN DE TENANTS -->
         <mat-expansion-panel>
           <mat-expansion-panel-header>
             <mat-panel-title>
               <mat-icon>domain</mat-icon>
-              Áreas y Tenants
+              Tenants
             </mat-panel-title>
             <mat-panel-description>
-              Gestión de áreas y configuración por tenant
+              Gestión de tenants y configuración por tenant
             </mat-panel-description>
           </mat-expansion-panel-header>
 
           <p class="info-text">
             <mat-icon class="info-icon">info</mat-icon>
-            Configura cómo se organizan las áreas en tu tenant
+            Configura tu Tenant
           </p>
 
           <div class="form-field">
             <mat-slide-toggle [(ngModel)]="areaConfig().requireAreaPerProject">
-              Requerir área para cada proyecto
+              Requerir tenant para cada proyecto
             </mat-slide-toggle>
-            <p class="hint-text">Los proyectos deberán tener un área asignada</p>
+            <p class="hint-text">Los proyectos deberán tener un tenant asignado</p>
           </div>
 
           <div class="form-field">
             <mat-slide-toggle [(ngModel)]="areaConfig().autoCreateDefaultArea">
-              Crear área "General" automáticamente
+              Crear tenant "General" automáticamente
             </mat-slide-toggle>
-            <p class="hint-text">Para nuevos clientes sin áreas definidas</p>
+            <p class="hint-text">Para nuevos clientes sin tenants definidos</p>
           </div>
 
           <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Prefijo de código de área</mat-label>
+            <mat-label>Prefijo de código de tenant</mat-label>
             <input matInput [(ngModel)]="areaConfig().areaCodePrefix" placeholder="AREA">
-            <mat-hint>Se usará en reportes: AREA-001, AREA-002</mat-hint>
+            <mat-hint>Se usará en reportes: TENANT-001, TENANT-002</mat-hint>
           </mat-form-field>
 
           <mat-form-field appearance="outline" class="full-width">
             <mat-label>Niveles de jerarquía</mat-label>
             <mat-select [(ngModel)]="areaConfig().hierarchyLevels">
               <mat-option [value]="1">1 nivel (Cliente → Proyecto)</mat-option>
-              <mat-option [value]="2">2 niveles (Cliente → Área → Proyecto)</mat-option>
-              <mat-option [value]="3">3 niveles (Cliente → Área → Sub-área → Proyecto)</mat-option>
+              <mat-option [value]="2">2 niveles (Cliente → Tenant → Proyecto)</mat-option>
+              <mat-option [value]="3">3 niveles (Cliente → Tenant → Sub-tenant → Proyecto)</mat-option>
             </mat-select>
           </mat-form-field>
 
@@ -440,7 +440,7 @@ import { environment } from '../../../../environments/environment';
                <li>Todos los Hallazgos</li>
                <li>Todos los Proyectos</li>
                <li>Todos los Clientes</li>
-               <li>Todas las Áreas</li>
+               <li>Todos los Tenants</li>
                <li>Registros de Auditoría</li>
              </ul>
              <p>No eliminará Usuarios ni la Configuración de Sistema.</p>

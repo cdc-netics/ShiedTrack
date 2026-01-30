@@ -4,6 +4,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Project } from '../project/schemas/project.schema';
 import { Finding } from '../finding/schemas/finding.schema';
+import { SystemConfigService } from '../system-config/system-config.service';
 import * as nodemailer from 'nodemailer';
 
 /**
@@ -19,17 +20,43 @@ export class RetestSchedulerService {
   constructor(
     @InjectModel(Project.name) private projectModel: Model<Project>,
     @InjectModel(Finding.name) private findingModel: Model<Finding>,
+    private systemConfigService: SystemConfigService,
   ) {
-    // Configurar transportador de correo
-    this.transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST || 'localhost',
-      port: parseInt(process.env.SMTP_PORT || '587', 10),
-      secure: process.env.SMTP_SECURE === 'true',
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      },
-    });
+    this.initializeTransporter();
+  }
+
+  /**
+   * Inicializa el transporte SMTP (se llama en constructor y cuando cambia la config)
+   */
+  private async initializeTransporter(): Promise<void> {
+    try {
+      const config = await this.systemConfigService.getSmtpConfig();
+      
+      this.transporter = nodemailer.createTransport({
+        host: config.smtp_host || process.env.SMTP_HOST || 'localhost',
+        port: config.smtp_port || parseInt(process.env.SMTP_PORT || '587', 10),
+        secure: config.smtp_secure || process.env.SMTP_SECURE === 'true',
+        auth: {
+          user: config.smtp_user || process.env.SMTP_USER,
+          pass: config.smtp_pass || process.env.SMTP_PASS,
+        },
+      });
+
+      this.logger.log('Transportador SMTP inicializado correctamente');
+    } catch (error) {
+      this.logger.warn(`No se pudo cargar config SMTP de SystemConfig, usando variables de entorno: ${error.message}`);
+      
+      // Fallback a variables de entorno
+      this.transporter = nodemailer.createTransport({
+        host: process.env.SMTP_HOST || 'localhost',
+        port: parseInt(process.env.SMTP_PORT || '587', 10),
+        secure: process.env.SMTP_SECURE === 'true',
+        auth: {
+          user: process.env.SMTP_USER,
+          pass: process.env.SMTP_PASS,
+        },
+      });
+    }
   }
 
   /**
@@ -126,8 +153,11 @@ export class RetestSchedulerService {
       `;
 
       // Enviar correo a todos los destinatarios
+      const config = await this.systemConfigService.getSmtpConfig();
+      const fromEmail = config?.smtp_from_email || process.env.SMTP_FROM || 'noreply@shieldtrack.com';
+      
       await this.transporter.sendMail({
-        from: process.env.SMTP_FROM || 'noreply@shieldtrack.com',
+        from: fromEmail,
         to: project.retestPolicy.notify?.recipients.join(', ') || '',
         subject,
         html: htmlContent,

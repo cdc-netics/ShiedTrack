@@ -66,9 +66,15 @@ export class FindingTemplate {
   @Prop({ required: true, enum: ['GLOBAL', 'TENANT'], default: 'GLOBAL', index: true })
   scope: string;
 
-  @ApiProperty({ example: '65f3a2b1c9d8e4f6a7b8c9d0', description: 'ID del cliente (si scope=TENANT)' })
+  /**
+   * @deprecated Usar tenantId para plantillas TENANT
+   */
   @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'Client' })
   clientId?: MongooseSchema.Types.ObjectId;
+
+  @ApiProperty({ example: '65f3a2b1c9d8e4f6a7b8c9d0', description: 'ID del tenant (si aplica)' })
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'Tenant' })
+  tenantId?: MongooseSchema.Types.ObjectId;
 
   @ApiProperty({ example: 42, description: 'Número de veces que se ha aplicado esta plantilla' })
   @Prop({ default: 0 })

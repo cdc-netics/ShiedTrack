@@ -7,8 +7,8 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
-import { MatDialog } from '@angular/material/dialog';
-import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatBadgeModule } from '@angular/material/badge';
 import { FormsModule } from '@angular/forms';
@@ -35,6 +35,8 @@ import { AnimationService } from '../../../core/services/animation.service';
     MatSelectModule,
     MatTooltipModule,
     MatBadgeModule,
+    MatDialogModule,
+    MatSnackBarModule,
     FormsModule
   ],
   template: `
@@ -92,7 +94,7 @@ import { AnimationService } from '../../../core/services/animation.service';
               <mat-option value="OWNER">Owner</mat-option>
               <mat-option value="PLATFORM_ADMIN">Platform Admin</mat-option>
               <mat-option value="CLIENT_ADMIN">Client Admin</mat-option>
-              <mat-option value="AREA_ADMIN">Area Admin</mat-option>
+              <mat-option value="TENANT_ADMIN">Tenant Admin</mat-option>
               <mat-option value="ANALYST">Analyst</mat-option>
               <mat-option value="VIEWER">Viewer</mat-option>
             </mat-select>
@@ -385,7 +387,7 @@ import { AnimationService } from '../../../core/services/animation.service';
       color: white;
     }
 
-    .role-area_admin {
+    .role-tenant_admin {
       background: #388e3c;
       color: white;
     }
@@ -530,7 +532,7 @@ export class UserCardsComponent implements OnInit, AfterViewInit {
       'OWNER': 'Owner',
       'PLATFORM_ADMIN': 'Platform Admin',
       'CLIENT_ADMIN': 'Client Admin',
-      'AREA_ADMIN': 'Area Admin',
+      'TENANT_ADMIN': 'Tenant Admin',
       'ANALYST': 'Analyst',
       'VIEWER': 'Viewer'
     };
@@ -542,7 +544,7 @@ export class UserCardsComponent implements OnInit, AfterViewInit {
       'OWNER': 'stars',
       'PLATFORM_ADMIN': 'admin_panel_settings',
       'CLIENT_ADMIN': 'business_center',
-      'AREA_ADMIN': 'folder',
+      'TENANT_ADMIN': 'folder',
       'ANALYST': 'analytics',
       'VIEWER': 'visibility'
     };
@@ -559,7 +561,7 @@ export class UserCardsComponent implements OnInit, AfterViewInit {
 
   getAdminCount(): number {
     return this.users().filter(u =>
-      ['OWNER', 'PLATFORM_ADMIN', 'CLIENT_ADMIN', 'AREA_ADMIN'].includes(u.role)
+      ['OWNER', 'PLATFORM_ADMIN', 'CLIENT_ADMIN', 'TENANT_ADMIN'].includes(u.role)
     ).length;
   }
 

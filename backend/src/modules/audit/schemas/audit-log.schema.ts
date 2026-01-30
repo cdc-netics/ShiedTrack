@@ -39,6 +39,10 @@ export class AuditLog extends Document {
 
   // Timestamp de creación (inmutable)
   readonly createdAt: Date;
+
+  // Multi-tenant: referencia al tenant
+  @Prop({ type: Types.ObjectId, ref: 'Tenant' })
+  tenantId?: Types.ObjectId;
 }
 
 export const AuditLogSchema = SchemaFactory.createForClass(AuditLog);
@@ -48,3 +52,4 @@ AuditLogSchema.index({ performedBy: 1, createdAt: -1 });
 AuditLogSchema.index({ entityType: 1, entityId: 1 });
 AuditLogSchema.index({ action: 1, createdAt: -1 });
 AuditLogSchema.index({ severity: 1, createdAt: -1 });
+AuditLogSchema.index({ tenantId: 1, createdAt: -1 });

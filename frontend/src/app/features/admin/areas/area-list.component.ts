@@ -1,5 +1,6 @@
 import { Component, OnInit, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { RouterLink } from '@angular/router';
 import { MatTableModule } from '@angular/material/table';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -32,6 +33,7 @@ interface Area {
   standalone: true,
   imports: [
     CommonModule,
+    RouterLink,
     MatTableModule,
     MatButtonModule,
     MatIconModule,
@@ -142,6 +144,9 @@ interface Area {
                 <span class="no-admins">Sin administradores</span>
               }
               <div class="action-buttons">
+                <button mat-icon-button [routerLink]="['/admin/tenants', area._id]" matTooltip="Configurar tenant">
+                  <mat-icon>settings</mat-icon>
+                </button>
                 <button mat-icon-button (click)="openAreaDialog(area)" matTooltip="Editar área">
                   <mat-icon>edit</mat-icon>
                 </button>

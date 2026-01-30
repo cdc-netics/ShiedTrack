@@ -577,7 +577,7 @@ export class FindingWizardComponent implements OnInit {
 
   loadClients(): void {
     // Carga clientes para el autocomplete
-    this.http.get<any[]>('http://localhost:3000/api/clients').subscribe({
+    this.http.get<any[]>(`${environment.apiUrl}/clients`).subscribe({
       next: (clients) => {
         this.clients.set(clients);
         this.filteredClients.set(clients);
@@ -783,7 +783,7 @@ export class FindingWizardComponent implements OnInit {
       console.log('📤 Verificando si existe proyecto:', projectName);
       
       // Verificar si ya existe un proyecto con este nombre para este cliente
-      this.http.get<any[]>(`http://localhost:3000/api/projects?clientId=${clientId}`)
+      this.http.get<any[]>(`${environment.apiUrl}/projects?clientId=${clientId}`)
         .subscribe({
           next: (projects) => {
             const existingProject = projects.find(p => 
@@ -801,7 +801,7 @@ export class FindingWizardComponent implements OnInit {
               const serviceArchitecture = this.basicForm.value.detectionSource || 'WEB';
               
               // Crear el proyecto
-              this.http.post<any>('http://localhost:3000/api/projects', {
+              this.http.post<any>(`${environment.apiUrl}/projects`, {
                 name: projectName,
                 clientId: clientId,
                 areaId: clientId, // TODO: Fix this, areaId should not be clientId

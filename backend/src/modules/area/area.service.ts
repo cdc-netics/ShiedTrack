@@ -3,6 +3,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Area } from './schemas/area.schema';
 import { CreateAreaDto, UpdateAreaDto } from './dto/area.dto';
+import { getNamespace } from 'cls-hooked';
 
 /**
  * Servicio de gestión de Áreas
@@ -18,16 +19,23 @@ export class AreaService {
    * Crea una nueva área
    */
   async create(dto: CreateAreaDto): Promise<Area> {
+    // DEBUG: Verificar contexto CLS
+    const namespace = getNamespace('tenant-context');
+    const tenantId = namespace?.get('tenantId');
+    const isOwner = namespace?.get('isOwner');
+    const userId = namespace?.get('userId');
+    this.logger.log(`[DEBUG] Contexto CLS - tenantId: ${tenantId}, isOwner: ${isOwner}, userId: ${userId}`);
     this.logger.log(`Intentando crear área: ${JSON.stringify(dto)}`);
 
-    if (!Types.ObjectId.isValid(dto.clientId)) {
-      throw new BadRequestException(`ID de cliente inválido: ${dto.clientId}`);
+    // Validar que tenemos tenantId
+    if (!tenantId && !isOwner) {
+      throw new BadRequestException('No se puede determinar el tenant del usuario. Asegúrate de estar autenticado correctamente.');
     }
 
     try {
       // Generar código automáticamente: AREA-001, AREA-002, etc.
       const lastArea = await this.areaModel
-        .findOne({ clientId: dto.clientId })
+        .findOne({}) // Filtrado por tenant se aplica vía plugin/CLS
         .sort({ createdAt: -1 })
         .exec();
       
@@ -43,11 +51,12 @@ export class AreaService {
       
       const area = new this.areaModel({
         ...dto,
-        code
+        code,
+        tenantId: dto.tenantId || (tenantId ? new Types.ObjectId(tenantId) : undefined)
       });
       await area.save();
       
-      this.logger.log(`Área creada: ${area.name} (${code}) para cliente ${area.clientId}`);
+      this.logger.log(`Área creada: ${area.name} (${code}) en tenant ${area.tenantId}`);
       return area;
     } catch (error) {
       this.logger.error(`Error creando área: ${error.message}`, error.stack);
@@ -55,7 +64,7 @@ export class AreaService {
         throw new BadRequestException(`Error de validación: ${error.message}`);
       }
       if (error.code === 11000) {
-        throw new BadRequestException('Ya existe un área con este código o nombre para este cliente');
+        throw new BadRequestException('Ya existe un área con este código o nombre para este tenant');
       }
       throw error;
     }
@@ -66,13 +75,6 @@ export class AreaService {
    */
   async findByClient(clientId?: string, includeInactive = false): Promise<any[]> {
     const query: any = {};
-
-    if (clientId) {
-      if (!Types.ObjectId.isValid(clientId)) {
-        throw new BadRequestException('Se requiere un ID de cliente válido.');
-      }
-      query.clientId = clientId;
-    }
     
     if (!includeInactive) {
       query.isActive = true;
@@ -80,7 +82,8 @@ export class AreaService {
     
     const areas = await this.areaModel
       .find(query)
-      .populate('clientId', 'name')
+      .populate('clientId', 'name') // LEGACY (si existe)
+      .populate('tenantId', 'name')
       .sort({ name: 1 })
       .lean();
     

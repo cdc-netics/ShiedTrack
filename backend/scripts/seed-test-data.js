@@ -47,13 +47,34 @@ async function seedTestData() {
     
     log('✅ Colecciones limpias', 'green');
 
-    // === CLIENTES (2 tenants para probar IDOR) ===
+    // === TENANTS ===
+    log('\n🏢 Creando tenants de prueba...', 'blue');
+
+    const tenantACME = await mongoose.connection.db.collection('tenants').insertOne({
+      name: 'ACME Corporation',
+      code: 'TEN-ACME',
+      isActive: true,
+      createdAt: new Date()
+    });
+
+    const tenantEvil = await mongoose.connection.db.collection('tenants').insertOne({
+      name: 'Evil Corp',
+      code: 'TEN-EVIL',
+      isActive: true,
+      createdAt: new Date()
+    });
+
+    log(`✅ Tenant ACME: ${tenantACME.insertedId}`, 'green');
+    log(`✅ Tenant Evil: ${tenantEvil.insertedId}`, 'green');
+
+    // === CLIENTES (asociados a Tenants) ===
     log('\n👥 Creando clientes de prueba...', 'blue');
     
     const clientA = await mongoose.connection.db.collection('clients').insertOne({
       name: 'ACME Corporation',
       code: 'TEST-ACME',
       isActive: true,
+      tenantId: tenantACME.insertedId,
       createdAt: new Date()
     });
     
@@ -61,6 +82,7 @@ async function seedTestData() {
       name: 'Evil Corp',
       code: 'TEST-EVIL',
       isActive: true,
+      tenantId: tenantEvil.insertedId,
       createdAt: new Date()
     });
     
@@ -72,6 +94,7 @@ async function seedTestData() {
       name: 'Infraestructura',
       code: 'TEST-INFRA',
       clientId: clientA.insertedId,
+      tenantId: tenantACME.insertedId,
       isActive: true,
       createdAt: new Date()
     });
@@ -80,6 +103,7 @@ async function seedTestData() {
       name: 'Aplicaciones',
       code: 'TEST-APPS',
       clientId: clientA.insertedId,
+      tenantId: tenantACME.insertedId,
       isActive: true,
       createdAt: new Date()
     });
@@ -97,6 +121,7 @@ async function seedTestData() {
         firstName: 'Dev',
         lastName: 'Admin',
         role: 'OWNER',
+        tenantIds: [tenantACME.insertedId, tenantEvil.insertedId],
         mfaEnabled: false,
         isActive: true,
         createdAt: new Date()
@@ -107,6 +132,8 @@ async function seedTestData() {
         firstName: 'System',
         lastName: 'Owner',
         role: 'OWNER',
+        tenantIds: [tenantACME.insertedId],
+        activeTenantId: tenantACME.insertedId,
         mfaEnabled: false, // Para testing (en prod debería ser true)
         isActive: true,
         createdAt: new Date()
@@ -117,6 +144,8 @@ async function seedTestData() {
         firstName: 'Platform',
         lastName: 'Admin',
         role: 'PLATFORM_ADMIN',
+        tenantIds: [tenantACME.insertedId],
+        activeTenantId: tenantACME.insertedId,
         mfaEnabled: false,
         isActive: true,
         createdAt: new Date()
@@ -128,6 +157,8 @@ async function seedTestData() {
         lastName: 'Admin',
         role: 'CLIENT_ADMIN',
         clientId: clientA.insertedId,
+        tenantIds: [tenantACME.insertedId],
+        activeTenantId: tenantACME.insertedId,
         mfaEnabled: false,
         isActive: true,
         createdAt: new Date()
@@ -140,6 +171,8 @@ async function seedTestData() {
         role: 'AREA_ADMIN',
         clientId: clientA.insertedId,
         areaId: areaInfra.insertedId,
+        tenantIds: [tenantACME.insertedId],
+        activeTenantId: tenantACME.insertedId,
         mfaEnabled: false,
         isActive: true,
         createdAt: new Date()
@@ -151,6 +184,8 @@ async function seedTestData() {
         lastName: 'Analyst',
         role: 'ANALYST',
         clientId: clientA.insertedId,
+        tenantIds: [tenantACME.insertedId],
+        activeTenantId: tenantACME.insertedId,
         mfaEnabled: false,
         isActive: true,
         createdAt: new Date()
@@ -162,6 +197,8 @@ async function seedTestData() {
         lastName: 'Viewer',
         role: 'VIEWER',
         clientId: clientA.insertedId,
+        tenantIds: [tenantACME.insertedId],
+        activeTenantId: tenantACME.insertedId,
         mfaEnabled: false,
         isActive: true,
         createdAt: new Date()
@@ -207,6 +244,7 @@ async function seedTestData() {
       code: 'TEST-PROJECT-001',
       clientId: clientA.insertedId,
       areaId: areaApps.insertedId,
+      tenantId: tenantACME.insertedId,
       serviceArchitecture: 'WEB',
       projectStatus: 'ACTIVE',
       retestPolicy: {
@@ -224,6 +262,7 @@ async function seedTestData() {
       name: 'Red Team Engagement Evil Corp',
       code: 'TEST-PROJECT-EVIL',
       clientId: clientB.insertedId,
+      tenantId: tenantEvil.insertedId,
       serviceArchitecture: 'CLOUD',
       projectStatus: 'ACTIVE',
       retestPolicy: { enabled: false },
@@ -243,6 +282,7 @@ async function seedTestData() {
         severity: 'CRITICAL',
         status: 'OPEN',
         projectId: projectA.insertedId,
+        tenantId: tenantACME.insertedId,
         retestIncluded: true,
         description: 'Hallazgo de prueba 1',
         createdAt: new Date()
@@ -253,6 +293,7 @@ async function seedTestData() {
         severity: 'HIGH',
         status: 'IN_PROGRESS',
         projectId: projectA.insertedId,
+        tenantId: tenantACME.insertedId,
         retestIncluded: true,
         description: 'Hallazgo de prueba 2',
         createdAt: new Date()
@@ -263,6 +304,7 @@ async function seedTestData() {
         severity: 'MEDIUM',
         status: 'OPEN',
         projectId: projectA.insertedId,
+        tenantId: tenantACME.insertedId,
         retestIncluded: false,
         description: 'Hallazgo de prueba 3',
         createdAt: new Date()
@@ -275,6 +317,7 @@ async function seedTestData() {
       severity: 'CRITICAL',
       status: 'OPEN',
       projectId: projectB_EvilCorp.insertedId,
+       tenantId: tenantEvil.insertedId,
       retestIncluded: true,
       description: '🔒 Este hallazgo NO debe ser accesible por usuarios de ACME Corp',
       createdAt: new Date()

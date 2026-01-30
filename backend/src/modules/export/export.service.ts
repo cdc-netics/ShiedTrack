@@ -69,7 +69,9 @@ export class ExportService {
 
     // RBAC: Validar que el usuario pertenece al cliente del proyecto
     if (!['OWNER', 'PLATFORM_ADMIN'].includes(currentUser.role)) {
-      if (project.clientId._id.toString() !== currentUser.clientId?.toString()) {
+      const userTenant = (currentUser.activeTenantId || currentUser.clientId)?.toString();
+      const projectTenant = (project.tenantId as any)?.toString() || (project.clientId as any)?._id?.toString();
+      if (!userTenant || !projectTenant || projectTenant !== userTenant) {
         throw new ForbiddenException('No tiene permisos para exportar este proyecto');
       }
     }
@@ -105,7 +107,7 @@ export class ExportService {
     // Información del proyecto
     dashboardSheet.addRow({ metric: 'Nombre Proyecto', value: project.name });
     dashboardSheet.addRow({ metric: 'Código', value: project.code });
-    dashboardSheet.addRow({ metric: 'Cliente', value: (project.clientId as any).name });
+    dashboardSheet.addRow({ metric: 'Cliente', value: ((project as any).clientId?.name) || 'N/A' });
     dashboardSheet.addRow({ metric: 'Estado', value: project.projectStatus });
     dashboardSheet.addRow({ metric: 'Fecha Generación', value: new Date().toLocaleDateString('es-CL') });
     dashboardSheet.addRow({}); // Fila vacía
@@ -297,7 +299,9 @@ export class ExportService {
 
     // RBAC
     if (!['OWNER', 'PLATFORM_ADMIN'].includes(currentUser.role)) {
-      if (project.clientId._id.toString() !== currentUser.clientId?.toString()) {
+      const userTenant = (currentUser.activeTenantId || currentUser.clientId)?.toString();
+      const projectTenant = (project.tenantId as any)?.toString() || (project.clientId as any)?._id?.toString();
+      if (!userTenant || !projectTenant || projectTenant !== userTenant) {
         throw new ForbiddenException('No tiene permisos para exportar este proyecto');
       }
     }
@@ -338,7 +342,8 @@ export class ExportService {
   async exportClientPortfolio(clientId: string, currentUser: any): Promise<PassThrough> {
     // RBAC: Solo CLIENT_ADMIN del cliente u OWNER
     if (!['OWNER', 'PLATFORM_ADMIN'].includes(currentUser.role)) {
-      if (clientId !== currentUser.clientId?.toString()) {
+      const userTenant = (currentUser.activeTenantId || currentUser.clientId)?.toString();
+      if (!userTenant || clientId !== userTenant) {
         throw new ForbiddenException('No tiene permisos para exportar este cliente');
       }
     }
@@ -386,7 +391,8 @@ export class ExportService {
   async exportClientPortfolioCSV(clientId: string, currentUser: any): Promise<string> {
     // RBAC: Solo CLIENT_ADMIN del cliente u OWNER
     if (!['OWNER', 'PLATFORM_ADMIN'].includes(currentUser.role)) {
-      if (clientId !== currentUser.clientId?.toString()) {
+      const userTenant = (currentUser.activeTenantId || currentUser.clientId)?.toString();
+      if (!userTenant || clientId !== userTenant) {
         throw new ForbiddenException('No tiene permisos para exportar este cliente');
       }
     }

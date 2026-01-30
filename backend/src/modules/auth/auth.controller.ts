@@ -2,6 +2,7 @@ import { Controller, Post, Body, Get, UseGuards, Patch, Param, Delete } from '@n
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { UserAreaService } from './user-area.service';
+import { UserAssignmentService } from './user-assignment.service';
 import { RegisterUserDto, LoginDto, EnableMfaDto, UpdateUserDto } from './dto/auth.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { RolesGuard } from './guards/roles.guard';
@@ -18,6 +19,7 @@ export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly userAreaService: UserAreaService,
+    private readonly userAssignmentService: UserAssignmentService,
   ) {}
 
   @Post('register')
@@ -180,6 +182,29 @@ export class AuthController {
   // ============================================
   // TENANT SWITCHING - Solo para OWNER
   // ============================================
+
+  @Post('users/:userId/assignments')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.OWNER, UserRole.PLATFORM_ADMIN)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Actualizar asignaciones centralizadas de usuario (clientes, proyectos, áreas)' })
+  @ApiResponse({ status: 200, description: 'Asignaciones actualizadas exitosamente' })
+  async updateUserAssignments(
+    @Param('userId') userId: string,
+    @Body() body: { clientIds?: string[]; projectIds?: string[]; areaIds?: string[] },
+    @CurrentUser() currentUser: any,
+  ) {
+    return this.userAssignmentService.updateAssignments(userId, body, currentUser.userId);
+  }
+
+  @Get('users/:userId/assignments')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Obtener asignaciones centralizadas del usuario' })
+  @ApiResponse({ status: 200, description: 'Asignaciones del usuario' })
+  async getUserAssignments(@Param('userId') userId: string) {
+    return this.userAssignmentService.getAssignments(userId);
+  }
 
   @Post('switch-tenant/:clientId')
   @UseGuards(JwtAuthGuard, RolesGuard)

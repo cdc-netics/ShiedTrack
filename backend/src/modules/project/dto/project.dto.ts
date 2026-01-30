@@ -62,9 +62,9 @@ export class CreateProjectDto {
   @IsString()
   description?: string;
 
-  @ApiProperty({ description: 'ID del cliente' })
+  @ApiProperty({ description: 'ID del tenant' })
   @IsString()
-  clientId: string;
+  tenantId: string;
 
   @ApiPropertyOptional({ description: 'ID del área (Legacy)' })
   @IsOptional()

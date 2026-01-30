@@ -93,18 +93,18 @@ export class BrandingService {
   /**
    * Sube un archivo de favicon
    */
-  uploadFavicon(file: File): Observable<{ url: string }> {
+  uploadFavicon(file: File): Observable<{ faviconUrl: string }> {
     const formData = new FormData();
-    formData.append('favicon', file);
-    return this.http.post<{ url: string }>(`${this.apiUrl}/favicon`, formData);
+    formData.append('file', file);
+    return this.http.post<{ faviconUrl: string }>(`${this.apiUrl}/favicon`, formData);
   }
 
   /**
    * Sube un archivo de logo
    */
-  uploadLogo(file: File): Observable<{ url: string }> {
+  uploadLogo(file: File): Observable<{ logoUrl: string }> {
     const formData = new FormData();
-    formData.append('logo', file);
-    return this.http.post<{ url: string }>(`${this.apiUrl}/logo`, formData);
+    formData.append('file', file);
+    return this.http.post<{ logoUrl: string }>(`${this.apiUrl}/logo`, formData);
   }
 }

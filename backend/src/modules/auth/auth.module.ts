@@ -5,11 +5,14 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AuthService } from './auth.service';
 import { UserAreaService } from './user-area.service';
+import { UserAssignmentService } from './user-assignment.service';
 import { AuthController } from './auth.controller';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { User, UserSchema } from './schemas/user.schema';
 import { UserAreaAssignment, UserAreaAssignmentSchema } from './schemas/user-area-assignment.schema';
 import { Area, AreaSchema } from '../area/schemas/area.schema';
+import { Project, ProjectSchema } from '../project/schemas/project.schema';
+import { Client, ClientSchema } from '../client/schemas/client.schema';
 import { EmailModule } from '../email/email.module';
 
 /**
@@ -22,6 +25,8 @@ import { EmailModule } from '../email/email.module';
       { name: User.name, schema: UserSchema },
       { name: UserAreaAssignment.name, schema: UserAreaAssignmentSchema },
       { name: Area.name, schema: AreaSchema },
+      { name: Project.name, schema: ProjectSchema },
+      { name: Client.name, schema: ClientSchema },
     ]),
     EmailModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
@@ -36,8 +41,8 @@ import { EmailModule } from '../email/email.module';
       inject: [ConfigService],
     }),
   ],
-  providers: [AuthService, UserAreaService, JwtStrategy],
+  providers: [AuthService, UserAreaService, UserAssignmentService, JwtStrategy],
   controllers: [AuthController],
-  exports: [AuthService, UserAreaService, JwtStrategy],
+  exports: [AuthService, UserAreaService, UserAssignmentService, JwtStrategy],
 })
 export class AuthModule {}

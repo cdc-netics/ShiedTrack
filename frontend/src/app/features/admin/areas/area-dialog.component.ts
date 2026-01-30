@@ -26,17 +26,7 @@ import { HttpClient } from '@angular/common/http';
     <h2 mat-dialog-title>{{ data.area ? 'Editar' : 'Crear' }} Área</h2>
     <mat-dialog-content>
       <form [formGroup]="areaForm">
-        @if (!data.clientId) {
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Cliente</mat-label>
-            <mat-select formControlName="clientId">
-              @for (client of clients; track client._id) {
-                <mat-option [value]="client._id">{{ client.name }}</mat-option>
-              }
-            </mat-select>
-            <mat-error>Debes seleccionar un cliente</mat-error>
-          </mat-form-field>
-        }
+        <!-- Cliente eliminado: el tenant se determina automáticamente por contexto -->
 
         <mat-form-field appearance="outline" class="full-width">
           <mat-label>Nombre del Área</mat-label>
@@ -116,43 +106,31 @@ export class AreaDialogComponent implements OnInit {
     this.areaForm = this.fb.group({
       name: ['', [Validators.required, Validators.minLength(3)]],
       description: [''],
-      clientId: [data.clientId || '', data.clientId ? [] : Validators.required],
       findingCodePrefix: ['', [Validators.pattern('^[A-Z0-9-]{2,10}$')]]
     });
   }
 
   ngOnInit(): void {
     // Si no viene clientId, cargar lista de clientes
-    if (!this.data.clientId) {
-      this.loadClients();
-    }
+    // El tenant se toma desde el contexto (JWT/header); no se requiere cargar clientes.
 
     // Si viene area, precarga valores para edicion
     if (this.data.area) {
       this.areaForm.patchValue({
         name: this.data.area.name,
         description: this.data.area.description || '',
-        clientId: this.data.area.clientId,
         findingCodePrefix: this.data.area.findingCodePrefix || ''
       });
     }
   }
-
-  loadClients(): void {
-    this.http.get<any[]>('http://localhost:3000/api/clients').subscribe({
-      next: (data) => this.clients = data,
-      error: () => console.error('Error cargando clientes')
-    });
-  }
+  // Cliente/tenant ya no se selecciona aquí; se usa el contexto.
 
   onSave(): void {
     // Persiste cambios en backend y cierra el dialogo
     if (!this.areaForm.valid) return;
 
     const areaData = {
-      ...this.areaForm.value,
-      // Si data.clientId existe, úsalo (aunque el form lo tenga), sino usa el del form
-      clientId: this.data.clientId || this.areaForm.value.clientId
+      ...this.areaForm.value
     };
 
     const request = this.data.area

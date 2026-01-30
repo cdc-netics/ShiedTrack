@@ -19,7 +19,7 @@ const DEV_USERS = [
   { label: 'System Owner', email: 'owner@shieldtrack.com', role: 'OWNER' },
   { label: 'Platform Admin', email: 'platformadmin@shieldtrack.com', role: 'PLATFORM_ADMIN' },
   { label: 'Client Admin', email: 'clientadmin@acmecorp.com', role: 'CLIENT_ADMIN' },
-  { label: 'Area Admin', email: 'areaadmin@acmecorp.com', role: 'AREA_ADMIN' },
+  { label: 'Tenant Admin', email: 'areaadmin@acmecorp.com', role: 'TENANT_ADMIN' },
   { label: 'Analyst', email: 'analyst@shieldtrack.com', role: 'ANALYST' },
   { label: 'Viewer', email: 'viewer@shieldtrack.com', role: 'VIEWER' }
 ];

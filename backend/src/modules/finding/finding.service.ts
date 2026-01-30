@@ -49,7 +49,9 @@ export class FindingService {
       // Solo OWNER y PLATFORM_ADMIN pueden crear en cualquier proyecto
       const globalRoles = ['OWNER', 'PLATFORM_ADMIN'];
       if (!globalRoles.includes(currentUser.role)) {
-        if (project.clientId._id.toString() !== currentUser.clientId?.toString()) {
+        const userTenant = (currentUser.activeTenantId || currentUser.clientId)?.toString();
+        const projectTenant = (project.tenantId as any)?.toString() || (project.clientId as any)?._id?.toString();
+        if (!userTenant || !projectTenant || projectTenant !== userTenant) {
           throw new ForbiddenException('No tiene permisos para crear hallazgos en este proyecto');
         }
       }

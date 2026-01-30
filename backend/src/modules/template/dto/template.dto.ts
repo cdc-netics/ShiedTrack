@@ -64,7 +64,7 @@ export class CreateTemplateDto {
   @ApiPropertyOptional({ example: '65f3a2b1c9d8e4f6a7b8c9d0', description: 'ID del cliente (si scope=TENANT)' })
   @IsOptional()
   @IsString()
-  clientId?: string;
+  tenantId?: string;
 }
 
 /**
