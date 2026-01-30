@@ -18,9 +18,10 @@ import { HttpClient } from '@angular/common/http';
 import { FindingService } from '../../../core/services/finding.service';
 import { ProjectService } from '../../../core/services/project.service';
 import { Observable, startWith, map, of } from 'rxjs';
+import { environment } from '../../../../environments/environment';
 
 interface Template {
-  id: number;
+  id: string | number;
   name: string;
   severity: string;
   description: string;
@@ -72,6 +73,7 @@ interface Template {
                     <input matInput 
                            [matAutocomplete]="templateAuto"
                            [(ngModel)]="templateSearch"
+                           (ngModelChange)="onTemplateSearch($event)"
                            [ngModelOptions]="{standalone: true}"
                            placeholder="Busca: XSS, SQLi, CSRF, etc...">
                     <mat-icon matSuffix>search</mat-icon>
@@ -244,17 +246,77 @@ interface Template {
                   </mat-form-field>
                 </div>
 
-                <mat-form-field appearance="outline" class="full-width">
-                  <mat-label>Activo Afectado</mat-label>
+                <div class="risk-section">
+                  <div class="form-row">
+                    <mat-form-field appearance="outline">
+                      <mat-label>Riesgo de Negocio</mat-label>
+                      <mat-select formControlName="businessRisk">
+                        <mat-option value="CRITICAL">🔴 Crítico</mat-option>
+                        <mat-option value="HIGH">🟠 Alto</mat-option>
+                        <mat-option value="MEDIUM">🟡 Medio</mat-option>
+                        <mat-option value="LOW">🔵 Bajo</mat-option>
+                        <mat-option value="INFO">⚪ Informativo</mat-option>
+                      </mat-select>
+                    </mat-form-field>
+                  </div>
+
+                  <mat-form-field appearance="outline" class="full-width">
+                     <mat-label>Justificación del Riesgo</mat-label>
+                     <textarea matInput formControlName="riskJustification" rows="3"
+                               placeholder="Explique el impacto al negocio..."></textarea>
+                  </mat-form-field>
+                </div>
+
+                <!-- Activos Afectados (New Multi-select) -->
+                <div class="controls-section">
+                  <label><mat-icon>devices</mat-icon> Activos Afectados</label>
+                  <p class="hint">Ingrese IPs, URLs o Hostnames y presione ENTER</p>
+                  <mat-chip-listbox>
+                    @for (asset of affectedAssets(); track asset) {
+                      <mat-chip>
+                        {{ asset }}
+                        <button matChipRemove (click)="removeAsset($index)">
+                          <mat-icon>cancel</mat-icon>
+                        </button>
+                      </mat-chip>
+                    }
+                  </mat-chip-listbox>
+                  <div class="add-control">
+                    <mat-form-field appearance="outline" style="flex: 1;">
+                      <mat-label>Agregar activo</mat-label>
+                      <input matInput [(ngModel)]="newAsset" [ngModelOptions]="{standalone: true}"
+                             (keyup.enter)="addAsset()" placeholder="Ej: 192.168.1.10, https://api.prod.com">
+                    </mat-form-field>
+                     <button mat-raised-button color="accent" (click)="addAsset()">
+                      <mat-icon>add</mat-icon>
+                    </button>
+                  </div>
+                </div>
+
+                <mat-form-field appearance="outline" class="full-width" style="display: none">
+                  <mat-label>Activo Afectado (Legacy)</mat-label>
                   <textarea matInput formControlName="affectedAsset" rows="2" 
-                            placeholder="Sistema o aplicación afectada"></textarea>
+                            placeholder="Descontinuado - Use Activos Afectados arriba"></textarea>
                 </mat-form-field>
 
-                <mat-form-field appearance="outline" class="full-width">
-                  <mat-label>Recomendación de Remediación</mat-label>
-                  <textarea matInput formControlName="recommendation" rows="4"
-                            placeholder="Describe las acciones recomendadas para remediar este hallazgo..."></textarea>
-                </mat-form-field>
+                <div class="rich-section">
+                  <label>Recomendación de Remediación</label>
+                  <div class="toolbar">
+                    <button type="button" mat-icon-button (click)="format('bold')" matTooltip="Negrita">
+                      <mat-icon>format_bold</mat-icon>
+                    </button>
+                    <button type="button" mat-icon-button (click)="format('italic')" matTooltip="Cursiva">
+                      <mat-icon>format_italic</mat-icon>
+                    </button>
+                    <button type="button" mat-icon-button (click)="format('insertUnorderedList')" matTooltip="Lista">
+                      <mat-icon>format_list_bulleted</mat-icon>
+                    </button>
+                  </div>
+                  <div contenteditable="true" 
+                       class="editor"
+                       (input)="onRecommendationChange($event)"
+                       [innerHTML]="technicalForm.get('recommendation')?.value || ''"></div>
+                </div>
 
                 <mat-form-field appearance="outline" class="full-width">
                   <mat-label>Impacto</mat-label>
@@ -445,6 +507,7 @@ export class FindingWizardComponent implements OnInit {
   // Archivos adjuntos y estado de envio
   selectedFiles = signal<File[]>([]);
   submitting = signal(false);
+  templateLoading = signal(false);
   
   // Manejo de controles y referencias
   controls = signal<string[]>([]);
@@ -453,7 +516,12 @@ export class FindingWizardComponent implements OnInit {
   newRefLabel = '';
   newRefUrl = '';
   
+  // Activos afectados
+  affectedAssets = signal<string[]>([]);
+  newAsset = '';
+  
   private http = inject(HttpClient);
+  private readonly templateApi = `${environment.apiUrl}/templates`;
 
   ngOnInit(): void {
     // Inicializa formularios y listas base del wizard
@@ -484,6 +552,8 @@ export class FindingWizardComponent implements OnInit {
       cveId: [''],
       detectionSource: [''],
       cweId: [''],
+      businessRisk: [''], 
+      riskJustification: [''],
       affectedAsset: [''],
       recommendation: [''],
       impact: [''],
@@ -507,12 +577,44 @@ export class FindingWizardComponent implements OnInit {
 
   loadClients(): void {
     // Carga clientes para el autocomplete
-    this.http.get<any[]>('http://localhost:3000/api/clients').subscribe({
+    this.http.get<any[]>(`${environment.apiUrl}/clients`).subscribe({
       next: (clients) => {
         this.clients.set(clients);
         this.filteredClients.set(clients);
       },
       error: (err) => console.error('Error loading clients:', err)
+    });
+  }
+
+  onTemplateSearch(term: string): void {
+    this.templateSearch = term;
+
+    if (!term || term.length < 2) {
+      this.filteredTemplates.set(this.templates());
+      return;
+    }
+
+    this.templateLoading.set(true);
+    this.http.get<any[]>(`${this.templateApi}/search`, { params: { q: term } }).subscribe({
+      next: (templates) => {
+        const mapped: Template[] = templates.map((t: any) => ({
+          id: t._id,
+          name: t.title,
+          description: t.description,
+          severity: t.severity,
+          recommendation: t.recommendation,
+          cvssScore: t.cvss_score,
+          cweId: t.cwe_id,
+        }));
+
+        this.templates.set(mapped.length ? mapped : this.templates());
+        this.filteredTemplates.set(mapped.length ? mapped : this.templates());
+        this.templateLoading.set(false);
+      },
+      error: () => {
+        this.templateLoading.set(false);
+        this.filteredTemplates.set(this.templates());
+      }
     });
   }
 
@@ -559,7 +661,8 @@ export class FindingWizardComponent implements OnInit {
     });
     this.technicalForm.patchValue({
       cvssScore: template.cvssScore,
-      cweId: template.cweId
+      cweId: template.cweId,
+      recommendation: template.recommendation
     });
     this.templateSearch = '';
   }
@@ -598,6 +701,11 @@ export class FindingWizardComponent implements OnInit {
     this.basicForm.patchValue({ description: event.target.innerHTML });
   }
 
+  onRecommendationChange(event: any): void {
+    // Sincroniza el contenido editable de recomendación
+    this.technicalForm.patchValue({ recommendation: event.target.innerHTML });
+  }
+
   onFileSelected(event: any): void {
     // Agrega archivos seleccionados al buffer local
     const files = Array.from(event.target.files) as File[];
@@ -607,6 +715,17 @@ export class FindingWizardComponent implements OnInit {
   removeFile(index: number): void {
     // Remueve un archivo de la lista
     this.selectedFiles.update(files => files.filter((_, i) => i !== index));
+  }
+
+  addAsset(): void {
+    if (this.newAsset && !this.affectedAssets().includes(this.newAsset)) {
+      this.affectedAssets.update(assets => [...assets, this.newAsset]);
+      this.newAsset = '';
+    }
+  }
+
+  removeAsset(index: number): void {
+    this.affectedAssets.update(assets => assets.filter((_, i) => i !== index));
   }
 
   addControl(): void {
@@ -664,7 +783,7 @@ export class FindingWizardComponent implements OnInit {
       console.log('📤 Verificando si existe proyecto:', projectName);
       
       // Verificar si ya existe un proyecto con este nombre para este cliente
-      this.http.get<any[]>(`http://localhost:3000/api/projects?clientId=${clientId}`)
+      this.http.get<any[]>(`${environment.apiUrl}/projects?clientId=${clientId}`)
         .subscribe({
           next: (projects) => {
             const existingProject = projects.find(p => 
@@ -682,11 +801,10 @@ export class FindingWizardComponent implements OnInit {
               const serviceArchitecture = this.basicForm.value.detectionSource || 'WEB';
               
               // Crear el proyecto
-              this.http.post<any>('http://localhost:3000/api/projects', {
+              this.http.post<any>(`${environment.apiUrl}/projects`, {
                 name: projectName,
-                code: `PROJ-${Date.now().toString().slice(-6)}`,
                 clientId: clientId,
-                areaId: clientId,
+                areaId: clientId, // TODO: Fix this, areaId should not be clientId
                 description: `Proyecto creado automáticamente desde hallazgo`,
                 serviceArchitecture: serviceArchitecture
               }).subscribe({
@@ -738,8 +856,11 @@ export class FindingWizardComponent implements OnInit {
       cvssScore: technicalData.cvssScore ? Number(technicalData.cvssScore) : undefined,
       cve_id: technicalData.cveId || undefined,
       cweId: technicalData.cweId || undefined,
+      businessRisk: technicalData.businessRisk || undefined,
+      riskJustification: technicalData.riskJustification || undefined,
       detection_source: technicalData.detectionSource || undefined,
-      affectedAsset: technicalData.affectedAsset || undefined,
+      affectedAssets: this.affectedAssets(),
+      affectedAsset: technicalData.affectedAsset || (this.affectedAssets().length > 0 ? this.affectedAssets()[0] : undefined),
       recommendation: technicalData.recommendation || undefined,
       impact: technicalData.impact || undefined,
       implications: technicalData.implications || undefined,

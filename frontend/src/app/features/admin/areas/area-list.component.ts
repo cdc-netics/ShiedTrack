@@ -1,5 +1,6 @@
 import { Component, OnInit, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { RouterLink } from '@angular/router';
 import { MatTableModule } from '@angular/material/table';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -14,6 +15,7 @@ import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { AuthService } from '../../../core/services/auth.service';
 import { AreaDialogComponent } from './area-dialog.component';
+import { environment } from '../../../../environments/environment';
 
 interface Area {
   _id: string;
@@ -31,6 +33,7 @@ interface Area {
   standalone: true,
   imports: [
     CommonModule,
+    RouterLink,
     MatTableModule,
     MatButtonModule,
     MatIconModule,
@@ -141,6 +144,9 @@ interface Area {
                 <span class="no-admins">Sin administradores</span>
               }
               <div class="action-buttons">
+                <button mat-icon-button [routerLink]="['/admin/tenants', area._id]" matTooltip="Configurar tenant">
+                  <mat-icon>settings</mat-icon>
+                </button>
                 <button mat-icon-button (click)="openAreaDialog(area)" matTooltip="Editar área">
                   <mat-icon>edit</mat-icon>
                 </button>
@@ -313,10 +319,9 @@ export class AreaListComponent implements OnInit {
     this.http.get<any[]>('http://localhost:3000/api/clients').subscribe({
       next: (data) => {
         this.clients.set(data);
-        if (data.length > 0) {
-          this.selectedClient = data[0]._id;
-          this.loadAreas();
-        }
+        // Por defecto mostrar todas las áreas ("Todos")
+        this.selectedClient = '';
+        this.loadAreas();
       },
       error: (err) => {
         console.error('Error al cargar clientes:', err);
@@ -327,10 +332,14 @@ export class AreaListComponent implements OnInit {
 
   loadAreas(): void {
     // Recupera areas del cliente seleccionado con inactivas
-    if (!this.selectedClient) return;
-    
     this.loading.set(true);
-    this.http.get<Area[]>(`http://localhost:3000/api/areas?clientId=${this.selectedClient}&includeInactive=true`).subscribe({
+    
+    let url = 'http://localhost:3000/api/areas?includeInactive=true';
+    if (this.selectedClient) {
+      url += `&clientId=${this.selectedClient}`;
+    }
+    
+    this.http.get<Area[]>(url).subscribe({
       next: (data) => {
         this.areas.set(data);
         this.filteredAreas.set(data);
@@ -386,7 +395,7 @@ export class AreaListComponent implements OnInit {
   toggleAreaStatus(area: Area): void {
     // Activa o desactiva un area con confirmacion
     const action = area.isActive ? 'desactivar' : 'activar';
-    const confirmed = confirm(`¿Está seguro de ${action} el área "${area.name}"?`);
+    const confirmed = confirm(`Confirmar: desea ${action} el area "${area.name}"?`);
     if (!confirmed) return;
 
     this.http.put(`http://localhost:3000/api/areas/${area._id}`, { isActive: !area.isActive }).subscribe({
@@ -404,12 +413,12 @@ export class AreaListComponent implements OnInit {
   deleteArea(area: Area): void {
     // Eliminacion fuerte con doble confirmacion manual
     const confirmed = confirm(
-      `¿Está seguro de eliminar permanentemente el área "${area.name}"?\n\n` +
-      `Esta acción NO se puede deshacer y eliminará:\n` +
-      `- El área y su configuración\n` +
-      `- Las asignaciones de usuarios a esta área\n` +
+      `Esta seguro de eliminar permanentemente el area "${area.name}"?\n\n` +
+      `Esta accion NO se puede deshacer y eliminara:\n` +
+      `- El area y su configuracion\n` +
+      `- Las asignaciones de usuarios a esta area\n` +
       `- Los proyectos asociados (si los hay)\n\n` +
-      `Escriba el nombre del área para confirmar.`
+      `Escriba el nombre del area para confirmar.`
     );
     
     if (!confirmed) return;
@@ -420,7 +429,7 @@ export class AreaListComponent implements OnInit {
       return;
     }
 
-    this.http.delete(`http://localhost:3000/api/areas/${area._id}/hard`).subscribe({
+    this.http.delete(`${environment.apiUrl}/areas/${area._id}/hard`).subscribe({
       next: () => {
         this.snackBar.open('Área eliminada permanentemente', 'Cerrar', { duration: 3000 });
         this.loadAreas();

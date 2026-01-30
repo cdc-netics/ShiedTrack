@@ -425,11 +425,21 @@ export class ProjectListComponent implements OnInit {
     // OWNER puede cerrar cualquier proyecto
     if (user.role === UserRole.OWNER) return true;
     
-    // CLIENT_ADMIN y AREA_ADMIN pueden cerrar proyectos de su tenant/área
-    if (user.role === UserRole.CLIENT_ADMIN || user.role === UserRole.AREA_ADMIN) {
-      // TODO: Verificar que el proyecto pertenece al mismo tenant/área del admin
-      // Por ahora permitimos a cualquier ADMIN cerrar proyectos
-      return true;
+    // CLIENT_ADMIN: Verificar tenant
+    if (user.role === UserRole.CLIENT_ADMIN) {
+       const projClientId = project.clientId?._id || project.clientId;
+       const userClientId = user.clientId;
+       return projClientId === userClientId;
+    }
+
+    // AREA_ADMIN: Verificar tenants
+    if (user.role === UserRole.AREA_ADMIN) {
+      const userAreas = user.areaIds || [];
+      const projAreas = project.areaIds?.map((a: any) => a._id || a) || [];
+      const projLegacyArea = project.areaId?._id || project.areaId;
+
+      return projAreas.some((id: string) => userAreas.includes(id)) || 
+             (projLegacyArea && userAreas.includes(projLegacyArea));
     }
     
     return false;
@@ -513,7 +523,7 @@ export class ProjectListComponent implements OnInit {
   exportProject(projectId: string) {
     console.log('📥 Exportando proyecto:', projectId);
     
-    this.http.get(`http://localhost:3000/api/export/project/${projectId}/excel`, {
+    this.http.get(`${environment.apiUrl}/export/project/${projectId}/excel`, {
       responseType: 'blob'
     }).subscribe({
       next: (blob) => {

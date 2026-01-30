@@ -22,6 +22,7 @@ import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { CloseFindingDialogComponent, CloseDialogResult } from '../close-finding-dialog/close-finding-dialog.component';
 import { AddUpdateDialogComponent, AddUpdateDialogResult } from '../add-update-dialog/add-update-dialog.component';
+import { environment } from '../../../../environments/environment';
 
 interface Finding {
   _id: string;
@@ -147,6 +148,9 @@ interface FindingUpdate {
                       Cerrar Hallazgo
                     </button>
                   }
+                  <button mat-icon-button color="primary" matTooltip="Descargar Reporte PDF" (click)="downloadPdf()">
+                    <mat-icon>picture_as_pdf</mat-icon>
+                  </button>
                 } @else {
                   <button mat-raised-button (click)="cancelEdit()">
                     <mat-icon>cancel</mat-icon>
@@ -455,7 +459,7 @@ interface FindingUpdate {
                                   <mat-icon>description</mat-icon>
                                 </button>
                               }
-                              @if (evidence.mimetype?.includes('pdf')) {
+                              @if (evidence.mimetype.includes('pdf')) {
                                 <button mat-icon-button color="accent" (click)="viewEvidence(evidence)" matTooltip="Abrir PDF">
                                   <mat-icon>picture_as_pdf</mat-icon>
                                 </button>
@@ -469,7 +473,7 @@ interface FindingUpdate {
                             </div>
                           </div>
                           <!-- Preview de imagen -->
-                          @if (evidence.mimetype?.startsWith('image/')) {
+                          @if (evidence.mimetype.startsWith('image/')) {
                             <div class="image-preview">
                               @if (imageUrls[evidence._id]) {
                                 <img [src]="imageUrls[evidence._id]" [alt]="evidence.originalName" (click)="viewEvidence(evidence)" />
@@ -1285,7 +1289,7 @@ export class FindingDetailComponent implements OnInit {
   loadFinding(id: string): void {
     // Trae el hallazgo y sincroniza formulario y tags
     this.loading.set(true);
-    this.http.get<Finding>(`http://localhost:3000/api/findings/${id}`)
+    this.http.get<Finding>(`${environment.apiUrl}/findings/${id}`)
       .subscribe({
         next: (data) => {
           this.finding.set(data);
@@ -1320,7 +1324,7 @@ export class FindingDetailComponent implements OnInit {
     // Carga evidencias y prepara previews para imagenes
     console.log('🔍 Cargando evidencias para finding:', findingId);
     this.loadingEvidences.set(true);
-    this.http.get<Evidence[]>(`http://localhost:3000/api/evidence/finding/${findingId}`)
+    this.http.get<Evidence[]>(`${environment.apiUrl}/evidence/finding/${findingId}`)
       .subscribe({
         next: (data) => {
           console.log('✅ Evidencias cargadas:', data.length, 'archivo(s)', data);
@@ -1336,7 +1340,7 @@ export class FindingDetailComponent implements OnInit {
         },
         error: (err) => {
           console.error('❌ Error cargando evidencias:', err);
-          console.error('URL:', `http://localhost:3000/api/evidence/finding/${findingId}`);
+          console.error('URL:', `${environment.apiUrl}/evidence/finding/${findingId}`);
           this.evidences.set([]);
           this.loadingEvidences.set(false);
         }
@@ -1352,7 +1356,7 @@ export class FindingDetailComponent implements OnInit {
     // Carga el timeline de seguimientos del hallazgo
     console.log('📝 Cargando seguimientos para finding:', findingId);
     this.loadingUpdates.set(true);
-    this.http.get<FindingUpdate[]>(`http://localhost:3000/api/findings/${findingId}/timeline`)
+    this.http.get<FindingUpdate[]>(`${environment.apiUrl}/findings/${findingId}/timeline`)
       .subscribe({
         next: (data) => {
           console.log('✅ Seguimientos cargados:', data.length, 'entrada(s)', data);
@@ -1421,7 +1425,7 @@ export class FindingDetailComponent implements OnInit {
 
     console.log('📤 Guardando hallazgo:', updateData);
 
-    this.http.put(`http://localhost:3000/api/findings/${this.finding()!._id}`, updateData)
+    this.http.put(`${environment.apiUrl}/findings/${this.finding()!._id}`, updateData)
       .subscribe({
         next: (response) => {
           console.log('✅ Hallazgo actualizado:', response);
@@ -1513,7 +1517,7 @@ export class FindingDetailComponent implements OnInit {
 
         try {
           await firstValueFrom(
-            this.http.post(`http://localhost:3000/api/evidence/upload?findingId=${findingId}`, formData)
+            this.http.post(`${environment.apiUrl}/evidence/upload?findingId=${findingId}`, formData)
           );
           uploaded++;
           console.log(`✅ Evidencia subida: ${file.name}`);
@@ -1561,7 +1565,7 @@ export class FindingDetailComponent implements OnInit {
     // Descarga un archivo y crea un enlace temporal
     console.log('📥 Descargando evidencia:', evidence.originalName);
     
-    this.http.get(`http://localhost:3000/api/evidence/${evidence._id}/download`, {
+    this.http.get(`${environment.apiUrl}/evidence/${evidence._id}/download`, {
       responseType: 'blob',
       observe: 'response'
     }).subscribe({
@@ -1597,7 +1601,7 @@ export class FindingDetailComponent implements OnInit {
     // Visualiza el archivo en nueva pestana si el navegador lo permite
     console.log('👁️ Visualizando evidencia:', evidence.originalName);
     
-    this.http.get(`http://localhost:3000/api/evidence/${evidence._id}/download`, {
+    this.http.get(`${environment.apiUrl}/evidence/${evidence._id}/download`, {
       responseType: 'blob'
     }).subscribe({
       next: (blob) => {
@@ -1630,7 +1634,7 @@ export class FindingDetailComponent implements OnInit {
   deleteEvidence(id: string): void {
     // Eliminacion con confirmacion y recarga del listado
     if (confirm('¿Estás seguro de eliminar esta evidencia?')) {
-      this.http.delete(`http://localhost:3000/api/evidence/${id}`)
+      this.http.delete(`${environment.apiUrl}/evidence/${id}`)
         .subscribe({
           next: () => {
             this.snackBar.open('Evidencia eliminada', 'Cerrar', { duration: 3000 });
@@ -1681,7 +1685,7 @@ export class FindingDetailComponent implements OnInit {
 
   loadImagePreview(evidenceId: string): void {
     // Crea una URL temporal para previsualizar imagenes
-    this.http.get(`http://localhost:3000/api/evidence/${evidenceId}/download`, {
+    this.http.get(`${environment.apiUrl}/evidence/${evidenceId}/download`, {
       responseType: 'blob'
     }).subscribe({
       next: (blob) => {
@@ -1701,7 +1705,7 @@ export class FindingDetailComponent implements OnInit {
       return;
     }
 
-    this.http.get(`http://localhost:3000/api/evidence/${evidenceId}/download`, {
+    this.http.get(`${environment.apiUrl}/evidence/${evidenceId}/download`, {
       responseType: 'text'
     }).subscribe({
       next: (content) => {
@@ -1724,6 +1728,13 @@ export class FindingDetailComponent implements OnInit {
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+  }
+
+  downloadPdf() {
+    // Descargar reporte PDF del hallazgo
+    // Asume que el backend expone /api/export/finding/:id/pdf
+    const url = `${environment.apiUrl}/export/finding/${this.finding()!._id}/pdf`;
+    window.open(url, '_blank');
   }
 
   /**
@@ -1764,7 +1775,7 @@ export class FindingDetailComponent implements OnInit {
   closeFinding(closeData: CloseDialogResult): void {
     const findingId = this.finding()!._id;
     
-    this.http.post(`http://localhost:3000/api/findings/${findingId}/close`, closeData)
+    this.http.post(`${environment.apiUrl}/findings/${findingId}/close`, closeData)
       .subscribe({
         next: (updatedFinding: any) => {
           this.snackBar.open('Hallazgo cerrado correctamente', 'Cerrar', { duration: 3000 });
@@ -1820,7 +1831,7 @@ export class FindingDetailComponent implements OnInit {
           formData.append('file', file);
           
           const response: any = await firstValueFrom(
-            this.http.post(`http://localhost:3000/api/evidence/upload?findingId=${findingId}`, formData)
+            this.http.post(`${environment.apiUrl}/evidence/upload?findingId=${findingId}`, formData)
           );
           
           evidenceIds.push(response._id);
@@ -1840,7 +1851,7 @@ export class FindingDetailComponent implements OnInit {
 
     console.log('📝 Creando seguimiento:', payload);
 
-    this.http.post(`http://localhost:3000/api/findings/updates`, payload)
+    this.http.post(`${environment.apiUrl}/findings/updates`, payload)
       .subscribe({
         next: (createdUpdate: any) => {
           console.log('✅ Seguimiento creado:', createdUpdate);

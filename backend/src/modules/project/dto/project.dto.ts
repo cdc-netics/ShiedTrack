@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsEnum, IsBoolean, IsDateString, IsArray, IsEmail, IsNumber, ValidateNested } from 'class-validator';
+import { IsString, IsOptional, IsEnum, IsBoolean, IsDateString, IsArray, IsEmail, IsNumber, ValidateNested, ArrayMaxSize } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { ServiceArchitecture, ProjectStatus } from '../../../common/enums';
@@ -9,6 +9,7 @@ import { ServiceArchitecture, ProjectStatus } from '../../../common/enums';
 export class NotifyConfigDto {
   @IsArray()
   @IsEmail({}, { each: true })
+  @ArrayMaxSize(3, { message: 'Máximo 3 destinatarios de notificaciones' })
   recipients: string[];
 
   @IsArray()
@@ -61,13 +62,20 @@ export class CreateProjectDto {
   @IsString()
   description?: string;
 
-  @ApiProperty({ description: 'ID del cliente' })
+  @ApiProperty({ description: 'ID del tenant' })
   @IsString()
-  clientId: string;
+  tenantId: string;
 
-  @ApiProperty({ description: 'ID del área' })
+  @ApiPropertyOptional({ description: 'ID del área (Legacy)' })
+  @IsOptional()
   @IsString()
-  areaId: string;
+  areaId?: string;
+
+  @ApiPropertyOptional({ description: 'IDs de las áreas asignadas', type: [String] })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  areaIds?: string[];
 
   @ApiProperty({ enum: ServiceArchitecture, example: ServiceArchitecture.WEB })
   @IsEnum(ServiceArchitecture)
@@ -118,6 +126,12 @@ export class UpdateProjectDto {
   @IsOptional()
   @IsEnum(ProjectStatus)
   projectStatus?: ProjectStatus;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  areaIds?: string[];
 
   @ApiPropertyOptional({ type: RetestPolicyDto })
   @IsOptional()

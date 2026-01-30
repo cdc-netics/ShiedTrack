@@ -11,13 +11,24 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatCardModule } from '@angular/material/card';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatMenuModule } from '@angular/material/menu';
+import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatExpansionModule } from '@angular/material/expansion';
+import { MatDatepickerModule } from '@angular/material/datepicker';
+import { MatNativeDateModule } from '@angular/material/core';
+import { MatBadgeModule } from '@angular/material/badge';
+import { SelectionModel } from '@angular/cdk/collections';
 import { FormsModule } from '@angular/forms';
+import { HttpClient } from '@angular/common/http';
 import { FindingService } from '../../../core/services/finding.service';
+import { ProjectService } from '../../../core/services/project.service';
+import { environment } from '../../../../environments/environment';
 
 /**
  * Componente de Lista de Hallazgos
- * Tabla con filtros por severidad, estado y búsqueda
+ * Tabla con filtros avanzados por severidad, estado, fecha, CVSS y búsqueda
  * Colores visuales según criticidad
+ * Panel de filtros expandible con animaciones
  */
 @Component({
   selector: 'app-finding-list',
@@ -35,7 +46,13 @@ import { FindingService } from '../../../core/services/finding.service';
     MatSelectModule,
     MatCardModule,
     MatTooltipModule,
-    MatProgressSpinnerModule
+    MatProgressSpinnerModule,
+    MatMenuModule,
+    MatCheckboxModule,
+    MatExpansionModule,
+    MatDatepickerModule,
+    MatNativeDateModule,
+    MatBadgeModule
   ],
   template: `
     <div class="finding-list-container">
@@ -48,10 +65,19 @@ import { FindingService } from '../../../core/services/finding.service';
         </mat-card-header>
         <mat-card-content>
           <div class="actions-bar">
-            <button mat-raised-button color="primary" routerLink="/findings/new">
-              <mat-icon>add</mat-icon>
-              Nuevo Hallazgo
-            </button>
+            <div class="buttons">
+              <button mat-raised-button color="primary" routerLink="/findings/new">
+                <mat-icon>add</mat-icon>
+                Nuevo Hallazgo
+              </button>
+
+              @if (selection.hasValue()) {
+                <button mat-raised-button color="warn" (click)="bulkClose()">
+                  <mat-icon>done_all</mat-icon>
+                  Cerrar ({{ selection.selected.length }})
+                </button>
+              }
+            </div>
             
             <div class="filters">
               <mat-form-field appearance="outline" class="filter-field">
@@ -60,6 +86,26 @@ import { FindingService } from '../../../core/services/finding.service';
                        (ngModelChange)="searchTerm.set($event); applyFilters()"
                        placeholder="Código, título o CVE...">
                 <mat-icon matSuffix>search</mat-icon>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" class="filter-field">
+                <mat-label>Cliente</mat-label>
+                <mat-select [ngModel]="clientFilter()" (selectionChange)="onClientChange($event.value)">
+                  <mat-option value="">Todos</mat-option>
+                  @for (client of clients(); track client._id) {
+                    <mat-option [value]="client._id">{{ client.name }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" class="filter-field">
+                <mat-label>Proyecto</mat-label>
+                <mat-select [ngModel]="projectFilter()" (selectionChange)="onProjectChange($event.value)" [disabled]="!clientFilter()">
+                  <mat-option value="">Todos</mat-option>
+                  @for (project of projects(); track project._id) {
+                    <mat-option [value]="project._id">{{ project.name }}</mat-option>
+                  }
+                </mat-select>
               </mat-form-field>
               
               <mat-form-field appearance="outline" class="filter-field">
@@ -88,6 +134,27 @@ import { FindingService } from '../../../core/services/finding.service';
               <button mat-icon-button (click)="loadFindings()" matTooltip="Actualizar">
                 <mat-icon>refresh</mat-icon>
               </button>
+
+              <button mat-icon-button [matMenuTriggerFor]="exportMenu" matTooltip="Exportar" [disabled]="!clientFilter() && !projectFilter()">
+                <mat-icon>download</mat-icon>
+              </button>
+              <mat-menu #exportMenu="matMenu">
+                @if (projectFilter()) {
+                  <button mat-menu-item (click)="exportProject('excel')">
+                    <mat-icon>table_view</mat-icon>
+                    <span>Excel</span>
+                  </button>
+                  <button mat-menu-item (click)="exportProject('csv')">
+                    <mat-icon>description</mat-icon>
+                    <span>CSV</span>
+                  </button>
+                } @else if (clientFilter()) {
+                  <button mat-menu-item (click)="exportClient()">
+                    <mat-icon>folder_zip</mat-icon>
+                    <span>Portfolio (ZIP)</span>
+                  </button>
+                }
+              </mat-menu>
             </div>
           </div>
           
@@ -131,6 +198,23 @@ import { FindingService } from '../../../core/services/finding.service';
           </div>
         } @else {
           <table mat-table [dataSource]="filteredFindings()" class="findings-table">
+            
+            <!-- Checkbox Column -->
+            <ng-container matColumnDef="select">
+              <th mat-header-cell *matHeaderCellDef>
+                <mat-checkbox (change)="$event ? toggleAllRows() : null"
+                              [checked]="selection.hasValue() && isAllSelected()"
+                              [indeterminate]="selection.hasValue() && !isAllSelected()">
+                </mat-checkbox>
+              </th>
+              <td mat-cell *matCellDef="let row">
+                <mat-checkbox (click)="$event.stopPropagation()"
+                              (change)="$event ? selection.toggle(row) : null"
+                              [checked]="selection.isSelected(row)">
+                </mat-checkbox>
+              </td>
+            </ng-container>
+
             <!-- Columna Código -->
             <ng-container matColumnDef="code">
               <th mat-header-cell *matHeaderCellDef>Código</th>
@@ -469,19 +553,91 @@ import { FindingService } from '../../../core/services/finding.service';
 export class FindingListComponent implements OnInit {
   // Servicio para traer hallazgos y estado de carga
   findingService = inject(FindingService);
+  projectService = inject(ProjectService);
+  http = inject(HttpClient);
   
   // Columnas visibles de la tabla
-  displayedColumns = ['code', 'title', 'severity', 'cvss', 'status', 'project', 'date', 'actions'];
+  displayedColumns = ['select', 'code', 'title', 'severity', 'cvss', 'status', 'project', 'date', 'actions'];
+  selection = new SelectionModel<any>(true, []);
   
   // Estado local de filtros y resultados
   searchTerm = signal('');
   severityFilter = signal('');
   statusFilter = signal('');
+  clientFilter = signal('');
+  projectFilter = signal('');
+  
+  clients = signal<any[]>([]);
+  projects = signal<any[]>([]);
+  
   filteredFindings = signal<any[]>([]);
+
+  private CLIENTS_URL = `${environment.apiUrl}/clients`;
+
+  /** Si todos los elementos filtrados están seleccionados */
+  isAllSelected() {
+    const numSelected = this.selection.selected.length;
+    const numRows = this.filteredFindings().length;
+    return numSelected === numRows && numRows > 0;
+  }
+
+  /** Selecciona o deselecciona todas las filas */
+  toggleAllRows() {
+    if (this.isAllSelected()) {
+      this.selection.clear();
+      return;
+    }
+
+    this.selection.select(...this.filteredFindings());
+  }
+
+  /** Cierra masivamente los hallazgos seleccionados */
+  bulkClose() {
+    const selectedIds = this.selection.selected.map(f => f.id);
+    if (!selectedIds.length) return;
+
+    if (confirm(`¿Estás seguro de cerrar ${selectedIds.length} hallazgos?`)) {
+      this.findingService.bulkClose(selectedIds).subscribe({
+        next: () => {
+          this.selection.clear();
+          // Opcional: mostrar notificación de éxito
+        },
+        error: (err) => console.error('Error closing findings', err)
+      });
+    }
+  }
 
   ngOnInit() {
     // Carga inicial del listado
     this.loadFindings();
+    this.loadClients();
+  }
+
+  loadClients() {
+    this.http.get<any[]>(this.CLIENTS_URL).subscribe({
+      next: (clients) => this.clients.set(clients),
+      error: (err) => console.error('Error loading clients', err)
+    });
+  }
+
+  onClientChange(clientId: string) {
+    this.clientFilter.set(clientId);
+    this.projectFilter.set('');
+    this.projects.set([]);
+    
+    if (clientId) {
+      this.projectService.loadProjects({ clientId }).subscribe(projects => {
+        this.projects.set(projects);
+        this.applyFilters();
+      });
+    } else {
+      this.applyFilters();
+    }
+  }
+
+  onProjectChange(projectId: string) {
+    this.projectFilter.set(projectId);
+    this.applyFilters();
   }
 
   loadFindings() {
@@ -511,8 +667,98 @@ export class FindingListComponent implements OnInit {
     if (this.statusFilter()) {
       findings = findings.filter(f => f.status === this.statusFilter());
     }
+
+    if (this.projectFilter()) {
+      findings = findings.filter(f => {
+        const pId = typeof f.projectId === 'string' ? f.projectId : f.projectId?._id;
+        return pId === this.projectFilter();
+      });
+    } else if (this.clientFilter() && this.projects().length > 0) {
+      // Filter by client ONLY if we have loaded projects
+      // Otherwise, don't apply client filter (avoid empty list)
+      const clientProjectIds = this.projects().map(p => p._id);
+      findings = findings.filter(f => {
+        const pId = typeof f.projectId === 'string' ? f.projectId : f.projectId?._id;
+        return clientProjectIds.includes(pId);
+      });
+    }
     
     this.filteredFindings.set(findings);
+    console.log(`🔍 Filtros aplicados: ${findings.length} hallazgos mostrados de ${this.findingService.findings().length} totales`);
+  }
+
+  exportProject(format: 'excel' | 'csv') {
+    const projectId = this.projectFilter();
+    if (!projectId) {
+      alert('Por favor selecciona un proyecto para exportar');
+      return;
+    }
+    
+    const url = `${environment.apiUrl}/export/project/${projectId}/${format}`;
+    console.log('📥 Exportando proyecto:', projectId, 'formato:', format);
+    
+    // Usar HttpClient para incluir el token de autenticación
+    this.http.get(url, { 
+      responseType: 'blob',
+      observe: 'response'
+    }).subscribe({
+      next: (response) => {
+        console.log('✅ Respuesta recibida, tamaño:', response.body?.size, 'bytes');
+        const blob = response.body;
+        if (blob && blob.size > 0) {
+          const downloadUrl = window.URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = downloadUrl;
+          const extension = format === 'excel' ? 'xlsx' : 'csv';
+          link.download = `proyecto_${projectId}_${Date.now()}.${extension}`;
+          link.click();
+          window.URL.revokeObjectURL(downloadUrl);
+        } else {
+          console.error('❌ Archivo vacío recibido');
+          alert('El archivo exportado está vacío. Verifica que el proyecto tenga hallazgos.');
+        }
+      },
+      error: (err) => {
+        console.error('❌ Error exportando proyecto:', err);
+        alert(`Error al exportar: ${err.error?.message || err.message || 'Error desconocido'}`);
+      }
+    });
+  }
+
+  exportClient() {
+    const clientId = this.clientFilter();
+    if (!clientId) {
+      alert('Por favor selecciona un cliente para exportar');
+      return;
+    }
+    
+    const url = `${environment.apiUrl}/export/client/${clientId}/portfolio`;
+    console.log('📥 Exportando portfolio de cliente:', clientId);
+    
+    // Usar HttpClient para incluir el token de autenticación
+    this.http.get(url, { 
+      responseType: 'blob'
+    }).subscribe({
+      next: (blob) => {
+        console.log('✅ Portfolio recibido, tamaño:', blob.size, 'bytes');
+        if (blob && blob.size > 0) {
+          const downloadUrl = window.URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = downloadUrl;
+          link.download = `cliente_${clientId}_portfolio_${Date.now()}.zip`;
+          link.click();
+          window.URL.revokeObjectURL(downloadUrl);
+        } else {
+          console.error('❌ Archivo vacío recibido');
+          alert('El portfolio está vacío. Verifica que el cliente tenga proyectos con hallazgos.');
+        }
+      },
+      error: (err) => {
+        console.error('❌ Error exportando cliente:', err);
+        const errorMsg = err.error?.message || err.message || 'Error desconocido';
+        alert(`Error al exportar: ${errorMsg}\n\nVerifica que tengas permisos de CLIENT_ADMIN o superior.`);
+      }
+    });
   }
 
   getCountBySeverity(severity: string): number {

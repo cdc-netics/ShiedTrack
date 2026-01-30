@@ -9,6 +9,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { User } from '../../../shared/models';
@@ -31,6 +32,7 @@ import { AuthService } from '../../../core/services/auth.service';
     MatSelectModule,
     MatDialogModule,
     MatSnackBarModule,
+    MatTooltipModule,
     FormsModule
   ],
   template: `
@@ -58,7 +60,7 @@ import { AuthService } from '../../../core/services/auth.service';
             <mat-option value="">Todos</mat-option>
             <mat-option value="OWNER">Owner</mat-option>
 
-            <mat-option value="AREA_ADMIN">Admin Área</mat-option>
+            <mat-option value="AREA_ADMIN">Area Admin</mat-option>
             <mat-option value="ANALYST">Analista</mat-option>
             <mat-option value="VIEWER">Visor</mat-option>
           </mat-select>
@@ -309,7 +311,7 @@ export class UserListComponent implements OnInit {
     const roleMap: Record<string, string> = {
       'OWNER': 'Owner',
 
-      'AREA_ADMIN': 'Admin Área',
+      'AREA_ADMIN': 'Area Admin',
       'ANALYST': 'Analista',
       'VIEWER': 'Visor'
     };

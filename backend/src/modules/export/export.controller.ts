@@ -51,7 +51,7 @@ export class ExportController {
   ) {
     const csv = await this.exportService.exportProjectToCSV(projectId, user);
 
-    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="proyecto_${projectId}_${Date.now()}.csv"`);
     res.send(csv);
   }
@@ -65,6 +65,21 @@ export class ExportController {
     @CurrentUser() user: any
   ) {
     return this.exportService.exportProjectToJSON(projectId, user);
+  }
+
+  @Get('project/:id/zip')
+  @Roles(UserRole.ANALYST, UserRole.AREA_ADMIN, UserRole.CLIENT_ADMIN, UserRole.PLATFORM_ADMIN, UserRole.OWNER)
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @ApiOperation({ summary: 'Exportar proyecto a ZIP con evidencias (ANALYST+)' })
+  async exportProjectZip(
+    @Param('id') projectId: string,
+    @CurrentUser() user: any,
+    @Res() res: Response
+  ) {
+    const zipStream = await this.exportService.exportProjectAsZip(projectId, user);
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition', `attachment; filename="project_${projectId}_${Date.now()}.zip"`);
+    zipStream.pipe(res);
   }
 
   /**
@@ -87,6 +102,49 @@ export class ExportController {
     zipStream.pipe(res);
   }
 
+  @Get('client/:id/csv')
+  @Roles(UserRole.CLIENT_ADMIN, UserRole.PLATFORM_ADMIN, UserRole.OWNER)
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @ApiOperation({ summary: 'Exportar todos los hallazgos de un cliente a CSV (CLIENT_ADMIN+)' })
+  async exportClientCSV(
+    @Param('id') clientId: string,
+    @CurrentUser() user: any,
+    @Res() res: Response
+  ) {
+    const csv = await this.exportService.exportClientPortfolioCSV(clientId, user);
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="client_${clientId}_findings_${Date.now()}.csv"`);
+    res.send(csv);
+  }
+
+  @Get('finding/:id/pdf')
+  @Roles(UserRole.ANALYST, UserRole.AREA_ADMIN, UserRole.CLIENT_ADMIN, UserRole.PLATFORM_ADMIN, UserRole.OWNER)
+  @ApiOperation({ summary: 'Exportar hallazgo a PDF' })
+  async exportFindingPdf(
+    @Param('id') findingId: string,
+    @CurrentUser() user: any,
+    @Res() res: Response
+  ) {
+    const buffer = await this.exportService.exportFindingPdf(findingId, user);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="finding_${findingId}.pdf"`);
+    res.send(buffer);
+  }
+
+  @Get('project/:id/pdf')
+  @Roles(UserRole.ANALYST, UserRole.AREA_ADMIN, UserRole.CLIENT_ADMIN, UserRole.PLATFORM_ADMIN, UserRole.OWNER)
+  @ApiOperation({ summary: 'Exportar proyecto a PDF' })
+  async exportProjectPdf(
+    @Param('id') projectId: string,
+    @CurrentUser() user: any,
+    @Res() res: Response
+  ) {
+    const buffer = await this.exportService.exportProjectPdf(projectId, user);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="project_${projectId}.pdf"`);
+    res.send(buffer);
+  }
+
   /**
    * C. NIVEL SISTEMA - Backup completo de base de datos
    */
@@ -103,5 +161,15 @@ export class ExportController {
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Content-Disposition', `attachment; filename="shieldtrack_backup_${Date.now()}.json"`);
     res.send(JSON.stringify(backup, null, 2));
+  }
+
+  @Post('system/backup')
+  @Roles(UserRole.OWNER)
+  @Throttle({ default: { limit: 1, ttl: 3600000 } })
+  @ApiOperation({ summary: 'Ejecutar mongodump y generar archivo .tar.gz (SOLO OWNER)' })
+  async createSystemBackup(
+    @CurrentUser() user: any,
+  ) {
+    return this.exportService.createSystemBackup(user);
   }
 }

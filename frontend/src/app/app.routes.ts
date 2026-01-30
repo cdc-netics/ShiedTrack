@@ -50,11 +50,15 @@ export const routes: Routes = [
       },
       {
         path: 'admin/users',
-        loadComponent: () => import('./features/admin/users/user-list.component').then(m => m.UserListComponent)
+        loadComponent: () => import('./features/admin/users/user-list-improved.component').then(m => m.UserListImprovedComponent)
       },
       {
-        path: 'admin/areas',
+        path: 'admin/tenants',
         loadComponent: () => import('./features/admin/areas/area-list.component').then(m => m.AreaListComponent)
+      },
+      {
+        path: 'admin/tenants/:id',
+        loadComponent: () => import('./features/admin/areas/tenant-config-detail.component').then(m => m.TenantConfigDetailComponent)
       },
       {
         path: 'admin/templates',
@@ -67,6 +71,14 @@ export const routes: Routes = [
       {
         path: 'admin/config',
         loadComponent: () => import('./features/admin/config/system-config.component').then(m => m.SystemConfigComponent)
+      },
+      {
+        path: 'admin/branding',
+        loadComponent: () => import('./features/admin/branding/branding-config.component').then(m => m.BrandingConfigComponent)
+      },
+      {
+        path: 'admin/backup',
+        loadComponent: () => import('./features/admin/backup/backup-manager.component').then(m => m.BackupManagerComponent)
       },
     ]
   },

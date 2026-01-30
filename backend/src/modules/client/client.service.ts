@@ -3,6 +3,9 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Client } from './schemas/client.schema';
 import { CreateClientDto, UpdateClientDto } from './dto/client.dto';
+import { ProjectStatus } from '../../common/enums';
+import { AuthService } from '../auth/auth.service';
+import { UserRole } from '../../common/enums';
 
 /**
  * Servicio de gestión de Clientes (Tenants)
@@ -12,16 +15,45 @@ import { CreateClientDto, UpdateClientDto } from './dto/client.dto';
 export class ClientService {
   private readonly logger = new Logger(ClientService.name);
 
-  constructor(@InjectModel(Client.name) private clientModel: Model<Client>) {}
+  constructor(
+    @InjectModel(Client.name) private clientModel: Model<Client>,
+    private authService: AuthService,
+  ) {}
 
   /**
-   * Crea un nuevo cliente
+   * Crea un nuevo cliente y opcionalmente crea el primer admin
    */
   async create(dto: CreateClientDto): Promise<Client> {
-    const client = new this.clientModel(dto);
+    const client = new this.clientModel({
+      name: dto.name,
+      displayName: dto.displayName || dto.name, // Si no hay displayName, usar name
+      code: dto.code,
+      description: dto.description,
+      contactEmail: dto.contactEmail,
+      contactPhone: dto.contactPhone,
+    });
     await client.save();
     
     this.logger.log(`Cliente creado: ${client.name} (ID: ${client._id})`);
+
+    // Crear admin inicial si se especifica
+    if (dto.initialAdmin) {
+      try {
+        await this.authService.register({
+          email: dto.initialAdmin.email,
+          password: dto.initialAdmin.password,
+          firstName: dto.initialAdmin.firstName,
+          lastName: dto.initialAdmin.lastName,
+          role: UserRole.CLIENT_ADMIN,
+          clientId: client._id.toString(),
+        });
+        this.logger.log(`Admin inicial creado para tenant ${client.name}: ${dto.initialAdmin.email}`);
+      } catch (error) {
+        this.logger.error(`Error al crear admin inicial para tenant ${client.name}: ${error.message}`);
+        // No fallar la creación del tenant si el admin falla, solo loggear
+      }
+    }
+
     return client;
   }
 
@@ -51,7 +83,7 @@ export class ClientService {
       clients.map(async (client) => {
         const projectsCount = await Project.countDocuments({ 
           clientId: client._id,
-          isActive: true 
+          projectStatus: ProjectStatus.ACTIVE 
         });
         return {
           ...client,

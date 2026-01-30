@@ -20,7 +20,7 @@ import { HttpClient } from '@angular/common/http';
     ReactiveFormsModule,
     MatDialogModule,
     MatFormFieldModule,
-    MatInputModule,
+    MatSelectModule
     MatButtonModule,
     MatIconModule,
     MatProgressSpinnerModule,
@@ -30,17 +30,7 @@ import { HttpClient } from '@angular/common/http';
     <h2 mat-dialog-title>
       <mat-icon>{{ data?.area ? 'edit' : 'add' }}</mat-icon>
       {{ data?.area ? 'Editar Área' : 'Nueva Área' }}
-    </h2>
-    
-    <mat-dialog-content>
-      <form [formGroup]="areaForm">
-        @if (!data?.clientId) {
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Cliente *</mat-label>
-            <mat-select formControlName="clientId" required>
-              @for (client of clients; track client._id) {
-                <mat-option [value]="client._id">{{ client.name }}</mat-option>
-              }
+        <!-- Cliente eliminado: el tenant se determina automáticamente por contexto -->
             </mat-select>
             <mat-error>Selecciona un cliente</mat-error>
           </mat-form-field>
@@ -56,30 +46,33 @@ import { HttpClient } from '@angular/common/http';
           <mat-label>Descripción</mat-label>
           <textarea matInput formControlName="description" rows="3"></textarea>
         </mat-form-field>
+
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Prefijo de Hallazgos (Opcional)</mat-label>
+          <input matInput formControlName="findingCodePrefix" placeholder="Ej: CIBER, APP, CLOUD" style="text-transform: uppercase">
+          <mat-icon matSuffix matTooltip="Prefijo personalizado para los códigos de hallazgos de este área">help_outline</mat-icon>
+          <mat-hint>Si se deja vacío, se usará la configuración global</mat-hint>
+        </mat-form-field>
       </form>
     </mat-dialog-content>
 
     <mat-dialog-actions align="end">
       <button mat-button (click)="dialogRef.close()">Cancelar</button>
-      <button mat-raised-button color="primary" 
-              (click)="save()" 
-              [disabled]="!areaForm.valid || saving">
-        @if (saving) {
-          <mat-spinner diameter="20"></mat-spinner>
-        } @else {
+        MatFormFieldModule,
+        MatInputModule,
+        MatButtonModule,
+        MatIconModule,
+        MatProgressSpinnerModule
           <mat-icon>save</mat-icon>
         }
         Guardar
       </button>
     </mat-dialog-actions>
-  `,
-  styles: [`
-    .full-width {
-      width: 100%;
-      margin-bottom: 16px;
+        </h2>
     }
 
     mat-dialog-content {
+            <!-- Cliente eliminado: el tenant se determina automáticamente por contexto -->
       min-width: 450px;
       padding: 24px;
     }
@@ -107,25 +100,15 @@ export class AreaDialogComponent {
   constructor() {
     // Inicializa con datos existentes cuando se edita
     this.areaForm = this.fb.group({
-      clientId: [this.data?.clientId || this.data?.area?.clientId || '', Validators.required],
       name: [this.data?.area?.name || '', Validators.required],
-      description: [this.data?.area?.description || '']
+      description: [this.data?.area?.description || ''],
+      findingCodePrefix: [this.data?.area?.findingCodePrefix || '']
     });
 
-    // Si no viene clientId fijo, cargar lista para selector
-    if (!this.data?.clientId) {
-      this.loadClients();
-    }
+    // El tenant se toma desde el contexto (JWT/header); no se requiere cargar clientes.
   }
 
-  loadClients(): void {
-    // Carga catalogo de clientes para asignacion de area
-    this.http.get<any[]>('http://localhost:3000/api/clients').subscribe({
-      next: (data) => {
-        this.clients = data;
-      }
-    });
-  }
+  // Cliente/tenant ya no se selecciona aquí; se usa el contexto.
 
   save(): void {
     // Guarda cambios en modo crear o editar

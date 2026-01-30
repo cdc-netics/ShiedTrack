@@ -23,6 +23,21 @@ export class ProjectService {
    * Crea un nuevo proyecto
    */
   async create(dto: CreateProjectDto): Promise<Project> {
+    // Generar código automático si no viene en el DTO
+    if (!dto.code) {
+      const year = new Date().getFullYear();
+      const count = await this.projectModel.countDocuments();
+      dto.code = `PROJ-${year}-${String(count + 1).padStart(3, '0')}`;
+    }
+
+    // MULTI-AREA LOGIC: Sync areaId and areaIds
+    if (dto.areaId && (!dto.areaIds || dto.areaIds.length === 0)) {
+        dto.areaIds = [dto.areaId];
+    }
+    if (dto.areaIds && dto.areaIds.length > 0) {
+        dto.areaId = dto.areaIds[0]; // Backward compatibility
+    }
+
     const project = new this.projectModel(dto);
     await project.save();
     
@@ -36,48 +51,77 @@ export class ProjectService {
    */
   async findAll(clientId?: string, status?: ProjectStatus, currentUser?: any): Promise<Project[]> {
     const query: any = {};
+    const restrictedByArea = ['AREA_ADMIN', 'ANALYST', 'VIEWER'].includes(currentUser?.role);
+    const areaIds = currentUser?.areaIds?.map((id: any) => id.toString()) || [];
     
     // SEGURIDAD MULTI-TENANT: Validar scope del usuario
-    if (currentUser) {
-      const isGlobalAdmin = ['OWNER', 'PLATFORM_ADMIN'].includes(currentUser.role);
-      
-      if (!isGlobalAdmin) {
-        // Usuario limitado a su tenant
-        if (!currentUser.clientId) {
-          throw new BadRequestException('Usuario sin clientId asignado');
-        }
-        query.clientId = currentUser.clientId;
-        
-        // Validar que no intente acceder a otro cliente
-        if (clientId && clientId !== currentUser.clientId.toString()) {
-          throw new BadRequestException('No tiene acceso a este cliente');
-        }
-      } else if (clientId) {
-        // Admin global puede filtrar por cliente específico
-        query.clientId = clientId;
+    // Nota: El aislamiento por tenant se aplica automáticamente por el plugin de Mongoose.
+    // No forzamos clientId aquí para evitar dependencias al modelo "Client".
+    // Si se recibe clientId como parámetro (uso legacy), lo usamos para filtrar por tenantId.
+    if (clientId) {
+      query.tenantId = clientId;
+    }
+    
+    // Filtro por áreas para roles restringidos
+    if (restrictedByArea) {
+      if (!areaIds.length) {
+        return []; // Sin áreas asignadas => sin acceso
       }
-    } else if (clientId) {
-      query.clientId = clientId;
+      // Support legacy areaId and new areaIds
+      query.$or = [
+        { areaIds: { $in: areaIds } },
+        { areaId: { $in: areaIds } }
+      ];
     }
     
     if (status) query.projectStatus = status;
 
-    return this.projectModel.find(query)
+    const projects = await this.projectModel.find(query)
       .populate('clientId', 'name code')
       .populate('areaId', 'name')
+      .populate('areaIds', 'name')
       .sort({ createdAt: -1 });
+
+    // Agregar contador de hallazgos para cada proyecto
+    const projectsWithCount = await Promise.all(
+      projects.map(async (project) => {
+        const findingsCount = await this.findingModel.countDocuments({ projectId: project._id });
+        return {
+          ...project.toObject(),
+          findingsCount
+        };
+      })
+    );
+
+    return projectsWithCount as any;
   }
 
   /**
    * Busca proyecto por ID
    */
-  async findById(id: string): Promise<Project> {
+  async findById(id: string, currentUser?: any): Promise<Project> {
     const project = await this.projectModel.findById(id)
       .populate('clientId', 'name code')
-      .populate('areaId', 'name');
+      .populate('areaId', 'name')
+      .populate('areaIds', 'name');
     
     if (!project) {
       throw new NotFoundException(`Proyecto con ID ${id} no encontrado`);
+    }
+
+    // Validar aislamiento por área para roles restringidos
+    if (currentUser && ['AREA_ADMIN', 'ANALYST', 'VIEWER'].includes(currentUser.role)) {
+      const allowedAreas = currentUser.areaIds?.map((a: any) => a.toString()) || [];
+      const projectAreas = project.areaIds?.map((a: any) => a._id?.toString() || a.toString()) || [];
+      const legacyArea = (project.areaId as any)?._id?.toString() || (project.areaId as any)?.toString();
+
+      const hasAccess = allowedAreas.some((area: string) => 
+        projectAreas.includes(area) || legacyArea === area
+      );
+
+      if (!hasAccess) {
+        throw new BadRequestException('No tiene acceso a este proyecto');
+      }
     }
     return project;
   }
@@ -106,6 +150,11 @@ export class ProjectService {
         nextRetestAt: undefined,
         notify: undefined,
       };
+    }
+
+    // Sync legacy areaId if areaIds is updated
+    if (dto.areaIds && dto.areaIds.length > 0) {
+        (dto as any).areaId = dto.areaIds[0];
     }
 
     // Actualizar proyecto
@@ -195,5 +244,105 @@ export class ProjectService {
     await this.projectModel.findByIdAndDelete(id);
 
     this.logger.warn(`Proyecto ELIMINADO permanentemente: ${project.name} (ID: ${id}) con ${findingsCount} hallazgos`);
+  }
+
+  /**
+   * Fusiona dos proyectos: mueve todos los hallazgos del proyecto origen al destino
+   * y elimina el proyecto origen
+   * @param sourceProjectId - ID del proyecto origen (será eliminado)
+   * @param targetProjectId - ID del proyecto destino (recibirá los hallazgos)
+   */
+  async mergeProjects(sourceProjectId: string, targetProjectId: string): Promise<any> {
+    // Validar que los proyectos existan
+    const sourceProject = await this.projectModel.findById(sourceProjectId);
+    const targetProject = await this.projectModel.findById(targetProjectId);
+
+    if (!sourceProject) {
+      throw new NotFoundException(`Proyecto origen con ID ${sourceProjectId} no encontrado`);
+    }
+
+    if (!targetProject) {
+      throw new NotFoundException(`Proyecto destino con ID ${targetProjectId} no encontrado`);
+    }
+
+    if (sourceProjectId === targetProjectId) {
+      throw new BadRequestException('No se puede fusionar un proyecto consigo mismo');
+    }
+
+    // Contar hallazgos antes de mover
+    const findingsCount = await this.findingModel.countDocuments({ projectId: sourceProjectId });
+
+    this.logger.log(`Iniciando fusión de proyectos: "${sourceProject.name}" → "${targetProject.name}" (${findingsCount} hallazgos)`);
+
+    // Mover TODOS los hallazgos del proyecto origen al destino
+    if (findingsCount > 0) {
+      const result = await this.findingModel.updateMany(
+        { projectId: sourceProjectId },
+        { 
+          $set: { 
+            projectId: targetProjectId,
+            // Preservar metadatos importantes del proyecto origen en los hallazgos
+            mergedFrom: {
+              projectId: sourceProjectId,
+              projectName: sourceProject.name,
+              projectCode: sourceProject.code,
+              mergedAt: new Date()
+            }
+          } 
+        }
+      );
+
+      this.logger.log(`${result.modifiedCount} hallazgos movidos de "${sourceProject.name}" a "${targetProject.name}"`);
+    }
+
+    // Actualizar contadores del proyecto destino
+    const updatedFindingsCount = await this.findingModel.countDocuments({ projectId: targetProjectId });
+    await this.projectModel.findByIdAndUpdate(targetProjectId, {
+      $set: { findingsCount: updatedFindingsCount }
+    });
+
+    // Preservar información del proyecto origen antes de eliminarlo
+    const mergeHistory = {
+      sourceProject: {
+        _id: sourceProject._id,
+        name: sourceProject.name,
+        code: sourceProject.code,
+        description: sourceProject.description,
+        clientId: sourceProject.clientId,
+        areaIds: sourceProject.areaIds,
+        serviceArchitecture: sourceProject.serviceArchitecture,
+        findingsCount: findingsCount
+      },
+      mergedAt: new Date(),
+      findingsMoved: findingsCount
+    };
+
+    // Agregar historia de fusión al proyecto destino
+    await this.projectModel.findByIdAndUpdate(targetProjectId, {
+      $push: { 
+        mergeHistory: mergeHistory 
+      }
+    });
+
+    // Eliminar el proyecto origen permanentemente
+    await this.projectModel.findByIdAndDelete(sourceProjectId);
+
+    this.logger.warn(`Proyecto "${sourceProject.name}" (ID: ${sourceProjectId}) fusionado y ELIMINADO`);
+
+    return {
+      success: true,
+      message: `Proyectos fusionados exitosamente`,
+      sourceProject: {
+        id: sourceProjectId,
+        name: sourceProject.name
+      },
+      targetProject: {
+        id: targetProjectId,
+        name: targetProject.name,
+        newFindingsCount: updatedFindingsCount
+      },
+      findingsMoved: findingsCount,
+      mergedAt: mergeHistory.mergedAt
+    };
   }
 }

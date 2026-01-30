@@ -24,20 +24,22 @@ export class ProjectController {
 
   @Get()
   @ApiOperation({ summary: 'Listar proyectos con filtros opcionales' })
-  @ApiQuery({ name: 'clientId', required: false })
+  @ApiQuery({ name: 'tenantId', required: false })
   @ApiQuery({ name: 'status', required: false, enum: ProjectStatus })
   async findAll(
-    @Query('clientId') clientId?: string,
+    @Query('tenantId') tenantId?: string,
     @Query('status') status?: ProjectStatus,
     @CurrentUser() user?: any
   ) {
-    return this.projectService.findAll(clientId, status, user);
+    // Backward compatibility: allow legacy clientId query as tenantId
+    const effectiveTenantId = tenantId ?? (user?.clientId?.toString());
+    return this.projectService.findAll(effectiveTenantId, status, user);
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Obtener proyecto por ID' })
-  async findById(@Param('id') id: string) {
-    return this.projectService.findById(id);
+  async findById(@Param('id') id: string, @CurrentUser() user?: any) {
+    return this.projectService.findById(id, user);
   }
 
   @Put(':id')
@@ -46,7 +48,7 @@ export class ProjectController {
     summary: 'Actualizar proyecto',
     description: 'Al cambiar a CLOSED, cierra automáticamente todos los hallazgos abiertos'
   })
-  async update(@Param('id') id: string, @Body() dto: UpdateProjectDto) {
+  async update(@Param('id') id: string, @Body() dto: UpdateProjectDto, @CurrentUser() user?: any) {
     return this.projectService.update(id, dto);
   }
 
@@ -73,5 +75,17 @@ export class ProjectController {
   async hardDelete(@Param('id') id: string) {
     await this.projectService.hardDelete(id);
     return { message: 'Proyecto eliminado permanentemente' };
+  }
+
+  @Post('merge')
+  @Roles(UserRole.OWNER, UserRole.PLATFORM_ADMIN)
+  @ApiOperation({ 
+    summary: 'Fusionar dos proyectos (mueve hallazgos de origen a destino y elimina origen)',
+    description: 'Acción destructiva: todos los hallazgos del proyecto origen se mueven al destino y el proyecto origen se elimina'
+  })
+  async mergeProjects(
+    @Body() body: { sourceProjectId: string; targetProjectId: string }
+  ) {
+    return this.projectService.mergeProjects(body.sourceProjectId, body.targetProjectId);
   }
 }

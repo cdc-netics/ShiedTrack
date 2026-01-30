@@ -33,6 +33,30 @@ export class FindingService {
 
   constructor(private http: HttpClient) {}
 
+
+  /**
+   * Cierra múltiples hallazgos masivamente
+   */
+  bulkClose(findingIds: string[]) {
+    return this.http.post(`${this.API_URL}/bulk-close`, { findingIds })
+      .pipe(
+        tap(() => {
+          // Recargar hallazgos para reflejar cambios
+          const currentFindings = this.findings() || [];
+          // O más simple, recargar todo:
+          // this.loadFindings(); 
+          // O actualizar localmente el estado:
+           this.findingsSignal.update(findings => 
+            findings.map(f => 
+              findingIds.includes(f._id) 
+                ? { ...f, status: 'Closed' } 
+                : f
+            )
+          );
+        })
+      );
+  }
+
   /**
    * Carga hallazgos con filtros opcionales
    */

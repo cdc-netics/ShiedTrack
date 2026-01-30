@@ -40,6 +40,22 @@ export class CreateFindingDto {
   @IsString()
   affectedAsset?: string;
 
+  @ApiPropertyOptional({ type: [String], description: 'Lista de activos afectados' })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  affectedAssets?: string[];
+
+  @ApiPropertyOptional({ enum: FindingSeverity, description: 'Nivel de riesgo de negocio' })
+  @IsOptional()
+  @IsEnum(FindingSeverity)
+  businessRisk?: FindingSeverity;
+
+  @ApiPropertyOptional({ description: 'Justificación del nivel de riesgo' })
+  @IsOptional()
+  @IsString()
+  riskJustification?: string;
+
   @ApiPropertyOptional({ example: 7.5, description: 'Puntaje CVSS' })
   @IsOptional()
   @IsNumber()
@@ -70,6 +86,12 @@ export class CreateFindingDto {
   @IsArray()
   @IsString({ each: true })
   controls?: string[];
+
+  @ApiPropertyOptional({ type: [String], description: 'Referencias externas' })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  references?: string[];
 
   @ApiPropertyOptional({ type: [String], example: ['web', 'injection'] })
   @IsOptional()
@@ -116,6 +138,22 @@ export class UpdateFindingDto {
   @IsOptional()
   @IsString()
   affectedAsset?: string;
+
+  @ApiPropertyOptional({ type: [String] })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  affectedAssets?: string[];
+
+  @ApiPropertyOptional({ enum: FindingSeverity })
+  @IsOptional()
+  @IsEnum(FindingSeverity)
+  businessRisk?: FindingSeverity;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  riskJustification?: string;
 
   @ApiPropertyOptional()
   @IsOptional()

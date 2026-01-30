@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document } from 'mongoose';
+import { Document, Types } from 'mongoose';
 
 /**
  * Entidad Cliente (Tenant)
@@ -10,6 +10,9 @@ import { Document } from 'mongoose';
 export class Client extends Document {
   @Prop({ required: true, unique: true })
   name: string;
+
+  @Prop()
+  displayName?: string; // Nombre corto para mostrar en UI (ej: "ACME")
 
   @Prop({ unique: true, sparse: true })
   code?: string; // Código identificador corto (ej: CLI001)
@@ -25,6 +28,10 @@ export class Client extends Document {
 
   @Prop({ default: true })
   isActive: boolean;
+
+  // Multi-tenant: ESTE ES EL TENANT RAÍZ
+  // Los clientes SON tenants, no tienen tenantId padre
+  // Solo se usa tenantId si un cliente es sub-tenant de otro (arquitectura avanzada)
 
   // Timestamps automáticos: createdAt, updatedAt
 }

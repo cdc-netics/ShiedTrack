@@ -8,6 +8,8 @@ import * as qrcode from 'qrcode';
 import { User } from './schemas/user.schema';
 import { RegisterUserDto, LoginDto, EnableMfaDto, UpdateUserDto } from './dto/auth.dto';
 import { UserRole } from '../../common/enums';
+import { UserAreaService } from './user-area.service';
+import { EmailService } from '../email/email.service';
 
 /**
  * Servicio de autenticación y gestión de usuarios
@@ -20,6 +22,8 @@ export class AuthService {
   constructor(
     @InjectModel(User.name) private userModel: Model<User>,
     private jwtService: JwtService,
+    private userAreaService: UserAreaService,
+    private emailService: EmailService,
   ) {}
 
   /**
@@ -65,10 +69,39 @@ export class AuthService {
       password: hashedPassword,
     });
 
-    await user.save();
-    this.logger.log(`Usuario registrado: ${user.email} con rol ${user.role}${currentUser ? ` por ${currentUser.email}` : ''}`);
+    const savedUser = await user.save();
 
-    return user;
+    // Si se proporcionaron áreas, asignarlas
+    if (dto.areaIds && dto.areaIds.length > 0) {
+      try {
+        const assignedBy = currentUser ? currentUser.userId : savedUser._id.toString();
+        await this.userAreaService.assignMultipleAreas(
+          savedUser._id.toString(),
+          dto.areaIds,
+          assignedBy
+        );
+      } catch (areaError) {
+        this.logger.error(`Error asignando áreas al usuario ${savedUser._id}: ${areaError.message}`);
+      }
+    }
+
+    this.logger.log(`Usuario registrado: ${savedUser.email} con rol ${savedUser.role}${currentUser ? ` por ${currentUser.email}` : ''}`);
+
+    // 📧 Enviar email de bienvenida
+    try {
+      await this.emailService.notifyUserCreated(
+        savedUser.email,
+        `${savedUser.firstName} ${savedUser.lastName}`,
+        savedUser.role,
+        dto.password
+      );
+      this.logger.log(`Email de bienvenida enviado a ${savedUser.email}`);
+    } catch (emailError) {
+      this.logger.warn(`No se pudo enviar email de bienvenida a ${savedUser.email}: ${emailError.message}`);
+      // No fallar el registro si el email falla
+    }
+
+    return savedUser;
   }
 
   /**
@@ -119,6 +152,18 @@ export class AuthService {
 
     // Actualizar último login
     user.lastLogin = new Date();
+    
+    // Asegurar que el usuario tiene un activeTenantId configurado
+    // Para OWNER/PLATFORM_ADMIN: no es obligatorio
+    // Para otros roles: usar clientId, o el primer tenantId disponible
+    if (!user.activeTenantId && (user.clientId || (user.tenantIds && user.tenantIds.length > 0))) {
+      if (user.clientId) {
+        user.activeTenantId = user.clientId;
+      } else if (user.tenantIds && user.tenantIds.length > 0) {
+        user.activeTenantId = user.tenantIds[0];
+      }
+    }
+    
     await user.save();
 
     // Generar JWT
@@ -136,6 +181,8 @@ export class AuthService {
         lastName: user.lastName,
         role: user.role,
         clientId: user.clientId,
+        tenantIds: user.tenantIds,
+        activeTenantId: user.activeTenantId,
         mfaEnabled: user.mfaEnabled,
       },
     };
@@ -253,10 +300,19 @@ export class AuthService {
    * Actualiza un usuario
    */
   async updateUser(userId: string, dto: UpdateUserDto): Promise<User> {
-    const user = await this.userModel.findByIdAndUpdate(userId, dto, { new: true }).select('-password -mfaSecret');
+    const { areaIds, ...updateData } = dto;
+    const user = await this.userModel.findByIdAndUpdate(userId, updateData, { new: true }).select('-password -mfaSecret');
     
     if (!user) {
       throw new BadRequestException('Usuario no encontrado');
+    }
+
+    if (areaIds) {
+      try {
+        await this.userAreaService.replaceUserAreas(userId, areaIds, userId);
+      } catch (error) {
+        this.logger.error(`Error actualizando áreas para usuario ${userId}: ${error.message}`);
+      }
     }
 
     this.logger.log(`Usuario actualizado: ${user.email}`);
@@ -265,9 +321,99 @@ export class AuthService {
 
   /**
    * Lista usuarios (con filtros opcionales)
+   * Solo muestra usuarios activos (no eliminados lógicamente)
    */
   async findAll(clientId?: string): Promise<User[]> {
-    const query = clientId ? { clientId } : {};
+    const query: any = { isDeleted: { $ne: true } };
+    if (clientId) {
+      query.clientId = clientId;
+    }
     return this.userModel.find(query).select('-password -mfaSecret');
+  }
+
+  /**
+   * Eliminar usuario (SOFT DELETE - no eliminación física)
+   */
+  async deleteUser(userId: string, currentUser: any): Promise<{ message: string }> {
+    const user = await this.userModel.findById(userId);
+    if (!user) {
+      throw new BadRequestException('Usuario no encontrado');
+    }
+
+    // Prevenir eliminación del OWNER
+    if (user.role === UserRole.OWNER) {
+      throw new ForbiddenException('No se puede eliminar el usuario OWNER');
+    }
+
+    // Marcar como eliminado (soft delete)
+    user.isDeleted = true;
+    user.isActive = false;
+    user.deletedAt = new Date();
+    user.deletedBy = currentUser.userId;
+    await user.save();
+
+    this.logger.warn(`Usuario marcado como eliminado: ${user.email} por ${currentUser.email}`);
+    
+    return { message: 'Usuario desactivado exitosamente' };
+  }
+
+  /**
+   * Reactivar usuario eliminado
+   */
+  async reactivateUser(userId: string): Promise<User> {
+    const user = await this.userModel.findById(userId);
+    if (!user) {
+      throw new BadRequestException('Usuario no encontrado');
+    }
+
+    user.isDeleted = false;
+    user.isActive = true;
+    user.deletedAt = undefined;
+    user.deletedBy = undefined;
+    await user.save();
+
+    this.logger.log(`Usuario reactivado: ${user.email}`);
+    
+    return this.userModel.findById(userId).select('-password -mfaSecret');
+  }
+
+  /**
+   * Cambiar contexto de tenant sin logout (OWNER/PLATFORM_ADMIN)
+   * Genera un nuevo JWT con el clientId del tenant seleccionado
+   */
+  async switchTenant(clientId: string, currentUser: any): Promise<{ accessToken: string; client: any }> {
+    // Solo OWNER y PLATFORM_ADMIN pueden cambiar de tenant
+    if (!['OWNER', 'PLATFORM_ADMIN'].includes(currentUser.role)) {
+      throw new ForbiddenException('No tiene permisos para cambiar de tenant');
+    }
+
+    // Verificar que el cliente existe
+    const Client = this.userModel.db.collection('clients');
+    const client = await Client.findOne({ _id: new this.userModel.base.Types.ObjectId(clientId) });
+    
+    if (!client) {
+      throw new BadRequestException('Cliente no encontrado');
+    }
+
+    // Generar nuevo JWT con el clientId del tenant
+    const payload = { 
+      sub: currentUser.userId, 
+      email: currentUser.email, 
+      role: currentUser.role,
+      clientId: clientId, // Nuevo contexto
+    };
+    
+    const accessToken = this.jwtService.sign(payload);
+
+    this.logger.log(`${currentUser.email} cambió a tenant: ${client.name} (${clientId})`);
+
+    return {
+      accessToken,
+      client: {
+        _id: client._id,
+        name: client.name,
+        email: client.email,
+      },
+    };
   }
 }

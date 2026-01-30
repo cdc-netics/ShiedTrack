@@ -1,0 +1,5 @@
+Area 1: Aplicaciones (695ae01dca9ab65d3dd6d771)
+Area 2: Infraestructura (695adff39356a25b9636a8bc)
+Analyst ID: 695ae01dca9ab65d3dd6d776
+Assigned Area 1 to Analyst
+Analyst sees 0 projects

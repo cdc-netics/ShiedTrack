@@ -1,4 +1,4 @@
-import { Component, signal } from '@angular/core';
+import { Component, OnInit, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatTableModule } from '@angular/material/table';
 import { MatChipsModule } from '@angular/material/chips';
@@ -6,7 +6,13 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatIconModule } from '@angular/material/icon';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
+import { MatButtonModule } from '@angular/material/button';
 import { FormsModule } from '@angular/forms';
+import { HttpClient } from '@angular/common/http';
+import { environment } from '../../../../environments/environment';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 
 @Component({
   selector: 'app-audit-log',
@@ -19,52 +25,67 @@ import { FormsModule } from '@angular/forms';
     MatInputModule,
     MatSelectModule,
     MatIconModule,
-    FormsModule
+    MatProgressBarModule,
+    MatPaginatorModule,
+    MatButtonModule,
+    FormsModule,
+    MatSnackBarModule
   ],
   template: `
     <div class="audit-container">
       <h1>📜 Registro de Auditoría</h1>
 
+      @if (loading()) {
+        <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+      }
+
       <div class="filters">
         <mat-form-field appearance="outline">
           <mat-label>Usuario</mat-label>
-          <input matInput placeholder="Buscar por usuario...">
+          <input matInput [(ngModel)]="userFilter" placeholder="Buscar por usuario...">
           <mat-icon matSuffix>search</mat-icon>
         </mat-form-field>
 
         <mat-form-field appearance="outline">
           <mat-label>Acción</mat-label>
-          <mat-select>
+          <mat-select [(ngModel)]="actionFilter">
             <mat-option value="">Todas</mat-option>
             <mat-option value="CREATE">Crear</mat-option>
             <mat-option value="UPDATE">Actualizar</mat-option>
             <mat-option value="DELETE">Eliminar</mat-option>
             <mat-option value="LOGIN">Login</mat-option>
             <mat-option value="LOGOUT">Logout</mat-option>
+            <mat-option value="EXPORT">Exportar</mat-option>
           </mat-select>
         </mat-form-field>
 
         <mat-form-field appearance="outline">
           <mat-label>Entidad</mat-label>
-          <mat-select>
+          <mat-select [(ngModel)]="entityFilter">
             <mat-option value="">Todas</mat-option>
             <mat-option value="Finding">Hallazgo</mat-option>
             <mat-option value="Project">Proyecto</mat-option>
             <mat-option value="User">Usuario</mat-option>
             <mat-option value="Client">Cliente</mat-option>
+            <mat-option value="Area">Área</mat-option>
           </mat-select>
         </mat-form-field>
+
+        <button mat-raised-button color="primary" (click)="loadLogs()">
+          <mat-icon>refresh</mat-icon>
+          Filtrar
+        </button>
       </div>
 
       <table mat-table [dataSource]="auditLogs()" class="audit-table">
-        <ng-container matColumnDef="timestamp">
+        <ng-container matColumnDef="createdAt">
           <th mat-header-cell *matHeaderCellDef>Fecha/Hora</th>
-          <td mat-cell *matCellDef="let log">{{ log.timestamp }}</td>
+          <td mat-cell *matCellDef="let log">{{ log.createdAt | date:'medium' }}</td>
         </ng-container>
 
-        <ng-container matColumnDef="user">
+        <ng-container matColumnDef="userId">
           <th mat-header-cell *matHeaderCellDef>Usuario</th>
-          <td mat-cell *matCellDef="let log">{{ log.user }}</td>
+          <td mat-cell *matCellDef="let log">{{ log.userId }}</td>
         </ng-container>
 
         <ng-container matColumnDef="action">
@@ -76,9 +97,9 @@ import { FormsModule } from '@angular/forms';
           </td>
         </ng-container>
 
-        <ng-container matColumnDef="entity">
+        <ng-container matColumnDef="entityType">
           <th mat-header-cell *matHeaderCellDef>Entidad</th>
-          <td mat-cell *matCellDef="let log">{{ log.entity }}</td>
+          <td mat-cell *matCellDef="let log">{{ log.entityType }}</td>
         </ng-container>
 
         <ng-container matColumnDef="entityId">
@@ -88,12 +109,23 @@ import { FormsModule } from '@angular/forms';
 
         <ng-container matColumnDef="description">
           <th mat-header-cell *matHeaderCellDef>Descripción</th>
-          <td mat-cell *matCellDef="let log">{{ log.description }}</td>
+          <td mat-cell *matCellDef="let log">{{ log.description || '-' }}</td>
         </ng-container>
 
         <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
         <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
       </table>
+
+      @if (auditLogs().length === 0 && !loading()) {
+        <div class="no-data">No hay registros de auditoría</div>
+      }
+
+      <mat-paginator
+        [length]="totalRecords()"
+        [pageSize]="pageSize"
+        [pageSizeOptions]="[10, 25, 50, 100]"
+        (page)="onPageChange($event)">
+      </mat-paginator>
     </div>
   `,
   styles: [`
@@ -147,37 +179,86 @@ import { FormsModule } from '@angular/forms';
       background: #f5f5f5;
       color: #616161;
     }
+
+    .filters {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 24px;
+      align-items: flex-end;
+    }
+
+    mat-form-field {
+      flex: 1;
+      min-width: 200px;
+    }
+
+    button {
+      height: 56px;
+    }
+
+    .no-data {
+      text-align: center;
+      padding: 48px 16px;
+      color: #999;
+      font-size: 16px;
+    }
   `]
 })
-export class AuditLogComponent {
-  // Columnas fijas del registro
-  displayedColumns = ['timestamp', 'user', 'action', 'entity', 'entityId', 'description'];
+export class AuditLogComponent implements OnInit {
+  private http = inject(HttpClient);
+  private snackBar = inject(MatSnackBar);
+
+  // UI State
+  loading = signal(false);
+  displayedColumns = ['createdAt', 'userId', 'action', 'entityType', 'entityId', 'description'];
+  auditLogs = signal<any[]>([]);
+  totalRecords = signal(0);
   
-  // Datos mock para UI mientras se integra backend
-  auditLogs = signal([
-    {
-      timestamp: '2025-12-22 10:45:23',
-      user: 'Admin User',
-      action: 'CREATE',
-      entity: 'Finding',
-      entityId: 'FND-001',
-      description: 'Creó hallazgo SQL Injection en proyecto Web App'
-    },
-    {
-      timestamp: '2025-12-22 10:30:15',
-      user: 'Admin User',
-      action: 'LOGIN',
-      entity: 'User',
-      entityId: 'admin@shieldtrack.com',
-      description: 'Inicio de sesión exitoso'
-    },
-    {
-      timestamp: '2025-12-22 09:15:42',
-      user: 'Auditor 1',
-      action: 'UPDATE',
-      entity: 'Finding',
-      entityId: 'FND-002',
-      description: 'Actualizó estado a CLOSED'
-    }
-  ]);
+  // Filters
+  userFilter = '';
+  actionFilter = '';
+  entityFilter = '';
+  pageSize = 25;
+  currentPage = 0;
+
+  ngOnInit() {
+    this.loadLogs();
+  }
+
+  loadLogs(): void {
+    this.loading.set(true);
+    const params: any = {
+      limit: 100,
+    };
+
+    if (this.actionFilter) params.action = this.actionFilter;
+    if (this.entityFilter) params.entityType = this.entityFilter;
+
+    this.http.get<any[]>(`${environment.apiUrl}/audit/logs`, { params })
+      .subscribe({
+        next: (logs) => {
+          // Filtrar por usuario en el cliente si es necesario
+          let filtered = logs;
+          if (this.userFilter) {
+            filtered = logs.filter(log => 
+              log.userId?.toLowerCase().includes(this.userFilter.toLowerCase())
+            );
+          }
+          
+          this.auditLogs.set(filtered);
+          this.totalRecords.set(filtered.length);
+          this.loading.set(false);
+        },
+        error: (err: any) => {
+          console.error('Error cargando logs de auditoría:', err);
+          this.snackBar.open('Error cargando logs de auditoría', 'Cerrar', { duration: 3000 });
+          this.loading.set(false);
+        }
+      });
+  }
+
+  onPageChange(event: PageEvent) {
+    this.currentPage = event.pageIndex;
+    this.pageSize = event.pageSize;
+  }
 }
