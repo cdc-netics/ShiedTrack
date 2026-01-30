@@ -39,10 +39,26 @@ export class User extends Document {
   @Prop({ default: true })
   isActive: boolean;
 
+  @Prop({ default: false })
+  isDeleted: boolean; // Soft delete - No eliminar usuarios, solo desactivar
+
+  @Prop()
+  deletedAt?: Date; // Fecha de eliminación lógica
+
+  @Prop({ type: Types.ObjectId, ref: 'User' })
+  deletedBy?: Types.ObjectId; // Usuario que realizó la eliminación
+
   @Prop()
   lastLogin?: Date;
 
   // Timestamps automáticos: createdAt, updatedAt
+    // Multi-tenant: lista de tenants permitidos para el usuario
+    @Prop({ type: [Types.ObjectId], ref: 'Tenant', default: [] })
+    tenantIds?: Types.ObjectId[];
+
+    // Tenant activo (contexto actual)
+    @Prop({ type: Types.ObjectId, ref: 'Tenant' })
+    activeTenantId?: Types.ObjectId;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

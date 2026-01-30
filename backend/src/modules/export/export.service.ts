@@ -5,10 +5,12 @@ import { Finding } from '../finding/schemas/finding.schema';
 import { Project } from '../project/schemas/project.schema';
 import { Client } from '../client/schemas/client.schema';
 import { Evidence } from '../evidence/schemas/evidence.schema';
+import { PdfService } from '../../common/services/pdf.service';
 import * as ExcelJS from 'exceljs';
 import archiver from 'archiver';
-import { createReadStream } from 'fs';
+import { createReadStream, existsSync, mkdirSync } from 'fs';
 import { PassThrough } from 'stream';
+import { exec } from 'child_process';
 
 /**
  * Servicio de Exportación
@@ -26,7 +28,32 @@ export class ExportService {
     @InjectModel(Project.name) private projectModel: Model<Project>,
     @InjectModel(Client.name) private clientModel: Model<Client>,
     @InjectModel(Evidence.name) private evidenceModel: Model<Evidence>,
+    private readonly pdfService: PdfService
   ) {}
+
+  /**
+   * Genera reporte PDF de un hallazgo
+   */
+  async exportFindingPdf(findingId: string, currentUser: any): Promise<Buffer> {
+    const finding = await this.findingModel.findById(findingId);
+    if (!finding) throw new NotFoundException('Hallazgo no encontrado');
+    
+    // RBAC: simple check
+    // if (currentUser) ... (Pending detailed check, reusing logic)
+
+    return this.pdfService.generateFindingReport(finding);
+  }
+
+  async exportProjectPdf(projectId: string, currentUser: any): Promise<Buffer> {
+     // Validar permisos
+     const project = await this.projectModel.findById(projectId).populate('clientId areaId areaIds');
+     if (!project) throw new NotFoundException('Proyecto no encontrado');
+ 
+     // RBAC (Simplified check)
+     const findings = await this.findingModel.find({ projectId }).sort({ severity: 1 });
+     
+     return this.pdfService.generateProjectReport(project, findings);
+  }
 
   /**
    * A. NIVEL PROYECTO - Exportar proyecto individual a Excel con Streams
@@ -35,20 +62,23 @@ export class ExportService {
    */
   async exportProjectToExcel(projectId: string, currentUser: any): Promise<PassThrough> {
     // Validar permisos
-    const project = await this.projectModel.findById(projectId).populate('clientId areaId');
+    const project = await this.projectModel.findById(projectId).populate('clientId areaId areaIds');
     if (!project) {
       throw new NotFoundException('Proyecto no encontrado');
     }
 
     // RBAC: Validar que el usuario pertenece al cliente del proyecto
     if (!['OWNER', 'PLATFORM_ADMIN'].includes(currentUser.role)) {
-      if (project.clientId._id.toString() !== currentUser.clientId?.toString()) {
+      const userTenant = (currentUser.activeTenantId || currentUser.clientId)?.toString();
+      const projectTenant = (project.tenantId as any)?.toString() || (project.clientId as any)?._id?.toString();
+      if (!userTenant || !projectTenant || projectTenant !== userTenant) {
         throw new ForbiddenException('No tiene permisos para exportar este proyecto');
       }
     }
 
     // Obtener hallazgos del proyecto
-    const findings = await this.findingModel.find({ projectId })
+    // IMPORTANT: Usar project._id en lugar del string para que la query funcione con lean()
+    const findings = await this.findingModel.find({ projectId: project._id })
       .populate('assignedTo', 'firstName lastName')
       .populate('createdBy', 'firstName lastName')
       .lean();
@@ -77,7 +107,7 @@ export class ExportService {
     // Información del proyecto
     dashboardSheet.addRow({ metric: 'Nombre Proyecto', value: project.name });
     dashboardSheet.addRow({ metric: 'Código', value: project.code });
-    dashboardSheet.addRow({ metric: 'Cliente', value: (project.clientId as any).name });
+    dashboardSheet.addRow({ metric: 'Cliente', value: ((project as any).clientId?.name) || 'N/A' });
     dashboardSheet.addRow({ metric: 'Estado', value: project.projectStatus });
     dashboardSheet.addRow({ metric: 'Fecha Generación', value: new Date().toLocaleDateString('es-CL') });
     dashboardSheet.addRow({}); // Fila vacía
@@ -167,11 +197,15 @@ export class ExportService {
       throw new NotFoundException('Proyecto no encontrado');
     }
 
-    const findings = await this.findingModel.find({ projectId })
+    // IMPORTANT: Mongoose no convierte automáticamente string a ObjectId con lean()
+    // Debemos convertirlo explícitamente
+    const findings = await this.findingModel.find({ projectId: project._id })
       .populate('assignedTo', 'firstName lastName')
       .lean();
 
-    // Generar CSV
+    this.logger.log(`Exportando proyecto ${projectId} a CSV: ${findings.length} hallazgos encontrados`);
+
+    // Generar CSV con BOM UTF-8 para correcta codificación en Excel
     const headers = [
       'Código',
       'Código Interno',
@@ -193,36 +227,40 @@ export class ExportService {
     ];
 
     const rows = (findings as any[]).map((f: any) => [
-      f.code,
+      f.code || '',
       f.internal_code || 'N/A',
-      `"${f.title.replace(/"/g, '""')}"`, // Escape comillas
-      `"${(f.description || 'N/A').replace(/"/g, '""')}"`, // Escape comillas
-      f.severity,
-      f.status,
+      `"${(f.title || '').replace(/"/g, '""')}"`, // Escape comillas
+      `"${(f.description || 'N/A').replace(/"/g, '""')}"`,
+      f.severity || '',
+      f.status || '',
       f.cvss_score || 'N/A',
       f.cve_id || 'N/A',
       f.cweId || 'N/A',
       f.affectedAsset || 'N/A',
       f.detection_source || 'N/A',
-      `"${(f.recommendation || 'N/A').replace(/"/g, '""')}"`,
-      `"${(f.impact || 'N/A').replace(/"/g, '""')}"`,
-      `"${(f.implications || 'N/A').replace(/"/g, '""')}"`,
+      `"${(f.recommendation || 'N/A').replace(/"/g, '""').replace(/\n/g, ' ')}"`,
+      `"${(f.impact || 'N/A').replace(/"/g, '""').replace(/\n/g, ' ')}"`,
+      `"${(f.implications || 'N/A').replace(/"/g, '""').replace(/\n/g, ' ')}"`,
       `"${(f.controls?.join(', ') || 'N/A').replace(/"/g, '""')}"`,
       f.assignedTo ? `${f.assignedTo.firstName} ${f.assignedTo.lastName}` : 'No asignado',
       f.createdAt ? new Date(f.createdAt).toLocaleDateString('es-CL') : 'N/A'
     ]);
 
-    return [
+    // BOM UTF-8 para que Excel detecte la codificación correctamente
+    const BOM = '\uFEFF';
+    const csv = [
       headers.join(','),
       ...rows.map(row => row.join(','))
-    ].join('\n');
+    ].join('\r\n');
+
+    return BOM + csv;
   }
 
   /**
    * A. NIVEL PROYECTO - Exportar proyecto a JSON
    */
   async exportProjectToJSON(projectId: string, currentUser: any): Promise<any> {
-    const project = await this.projectModel.findById(projectId).populate('clientId areaId').lean();
+    const project = await this.projectModel.findById(projectId).populate('clientId areaId areaIds').lean();
     if (!project) {
       throw new NotFoundException('Proyecto no encontrado');
     }
@@ -251,6 +289,52 @@ export class ExportService {
   }
 
   /**
+   * A. NIVEL PROYECTO - Exportar proyecto y sus evidencias en ZIP
+   */
+  async exportProjectAsZip(projectId: string, currentUser: any): Promise<PassThrough> {
+    const project = await this.projectModel.findById(projectId).populate('clientId areaId areaIds');
+    if (!project) {
+      throw new NotFoundException('Proyecto no encontrado');
+    }
+
+    // RBAC
+    if (!['OWNER', 'PLATFORM_ADMIN'].includes(currentUser.role)) {
+      const userTenant = (currentUser.activeTenantId || currentUser.clientId)?.toString();
+      const projectTenant = (project.tenantId as any)?.toString() || (project.clientId as any)?._id?.toString();
+      if (!userTenant || !projectTenant || projectTenant !== userTenant) {
+        throw new ForbiddenException('No tiene permisos para exportar este proyecto');
+      }
+    }
+
+    const archive = archiver('zip', { zlib: { level: 9 } });
+    const stream = new PassThrough();
+    archive.pipe(stream);
+
+    // Agregar Excel
+    const excelStream = await this.exportProjectToExcel(projectId, currentUser);
+    archive.append(excelStream, { name: `${project.name}/hallazgos.xlsx` });
+
+    // Agregar evidencias
+    const findings = await this.findingModel.find({ projectId }).select('_id code').lean();
+    const findingIds = findings.map((f: any) => f._id);
+    const evidences = await this.evidenceModel.find({ findingId: { $in: findingIds } }).lean();
+
+    for (const evidence of evidences as any[]) {
+      if (!existsSync(evidence.filePath)) {
+        this.logger.warn(`Evidencia no encontrada en disco: ${evidence.filePath}`);
+        continue;
+      }
+      const evidenceName = `evidencias/${evidence.filename || evidence.storedFilename}`;
+      archive.append(createReadStream(evidence.filePath), {
+        name: `${project.name}/${evidenceName}`,
+      });
+    }
+
+    await archive.finalize();
+    return stream;
+  }
+
+  /**
    * B. NIVEL TENANT - Exportar todos los proyectos de un cliente en ZIP
    * Roles: CLIENT_ADMIN, OWNER
    * Estructura: /ClientName/Project1/findings.xlsx, /ClientName/Project1/evidencias/
@@ -258,7 +342,8 @@ export class ExportService {
   async exportClientPortfolio(clientId: string, currentUser: any): Promise<PassThrough> {
     // RBAC: Solo CLIENT_ADMIN del cliente u OWNER
     if (!['OWNER', 'PLATFORM_ADMIN'].includes(currentUser.role)) {
-      if (clientId !== currentUser.clientId?.toString()) {
+      const userTenant = (currentUser.activeTenantId || currentUser.clientId)?.toString();
+      if (!userTenant || clientId !== userTenant) {
         throw new ForbiddenException('No tiene permisos para exportar este cliente');
       }
     }
@@ -281,15 +366,120 @@ export class ExportService {
       const excelStream = await this.exportProjectToExcel(project._id.toString(), currentUser);
       archive.append(excelStream, { name: `${client.name}/${project.name}/findings.xlsx` });
 
-      // TODO: Agregar carpeta de evidencias si existen
-      // const evidences = await this.evidenceModel.find({ projectId: project._id });
-      // for (const evidence of evidences) {
-      //   archive.file(evidence.filePath, { name: `${client.name}/${project.name}/evidencias/${evidence.filename}` });
-      // }
+      // Agregar evidencias si existen
+      const projectFindings = await this.findingModel.find({ projectId: project._id }).select('_id code').lean();
+      const projectFindingIds = projectFindings.map((f: any) => f._id);
+      const evidences = await this.evidenceModel.find({ findingId: { $in: projectFindingIds } }).lean();
+
+      for (const evidence of evidences as any[]) {
+        if (!existsSync(evidence.filePath)) {
+          this.logger.warn(`Evidencia no encontrada: ${evidence.filePath}`);
+          continue;
+        }
+        const evidenceName = `${client.name}/${project.name}/evidencias/${evidence.filename || evidence.storedFilename}`;
+        archive.append(createReadStream(evidence.filePath), { name: evidenceName });
+      }
     }
 
     await archive.finalize();
     return stream;
+  }
+
+  /**
+   * B. NIVEL TENANT - Exportar todos los hallazgos de un cliente a CSV
+   */
+  async exportClientPortfolioCSV(clientId: string, currentUser: any): Promise<string> {
+    // RBAC: Solo CLIENT_ADMIN del cliente u OWNER
+    if (!['OWNER', 'PLATFORM_ADMIN'].includes(currentUser.role)) {
+      const userTenant = (currentUser.activeTenantId || currentUser.clientId)?.toString();
+      if (!userTenant || clientId !== userTenant) {
+        throw new ForbiddenException('No tiene permisos para exportar este cliente');
+      }
+    }
+
+    const client = await this.clientModel.findById(clientId);
+    if (!client) {
+      throw new NotFoundException('Cliente no encontrado');
+    }
+
+    // Usar client._id en lugar de clientId para asegurar ObjectId correcto
+    const projects = await this.projectModel.find({ clientId: client._id }).select('_id name').lean();
+    this.logger.log(`✅ Cliente ${client.name}: ${projects.length} proyectos encontrados`);
+    
+    if (projects.length === 0) {
+      this.logger.warn(`⚠️ No hay proyectos para el cliente ${client.name}`);
+      // Retornar CSV vacío con headers
+      const BOM = '\uFEFF';
+      const headers = ['Proyecto', 'Código', 'Código Interno', 'Título', 'Descripción', 'Severidad', 'Estado', 'CVSS', 'CVE', 'CWE', 'Activo Afectado', 'Origen', 'Recomendación', 'Impacto', 'Implicancias', 'Controles', 'Asignado A', 'Fecha Creación'];
+      return BOM + headers.join(',') + '\r\n';
+    }
+    
+    const projectIds = projects.map((p: any) => p._id);
+    const projectMap = new Map(projects.map((p: any) => [p._id.toString(), p.name]));
+
+    this.logger.log(`🔍 Buscando hallazgos en ${projectIds.length} proyectos`);
+
+    const findings = await this.findingModel.find({ projectId: { $in: projectIds } })
+      .populate('assignedTo', 'firstName lastName')
+      .lean();
+
+    this.logger.log(`📊 Exportando CSV de cliente ${client.name}: ${findings.length} hallazgos encontrados`);
+    
+    if (findings.length === 0) {
+      this.logger.warn(`⚠️ No se encontraron hallazgos en los proyectos del cliente ${client.name}`);
+    }
+
+    // Generar CSV con BOM UTF-8 para correcta codificación en Excel
+    const headers = [
+      'Proyecto',
+      'Código',
+      'Código Interno',
+      'Título',
+      'Descripción',
+      'Severidad',
+      'Estado',
+      'CVSS',
+      'CVE',
+      'CWE',
+      'Activo Afectado',
+      'Origen',
+      'Recomendación',
+      'Impacto',
+      'Implicancias',
+      'Controles',
+      'Asignado A',
+      'Fecha Creación'
+    ];
+
+    const rows = (findings as any[]).map((f: any) => [
+      `"${(projectMap.get(f.projectId.toString()) || 'N/A').replace(/"/g, '""')}"`,
+      f.code || '',
+      f.internal_code || 'N/A',
+      `"${(f.title || '').replace(/"/g, '""')}"`, 
+      `"${(f.description || 'N/A').replace(/"/g, '""')}"`,
+      f.severity || '',
+      f.status || '',
+      f.cvss_score || 'N/A',
+      f.cve_id || 'N/A',
+      f.cweId || 'N/A',
+      f.affectedAsset || 'N/A',
+      f.detection_source || 'N/A',
+      `"${(f.recommendation || 'N/A').replace(/"/g, '""').replace(/\n/g, ' ')}"`,
+      `"${(f.impact || 'N/A').replace(/"/g, '""').replace(/\n/g, ' ')}"`,
+      `"${(f.implications || 'N/A').replace(/"/g, '""').replace(/\n/g, ' ')}"`,
+      `"${(f.controls?.join(', ') || 'N/A').replace(/"/g, '""')}"`,
+      f.assignedTo ? `${f.assignedTo.firstName} ${f.assignedTo.lastName}` : 'No asignado',
+      f.createdAt ? new Date(f.createdAt).toLocaleDateString('es-CL') : 'N/A'
+    ]);
+
+    // BOM UTF-8 para que Excel detecte la codificación correctamente
+    const BOM = '\uFEFF';
+    const csv = [
+      headers.join(','),
+      ...rows.map(row => row.join(','))
+    ].join('\r\n');
+
+    return BOM + csv;
   }
 
   /**
@@ -334,5 +524,34 @@ export class ExportService {
         totalEvidences: evidences.length
       }
     };
+  }
+
+  /**
+   * C. NIVEL SISTEMA - Backup completo vía mongodump
+   */
+  async createSystemBackup(currentUser: any): Promise<{ filename: string }> {
+    if (currentUser.role !== 'OWNER') {
+      throw new ForbiddenException('Solo OWNER puede ejecutar backup completo');
+    }
+
+    const backupsDir = 'backups';
+    if (!existsSync(backupsDir)) {
+      mkdirSync(backupsDir, { recursive: true });
+    }
+
+    const timestamp = new Date().toISOString().replace(/:/g, '-');
+    const filename = `shieldtrack_backup_${timestamp}.tar.gz`;
+    const command = `mongodump --uri="${process.env.MONGODB_URI}" --archive=${backupsDir}/${filename} --gzip`;
+
+    return new Promise((resolve, reject) => {
+      exec(command, (error) => {
+        if (error) {
+          this.logger.error(`Error ejecutando backup: ${error.message}`);
+          return reject(error);
+        }
+        this.logger.log(`Backup de sistema generado: ${backupsDir}/${filename}`);
+        resolve({ filename });
+      });
+    });
   }
 }

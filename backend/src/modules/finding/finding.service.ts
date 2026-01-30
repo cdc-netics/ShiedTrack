@@ -7,6 +7,10 @@ import { CreateFindingDto, UpdateFindingDto, CloseFindingDto } from './dto/findi
 import { CreateFindingUpdateDto } from './dto/finding-update.dto';
 import { FindingStatus, FindingUpdateType } from '../../common/enums';
 import { Project } from '../project/schemas/project.schema';
+import { SystemConfig } from '../system-config/schemas/system-config.schema';
+import { Area } from '../area/schemas/area.schema';
+import { User } from '../auth/schemas/user.schema';
+import { EmailService } from '../email/email.service';
 
 /**
  * Servicio de gestión de Hallazgos
@@ -20,36 +24,78 @@ export class FindingService {
     @InjectModel(Finding.name) private findingModel: Model<Finding>,
     @InjectModel(FindingUpdate.name) private updateModel: Model<FindingUpdate>,
     @InjectModel(Project.name) private projectModel: Model<Project>,
+    @InjectModel(SystemConfig.name) private systemConfigModel: Model<SystemConfig>,
+    @InjectModel(Area.name) private areaModel: Model<Area>,
+    @InjectModel(User.name) private userModel: Model<User>,
+    private emailService: EmailService,
   ) {}
 
   /**
    * Crea un nuevo hallazgo
+   * Genera código automático basado en configuración (Area > Global)
    */
   async create(dto: CreateFindingDto, createdBy: string, currentUser?: any): Promise<Finding> {
     // SECURITY FIX C3: Validar que el proyecto pertenece al cliente del usuario
-    if (currentUser) {
-      const project = await this.projectModel.findById(dto.projectId).populate('clientId');
-      if (!project) {
-        throw new NotFoundException(`Proyecto con ID ${dto.projectId} no encontrado`);
-      }
+    const project = await this.projectModel.findById(dto.projectId)
+      .populate('clientId')
+      .populate('areaId')
+      .populate('areaIds'); // Populate Area to check prefix
 
+    if (!project) {
+      throw new NotFoundException(`Proyecto con ID ${dto.projectId} no encontrado`);
+    }
+
+    if (currentUser) {
       // Solo OWNER y PLATFORM_ADMIN pueden crear en cualquier proyecto
       const globalRoles = ['OWNER', 'PLATFORM_ADMIN'];
       if (!globalRoles.includes(currentUser.role)) {
-        if (project.clientId.toString() !== currentUser.clientId?.toString()) {
+        const userTenant = (currentUser.activeTenantId || currentUser.clientId)?.toString();
+        const projectTenant = (project.tenantId as any)?.toString() || (project.clientId as any)?._id?.toString();
+        if (!userTenant || !projectTenant || projectTenant !== userTenant) {
           throw new ForbiddenException('No tiene permisos para crear hallazgos en este proyecto');
         }
       }
     }
 
-    // Verificar que el código sea único
-    const existing = await this.findingModel.findOne({ code: dto.code });
-    if (existing) {
-      throw new BadRequestException(`Ya existe un hallazgo con código ${dto.code}`);
+    // GENERACIÓN DE CÓDIGO DINÁMICO
+    let prefix = 'VULN'; // Default global
+    
+    // 1. Intentar obtener prefijo del Área del proyecto
+    if (project.areaIds && project.areaIds.length > 0) {
+      const firstArea = project.areaIds[0] as any;
+      if (firstArea.findingCodePrefix) prefix = firstArea.findingCodePrefix;
+    } else if (project.areaId && (project.areaId as any).findingCodePrefix) {
+      prefix = (project.areaId as any).findingCodePrefix;
+    } else {
+      // 2. Intentar obtener prefijo de Configuración Global
+      const sysConfig = await this.systemConfigModel.findOne({ configKey: 'smtp_config' }); // TODO: Split config keys?
+      // Nota: Asumimos que la config general esta en el mismo doc o buscamos por otro key
+      // Por simplicidad, usaremos 'VULN' si no hay area prefix, o implementaremos lectura de config general
+      // si se separara la config de smtp.
     }
+
+    // Buscamos el último hallazgo con este prefijo para incrementar
+    // Regex: Empieza con PREFIX- y le siguen numeros
+    const regex = new RegExp(`^${prefix}-\\d+$`);
+    const lastFinding = await this.findingModel
+      .findOne({ code: { $regex: regex } })
+      .sort({ createdAt: -1 })
+      .select('code');
+
+    let nextNum = 1;
+    if (lastFinding && lastFinding.code) {
+      const parts = lastFinding.code.split('-');
+      const numPart = parts[parts.length - 1];
+      if (!isNaN(Number(numPart))) {
+        nextNum = Number(numPart) + 1;
+      }
+    }
+
+    const generatedCode = `${prefix}-${String(nextNum).padStart(6, '0')}`;
 
     const finding = new this.findingModel({
       ...dto,
+      code: generatedCode, // Sobrescribimos el código del DTO con el generado oficialmente
       createdBy,
       status: FindingStatus.OPEN,
     });
@@ -57,6 +103,26 @@ export class FindingService {
     await finding.save();
     
     this.logger.log(`Hallazgo creado: ${finding.code} - ${finding.title} (ID: ${finding._id})`);
+
+    // 📧 Enviar notificación al usuario asignado
+    if (finding.assignedTo) {
+      try {
+        const assignedUser = await this.userModel.findById(finding.assignedTo);
+        if (assignedUser && assignedUser.email) {
+          await this.emailService.notifyFindingAssigned(
+            assignedUser.email,
+            `${assignedUser.firstName} ${assignedUser.lastName}`,
+            finding.title,
+            finding.code || finding._id.toString(),
+            finding.severity
+          );
+          this.logger.log(`Email de nuevo hallazgo enviado a ${assignedUser.email}`);
+        }
+      } catch (emailError) {
+        this.logger.warn(`No se pudo enviar email de hallazgo: ${emailError.message}`);
+      }
+    }
+
     return finding;
   }
 
@@ -73,6 +139,8 @@ export class FindingService {
     includeClosed?: boolean;
   }, currentUser?: any): Promise<Finding[]> {
     const query: any = {};
+    const restrictedByArea = ['AREA_ADMIN', 'ANALYST', 'VIEWER'].includes(currentUser?.role);
+    const allowedAreas = currentUser?.areaIds?.map((id: any) => id.toString()) || [];
 
     if (filters.projectId) query.projectId = filters.projectId;
     if (filters.status) query.status = filters.status;
@@ -93,6 +161,32 @@ export class FindingService {
         const projectIds = projects.map((p: any) => p._id);
         query.projectId = { $in: projectIds };
       }
+
+      // Aislamiento por áreas
+      if (restrictedByArea) {
+        if (!allowedAreas.length) {
+          return []; // Sin áreas asignadas
+        }
+
+        const projectsByArea = await this.projectModel.find({
+          $or: [
+             { areaIds: { $in: allowedAreas } },
+             { areaId: { $in: allowedAreas } }
+          ],
+          ...(currentUser.clientId ? { clientId: currentUser.clientId } : {}),
+        }).select('_id');
+
+        const projectIds = projectsByArea.map((p: any) => p._id.toString());
+        if (query.projectId) {
+          // Intersecar si ya hay filtro por proyecto
+          const existingIds = Array.isArray((query.projectId as any).$in)
+            ? (query.projectId as any).$in.map((id: any) => id.toString())
+            : [query.projectId.toString()];
+          query.projectId = { $in: existingIds.filter((id: string) => projectIds.includes(id)) };
+        } else {
+          query.projectId = { $in: projectIds };
+        }
+      }
     }
 
     return this.findingModel.find(query)
@@ -108,7 +202,7 @@ export class FindingService {
    */
   async findById(id: string, currentUser?: any): Promise<Finding> {
     const finding = await this.findingModel.findById(id)
-      .populate('projectId', 'name code clientId areaId')
+      .populate('projectId', 'name code clientId areaId areaIds')
       .populate('assignedTo', 'firstName lastName email')
       .populate('createdBy', 'firstName lastName email')
       .populate('closedBy', 'firstName lastName email');
@@ -123,6 +217,23 @@ export class FindingService {
       if (restrictedRoles.includes(currentUser.role) && currentUser.clientId) {
         const project = finding.projectId as any;
         if (project.clientId.toString() !== currentUser.clientId.toString()) {
+          throw new ForbiddenException('No tiene permisos para acceder a este hallazgo');
+        }
+      }
+
+      // Aislamiento por áreas para roles restringidos
+      if (['AREA_ADMIN', 'ANALYST', 'VIEWER'].includes(currentUser.role)) {
+        const allowedAreas = currentUser.areaIds?.map((id: any) => id.toString()) || [];
+        const project = finding.projectId as any;
+        
+        const projectAreas = project.areaIds?.map((a: any) => a.toString()) || [];
+        const legacyArea = project.areaId?.toString();
+        
+        const hasAccess = allowedAreas.some((area: string) => 
+            projectAreas.includes(area) || legacyArea === area
+        );
+
+        if (!allowedAreas.length || !hasAccess) {
           throw new ForbiddenException('No tiene permisos para acceder a este hallazgo');
         }
       }
@@ -147,8 +258,25 @@ export class FindingService {
       const restrictedRoles = ['CLIENT_ADMIN', 'AREA_ADMIN', 'ANALYST', 'VIEWER'];
       if (restrictedRoles.includes(currentUser.role) && currentUser.clientId) {
         const project = finding.projectId as any;
-        if (project.clientId.toString() !== currentUser.clientId.toString()) {
+        if (project.clientId?.toString() !== currentUser.clientId.toString()) {
           throw new ForbiddenException('No tiene permisos para actualizar este hallazgo');
+        }
+      }
+
+      // Aislamiento por áreas para roles restringidos en update
+      if (['AREA_ADMIN', 'ANALYST', 'VIEWER'].includes(currentUser.role)) {
+        const allowedAreas = currentUser.areaIds?.map((id: any) => id.toString()) || [];
+        const project = finding.projectId as any;
+        
+        const projectAreas = project.areaIds?.map((a: any) => a.toString()) || [];
+        const legacyArea = project.areaId?.toString();
+        
+        const hasAccess = allowedAreas.some((area: string) => 
+            projectAreas.includes(area) || legacyArea === area
+        );
+
+        if (!allowedAreas.length || !hasAccess) {
+             throw new ForbiddenException('No tiene permisos para actualizar este hallazgo');
         }
       }
     }
@@ -156,6 +284,18 @@ export class FindingService {
     // Detectar cambio de status
     const statusChanged = dto.status && dto.status !== finding.status;
     const previousStatus = finding.status;
+
+    // Manejo automático de fechas de cierre
+    if (statusChanged) {
+      if (dto.status === FindingStatus.CLOSED) {
+        finding.closedAt = new Date();
+        finding.closedBy = userId as any;
+      } else if (previousStatus === FindingStatus.CLOSED) {
+        // Si se reabre, limpiar fecha de cierre
+        finding.closedAt = undefined;
+        finding.closedBy = undefined;
+      }
+    }
 
     // Actualizar hallazgo
     Object.assign(finding, dto);
@@ -170,10 +310,35 @@ export class FindingService {
         userId,
         `Estado actualizado de ${previousStatus} a ${dto.status}`,
       );
+
+      // Log status change (specific email notifications only for assignment/closure)
+      this.logger.log(`Estado del hallazgo ${finding.code} cambiado de ${previousStatus} a ${dto.status}`);
     }
 
     this.logger.log(`Hallazgo actualizado: ${finding.code} (ID: ${id})`);
     return finding;
+  }
+
+  /**
+   * Cierra masivamente hallazgos
+   */
+  async bulkClose(ids: string[], userId: string, closeReason: string = 'Bulk Close'): Promise<number> {
+    if (!ids || ids.length === 0) return 0;
+
+    const result = await this.findingModel.updateMany(
+      { _id: { $in: ids }, status: { $ne: FindingStatus.CLOSED } },
+      { 
+        $set: { 
+          status: FindingStatus.CLOSED, 
+          closeReason: closeReason,
+          closedAt: new Date(),
+          closedBy: userId 
+        } 
+      }
+    );
+    
+    this.logger.log(`${result.modifiedCount} hallazgos cerrados masivamente por usuario ${userId}`);
+    return result.modifiedCount;
   }
 
   /**
@@ -209,6 +374,26 @@ export class FindingService {
     );
 
     this.logger.log(`Hallazgo cerrado: ${finding.code} - Motivo: ${dto.closeReason}`);
+
+    // 📧 Enviar notificación de cierre
+    if (finding.assignedTo) {
+      try {
+        const assignedUser = await this.userModel.findById(finding.assignedTo);
+        if (assignedUser && assignedUser.email) {
+          await this.emailService.notifyFindingClosed(
+            assignedUser.email,
+            `${assignedUser.firstName} ${assignedUser.lastName}`,
+            finding.title,
+            finding.code || finding._id.toString(),
+            dto.closeReason
+          );
+          this.logger.log(`Email de cierre enviado a ${assignedUser.email}`);
+        }
+      } catch (emailError) {
+        this.logger.warn(`No se pudo enviar email de cierre: ${emailError.message}`);
+      }
+    }
+
     return finding;
   }
 

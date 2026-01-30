@@ -1,16 +1,48 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
+import { ValidationPipe, Logger } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import { ConfigService } from '@nestjs/config';
 import * as multer from 'multer';
+import * as mongoose from 'mongoose';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { AuditInterceptor } from './modules/audit/audit.interceptor';
+import { AuditService } from './modules/audit/audit.service';
+import { MongoDBConnectionService } from './common/services/mongodb-connection.service';
+import { tenantPlugin } from './common/plugins/tenant-plugin';
+
+const logger = new Logger('Bootstrap');
 
 /**
  * Punto de entrada de la aplicación ShieldTrack
  * Configura validación global, Swagger y filtros de excepción
+ * Implementa conexión robusta a MongoDB con reintentos automáticos
  */
 async function bootstrap() {
+  // Crear instancia de MongoDBConnectionService directamente
+  const configService = new ConfigService();
+  const mongoConnectionService = new MongoDBConnectionService(configService);
+
+  // Establecer conexión a MongoDB con reintentos automáticos
+  try {
+    logger.log('📦 Iniciando servicio de conexión a MongoDB');
+    await mongoConnectionService.connectWithRetry();
+    logger.log('✅ MongoDB conectado correctamente');
+  } catch (error) {
+    logger.error(
+      `❌ No se pudo establecer conexión a MongoDB: ${error.message}`,
+    );
+    logger.error(
+      '💡 Por favor, asegúrese de que MongoDB está instalado y ejecutándose',
+    );
+    process.exit(1);
+  }
+
+  // Ahora crear la aplicación principal
   const app = await NestFactory.create(AppModule);
+
+  // Registrar plugin global de Mongoose para filtro por tenant
+  mongoose.plugin(tenantPlugin);
 
   // Configuración global de validación - OBLIGATORIO según requisitos
   app.useGlobalPipes(
@@ -26,6 +58,10 @@ async function bootstrap() {
 
   // Filtro global de excepciones para manejo consistente de errores
   app.useGlobalFilters(new HttpExceptionFilter());
+
+  // Interceptor global de auditoría
+  const auditService = app.get(AuditService);
+  app.useGlobalInterceptors(new AuditInterceptor(auditService));
 
   // SECURITY FIX M3: Límite de tamaño de archivo global (50MB)
   const uploadLimits = {

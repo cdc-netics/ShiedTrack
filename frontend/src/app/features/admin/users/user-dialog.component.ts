@@ -12,6 +12,7 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatChipsModule } from '@angular/material/chips';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../environments/environment';
+import { AuthService } from '../../../core/services/auth.service';
 
 @Component({
   selector: 'app-user-dialog',
@@ -78,12 +79,28 @@ import { environment } from '../../../../environments/environment';
           </mat-form-field>
         }
 
+        <!-- Cliente (solo para OWNER/PLATFORM_ADMIN) -->
+        @if (showClientSelect()) {
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Cliente</mat-label>
+            <mat-select formControlName="clientId" [required]="isClientRequired()">
+              <mat-option [value]="null">-- Sin Asignación (Global) --</mat-option>
+              @for (client of clients(); track client._id) {
+                <mat-option [value]="client._id">{{ client.name }}</mat-option>
+              }
+            </mat-select>
+            @if (userForm.get('clientId')?.hasError('required')) {
+              <mat-error>El cliente es obligatorio para este rol</mat-error>
+            }
+          </mat-form-field>
+        }
+
         <!-- Rol -->
         <mat-form-field appearance="outline" class="full-width">
           <mat-label>Rol</mat-label>
           <mat-select formControlName="role" required>
             <mat-option value="OWNER">Owner</mat-option>
-            <mat-option value="AREA_ADMIN">Admin Área</mat-option>
+            <mat-option value="AREA_ADMIN">Area Admin</mat-option>
             <mat-option value="ANALYST">Analista</mat-option>
             <mat-option value="VIEWER">Viewer</mat-option>
           </mat-select>
@@ -92,10 +109,10 @@ import { environment } from '../../../../environments/environment';
           }
         </mat-form-field>
 
-        <!-- Áreas (para AREA_ADMIN, ANALYST, VIEWER) -->
+        <!-- Tenants (para AREA_ADMIN, ANALYST, VIEWER) -->
         @if (showAreaSelect()) {
           <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Áreas asignadas</mat-label>
+            <mat-label>Tenants asignados</mat-label>
             <mat-select formControlName="areaIds" multiple>
               @if (areas().length === 0) {
                 <mat-option disabled>
@@ -158,6 +175,7 @@ export class UserDialogComponent {
   private http = inject(HttpClient);
   private snackBar = inject(MatSnackBar);
   private dialogRef = inject(MatDialogRef<UserDialogComponent>);
+  private authService = inject(AuthService);
 
   // Flags de estado y datos auxiliares
   isEditMode = false;
@@ -169,10 +187,11 @@ export class UserDialogComponent {
 
   userForm: FormGroup;
   private API_URL = `${environment.apiUrl}/auth`;
-  private CLIENTS_URL = `http://localhost:3000/api/clients`;
-  private AREAS_URL = `http://localhost:3000/api/areas`;
+  private CLIENTS_URL = `/api/clients`;
+  private AREAS_URL = `/api/areas`;
 
   constructor(@Inject(MAT_DIALOG_DATA) public data: any) {
+    console.log('[UserDialog] Constructor - Datos recibidos:', this.data);
     // Define modo edicion si viene _id y arma el formulario
     this.isEditMode = !!data?._id;
     
@@ -186,15 +205,45 @@ export class UserDialogComponent {
       areaIds: [data?.areaIds || []]
     });
 
-    // Mostrar selector de áreas según el rol
+    // Determine if we should show client select
+    const currentUser = this.authService.currentUser();
+    console.log('[UserDialog] Constructor - Usuario actual:', currentUser);
+    const canManageClients = ['OWNER', 'PLATFORM_ADMIN'].includes(currentUser?.role as string);
+    this.showClientSelect.set(canManageClients);
+    console.log(`[UserDialog] Constructor - Puede gestionar clientes: ${canManageClients}`);
+
+    if (canManageClients) {
+      this.loadClients();
+    } else if (currentUser?.clientId) {
+      console.log(`[UserDialog] Constructor - Forzando clientId del usuario actual: ${currentUser.clientId}`);
+      this.userForm.patchValue({ clientId: currentUser.clientId });
+    }
+
+    // Listen to clientId changes to reload areas
+    this.userForm.get('clientId')?.valueChanges.subscribe(clientId => {
+      console.log(`[UserDialog] clientId del formulario cambió a: ${clientId}`);
+      if (clientId) {
+        this.loadAreas(clientId);
+      } else {
+        console.log('[UserDialog] clientId es nulo, limpiando áreas.');
+        this.areas.set([]);
+      }
+    });
+
+    // Mostrar selector de tenants según el rol
     this.userForm.get('role')?.valueChanges.subscribe(role => {
+      console.log(`[UserDialog] Rol del formulario cambió a: ${role}`);
       const needsAreas = ['AREA_ADMIN', 'ANALYST', 'VIEWER'].includes(role);
       
       this.showAreaSelect.set(needsAreas);
       
-      // Si el rol necesita áreas, cargarlas automáticamente
+      // Si el rol necesita tenants, cargarlos automáticamente
       if (needsAreas) {
-        this.loadAreas();
+        const clientId = this.userForm.get('clientId')?.value || currentUser?.clientId;
+        console.log(`[UserDialog] El rol necesita áreas. Intentando cargar áreas para clientId: ${clientId}`);
+        if (clientId) {
+          this.loadAreas(clientId);
+        }
       } else {
         this.areas.set([]);
         this.userForm.patchValue({ areaIds: [] });
@@ -203,33 +252,69 @@ export class UserDialogComponent {
 
     // Inicializar la visibilidad del selector de áreas
     const currentRole = this.userForm.get('role')?.value;
-    const needsAreas = ['AREA_ADMIN', 'ANALYST', 'VIEWER'].includes(currentRole);
-    this.showAreaSelect.set(needsAreas);
+    const needsAreasOnInit = ['AREA_ADMIN', 'ANALYST', 'VIEWER'].includes(currentRole);
+    this.showAreaSelect.set(needsAreasOnInit);
     
+    // Configurar validacion dinamica de Cliente
+    this.userForm.get('role')?.valueChanges.subscribe(role => {
+       const isGlobalRole = ['OWNER', 'PLATFORM_ADMIN'].includes(role);
+       const clientControl = this.userForm.get('clientId');
+       
+       if (isGlobalRole) {
+         clientControl?.clearValidators();
+         clientControl?.updateValueAndValidity();
+       } else {
+         clientControl?.setValidators(Validators.required);
+         clientControl?.updateValueAndValidity();
+       }
+    });
+
     // Cargar áreas si el rol las necesita
-    if (needsAreas) {
-      this.loadAreas();
+    if (needsAreasOnInit) {
+      const initialClientId = this.userForm.get('clientId')?.value || currentUser?.clientId;
+      console.log(`[UserDialog] Carga inicial de áreas. ClientId determinado: ${initialClientId}`);
+      if (initialClientId) {
+        this.loadAreas(initialClientId);
+      }
     }
   }
 
+  loadClients() {
+    this.http.get<any[]>(this.CLIENTS_URL).subscribe({
+      next: (clients) => {
+        this.clients.set(clients);
+      },
+      error: (err) => {
+        console.error('Error al cargar clientes:', err);
+      }
+    });
+  }
+
   loadAreas(clientId?: string): void {
-    // Carga areas activas; si hay clientId, filtra por cliente
-    const url = clientId 
-      ? `${this.AREAS_URL}?clientId=${clientId}&includeInactive=false`
-      : `${this.AREAS_URL}?includeInactive=false`;
+    console.log(`[UserDialog] loadAreas fue llamado con clientId: ${clientId}`);
     
-    console.log('Cargando áreas desde:', url);
+    let url = `${this.AREAS_URL}?includeInactive=false`;
+    if (clientId) {
+      url += `&clientId=${clientId}`;
+    }
+    
+    console.log('[UserDialog] Cargando áreas desde:', url);
       
     this.http.get<any[]>(url).subscribe({
       next: (areas) => {
-        console.log('Áreas cargadas:', areas);
+        console.log('[UserDialog] Áreas cargadas:', areas);
         this.areas.set(areas);
       },
       error: (err) => {
-        console.error('Error al cargar áreas:', err);
+        console.error('[UserDialog] Error al cargar áreas:', err);
         this.areas.set([]);
       }
     });
+  }
+
+  isClientRequired(): boolean {
+    const role = this.userForm.get('role')?.value;
+    return !['OWNER', 'PLATFORM_ADMIN'].includes(role);
   }
 
   onSave(): void {

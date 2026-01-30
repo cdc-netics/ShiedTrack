@@ -82,3 +82,8 @@ INSTRUCCIONES-INICIO.md
 *.db
 *.sqlite
 *.sqlite3
+
+# Local MongoDB Data
+data/
+data/db/
+

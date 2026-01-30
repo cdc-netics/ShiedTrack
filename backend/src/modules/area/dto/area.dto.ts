@@ -14,9 +14,19 @@ export class CreateAreaDto {
   @IsString()
   description?: string;
 
-  @ApiProperty({ description: 'ID del cliente al que pertenece el área' })
+  @ApiPropertyOptional({ description: 'Prefijo para códigos de hallazgos' })
+  @IsOptional()
   @IsString()
-  clientId: string;
+  findingCodePrefix?: string;
+
+  /**
+   * Contexto de tenant (opcional).
+   * Normalmente el backend lo determina desde CLS/headers y no es necesario enviarlo.
+   */
+  @ApiPropertyOptional({ description: 'ID del tenant (opcional, generalmente derivado del contexto)' })
+  @IsOptional()
+  @IsString()
+  tenantId?: string;
 }
 
 /**
@@ -32,6 +42,11 @@ export class UpdateAreaDto {
   @IsOptional()
   @IsString()
   description?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  findingCodePrefix?: string;
 
   @ApiPropertyOptional()
   @IsOptional()

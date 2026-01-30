@@ -54,6 +54,16 @@ import { UserRole } from '../../../shared/enums';
             ➕ Nuevo Proyecto
           }
         </h1>
+        <div class="header-actions">
+           @if (isEditMode()) {
+             <button mat-icon-button color="primary" matTooltip="Descargar Reporte PDF" (click)="downloadPdf()">
+               <mat-icon>picture_as_pdf</mat-icon>
+             </button>
+             <button mat-icon-button color="accent" matTooltip="Descargar Evidencias (ZIP)" (click)="downloadZip()">
+                <mat-icon>folder_zip</mat-icon>
+             </button>
+           }
+        </div>
       </div>
 
       @if (loading()) {
@@ -100,6 +110,17 @@ import { UserRole } from '../../../shared/enums';
                   @if (projectForm.get('clientId')?.hasError('required')) {
                     <mat-error>El cliente es requerido</mat-error>
                   }
+                </mat-form-field>
+              </div>
+
+              <div class="form-row">
+                <mat-form-field appearance="outline" class="full-width">
+                  <mat-label>Áreas</mat-label>
+                  <mat-select formControlName="areaIds" multiple>
+                    @for (area of areas(); track area._id) {
+                      <mat-option [value]="area._id">{{ area.name }}</mat-option>
+                    }
+                  </mat-select>
                 </mat-form-field>
               </div>
 
@@ -436,6 +457,7 @@ export class ProjectDetailComponent implements OnInit {
 
   private API_URL = `${environment.apiUrl}/projects`;
   private CLIENT_API_URL = `${environment.apiUrl}/clients`;
+  private AREA_API_URL = `${environment.apiUrl}/areas`;
 
   // Estado principal de la pantalla
   projectForm!: FormGroup;
@@ -444,6 +466,7 @@ export class ProjectDetailComponent implements OnInit {
   isEditMode = signal(false);
   projectId = signal<string | null>(null);
   clients = signal<any[]>([]);
+  areas = signal<any[]>([]);
 
   projectDuration = computed(() => {
     // Calcula una duracion legible desde la fecha de inicio del servicio
@@ -468,6 +491,18 @@ export class ProjectDetailComponent implements OnInit {
     }
   });
 
+  downloadPdf() {
+    if (!this.projectId()) return;
+    const url = `${environment.apiUrl}/export/project/${this.projectId()}/pdf`;
+    window.open(url, '_blank');
+  }
+
+  downloadZip() {
+    if (!this.projectId()) return;
+    const url = `${environment.apiUrl}/export/project/${this.projectId()}/zip`;
+    window.open(url, '_blank');
+  }
+
   get teamMembers() {
     // Acceso tipado al FormArray de miembros del equipo
     return this.projectForm.get('teamMembers') as FormArray;
@@ -477,6 +512,7 @@ export class ProjectDetailComponent implements OnInit {
     // Inicializa formulario y determina si es alta o edicion
     this.initForm();
     this.loadClients();
+    this.loadAreas();
 
     const id = this.route.snapshot.paramMap.get('id');
     if (id && id !== 'new') {
@@ -495,6 +531,7 @@ export class ProjectDetailComponent implements OnInit {
       name: ['', Validators.required],
       code: [''],
       clientId: ['', Validators.required],
+      areaIds: [[]],
       description: [''],
       serviceArchitecture: ['WEB'],
       testType: ['BLACKBOX'],
@@ -514,6 +551,13 @@ export class ProjectDetailComponent implements OnInit {
     });
   }
 
+  loadAreas(): void {
+    this.http.get<any[]>(this.AREA_API_URL).subscribe({
+      next: (data) => this.areas.set(data),
+      error: (err) => console.error('Error al cargar áreas:', err)
+    });
+  }
+
   loadProject(id: string): void {
     // Carga datos del proyecto y los vuelca al formulario
     this.loading.set(true);
@@ -522,7 +566,8 @@ export class ProjectDetailComponent implements OnInit {
         this.projectForm.patchValue({
           name: project.name,
           code: project.code,
-          clientId: project.clientId,
+          clientId: project.clientId?._id || project.clientId,
+          areaIds: project.areaIds?.map((a: any) => a._id || a) || (project.areaId ? [project.areaId._id || project.areaId] : []),
           description: project.description,
           serviceArchitecture: project.serviceArchitecture,
           testType: project.testType,
@@ -580,9 +625,9 @@ export class ProjectDetailComponent implements OnInit {
     // OWNER puede cambiar cualquier estado
     if (user.role === UserRole.OWNER) return true;
     
-    // CLIENT_ADMIN y AREA_ADMIN pueden cambiar estado de proyectos de su tenant/área
+    // CLIENT_ADMIN y AREA_ADMIN pueden cambiar estado de proyectos de su tenant
     if (user.role === UserRole.CLIENT_ADMIN || user.role === UserRole.AREA_ADMIN) {
-      // TODO: Verificar que el proyecto pertenece al mismo tenant/área del admin
+      // TODO: Verificar que el proyecto pertenece al mismo tenant del admin
       return true;
     }
     

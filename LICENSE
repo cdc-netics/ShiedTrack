@@ -1,21 +1,53 @@
-MIT License
+Business Source License 1.1
 
 Copyright (c) 2025 ShieldTrack Contributors
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+Licensor: ShieldTrack Contributors
+The Licensed Work is (c) 2025 ShieldTrack Contributors
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+### Concesión de Uso Adicional
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+#### Uso No Comercial Permitido
+Puede hacer uso del Trabajo Licenciado:
+- Para propósitos de investigación
+- Para propósitos académicos
+- Para propósitos de evaluación
+- Para uso personal, no comercial
+- Para evaluación interna del negocio (no excediendo 90 días)
+
+#### Restricciones de Uso Comercial
+**NO** puede usar el Trabajo Licenciado para:
+- **Integración en productos propietarios** para distribución comercial
+- **Reventa** como producto independiente o como parte de otro producto
+- **Ofertas de Software como Servicio (SaaS)**
+- **Monetización directa o indirecta** del software
+- **Despliegue en producción** en entornos comerciales sin una licencia comercial
+
+#### Servicios Alrededor del Software - PERMITIDO
+**SÍ** puede ofrecer los siguientes servicios relacionados con el Trabajo Licenciado:
+- **Servicios de instalación**
+- **Soporte técnico y mantenimiento**
+- **Servicios de consultoría y personalización**
+- **Servicios de capacitación y educación**
+- **Servicios de hosting** (siempre que el software en sí no se venda como producto)
+
+Siempre que el software en sí no se venda como producto y cumpla con todos los demás términos de esta Licencia.
+
+#### Definición de Uso Comercial
+"Uso Comercial" significa cualquier uso del Trabajo Licenciado que esté principalmente destinado o dirigido hacia ventaja comercial o compensación monetaria. Esto incluye:
+- Usar el Trabajo Licenciado para proporcionar servicios o productos por los cuales cobra tarifas
+- Integrar el Trabajo Licenciado en productos que se venden o licencian
+- Usar el Trabajo Licenciado en un entorno de producción comercial
+- Ofrecer el Trabajo Licenciado como parte de una plataforma SaaS.
+
+TERMS AND CONDITIONS
+
+1. Grant of License. Licensor hereby grants you a non-exclusive license to the Licensed Work for the Additional Use Grant set forth above.
+
+2. Change Date. The Change Date is three (3) years from the date of the initial release of the Licensed Work.
+
+3. Change License. On the Change Date, the Licensor hereby grants you a non-exclusive license to the Licensed Work under the terms of the MIT License.
+
+4. Licensor's Right to Change. Licensor reserves the right to change the Additional Use Grant, the Change Date, and the Change License at any time.
+
+5. Disclaimer. THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.

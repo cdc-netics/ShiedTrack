@@ -5,7 +5,7 @@
 │                   🔒 AUDITORÍA DE SEGURIDAD                         │
 │                         ShieldTrack v1.0                            │
 │                                                                     │
-│  📅 Fecha: ${new Date().toISOString().split('T')[0]}                                              │
+│  📅 Fecha: 2026-01-05                                              │
 │  👤 Revisor: Senior Full-Stack Security Auditor                    │
 │  🎯 Score: 20/22 (91%) - APROBADO                                  │
 └─────────────────────────────────────────────────────────────────────┘
@@ -273,14 +273,14 @@ Estado: READY ✅
 ```
 ╔═════════════════════════════════════════════════════════╗
 ║                                                         ║
-║   ✅ SISTEMA APROBADO PARA PRODUCCIÓN                  ║
+║   🚧 SISTEMA EN DESARROLLO - NO LISTO PARA PRODUCCIÓN  ║
 ║                                                         ║
 ║   Score: 20/22 (91%)                                   ║
 ║   Bloqueantes: 0                                       ║
 ║   Críticos corregidos: 3/3 (100%)                      ║
 ║                                                         ║
 ║   Firma Digital: [Senior Security Auditor]             ║
-║   Fecha: ${new Date().toISOString().split('T')[0]}                                    ║
+║   Fecha: 2026-01-05                                    ║
 ║                                                         ║
 ╚═════════════════════════════════════════════════════════╝
 ```

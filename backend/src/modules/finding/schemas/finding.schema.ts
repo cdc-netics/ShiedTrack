@@ -1,6 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
 import { FindingSeverity, FindingStatus, CloseReason } from '../../../common/enums';
+import { multiTenantPlugin } from '../../../common/plugins/multi-tenant.plugin';
 
 /**
  * Entidad Hallazgo (Finding)
@@ -47,7 +48,16 @@ export class Finding extends Document {
 
   // Información técnica adicional
   @Prop()
-  affectedAsset?: string; // Sistema/aplicación afectado
+  affectedAsset?: string; // DEPRECATED: Usar affectedAssets
+
+  @Prop({ type: [String], default: [] })
+  affectedAssets: string[]; // Activos afectados (IPs, URLs, Hostnames)
+
+  @Prop({ enum: FindingSeverity })
+  businessRisk?: FindingSeverity; // Nivel de riesgo de negocio
+
+  @Prop()
+  riskJustification?: string; // Justificación del riesgo
 
   @Prop({ min: 0, max: 10 })
   cvss_score?: number; // CVSS Score validado 0-10 con decimales
@@ -78,14 +88,8 @@ export class Finding extends Document {
   @Prop({ type: [String], default: [] })
   controls: string[]; // Controles CIS, NIST, OWASP, etc.
 
-  @Prop({ 
-    type: [{ 
-      label: { type: String, required: true },
-      url: { type: String, required: true }
-    }],
-    default: []
-  })
-  references: { label: string; url: string }[];
+  @Prop({ type: [String], default: [] })
+  references: string[];
 
   @Prop({ type: [String], default: [] })
   tags: string[];
@@ -98,9 +102,16 @@ export class Finding extends Document {
   createdBy: Types.ObjectId;
 
   // Timestamps automáticos: createdAt, updatedAt
+
+  // Multi-tenant: referencia al tenant
+  @Prop({ type: Types.ObjectId, ref: 'Tenant' })
+  tenantId?: Types.ObjectId;
 }
 
 export const FindingSchema = SchemaFactory.createForClass(Finding);
+
+// Aplicar plugin de multi-tenancy para aislamiento automático
+FindingSchema.plugin(multiTenantPlugin);
 
 // Índices para consultas operativas y filtrado eficiente
 FindingSchema.index({ projectId: 1, status: 1 });
@@ -111,3 +122,4 @@ FindingSchema.index({ assignedTo: 1, status: 1 });
 FindingSchema.index({ retestIncluded: 1, projectId: 1 }); // Para el scheduler de retest
 FindingSchema.index({ tags: 1 });
 FindingSchema.index({ cve_id: 1 }); // Búsqueda por CVE
+FindingSchema.index({ tenantId: 1 });

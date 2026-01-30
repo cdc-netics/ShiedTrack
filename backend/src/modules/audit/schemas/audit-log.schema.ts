@@ -16,6 +16,12 @@ export class AuditLog extends Document {
   @Prop({ required: true })
   entityId: string; // ID de la entidad afectada
 
+  @Prop({ type: Types.ObjectId, ref: 'Client' })
+  clientId?: Types.ObjectId; // Contexto de tenant
+
+  @Prop({ type: Types.ObjectId, ref: 'Area' })
+  areaId?: Types.ObjectId; // Contexto de área
+
   @Prop({ type: Types.ObjectId, ref: 'User', required: true })
   performedBy: Types.ObjectId; // Usuario que ejecutó la acción
 
@@ -33,6 +39,10 @@ export class AuditLog extends Document {
 
   // Timestamp de creación (inmutable)
   readonly createdAt: Date;
+
+  // Multi-tenant: referencia al tenant
+  @Prop({ type: Types.ObjectId, ref: 'Tenant' })
+  tenantId?: Types.ObjectId;
 }
 
 export const AuditLogSchema = SchemaFactory.createForClass(AuditLog);
@@ -42,3 +52,4 @@ AuditLogSchema.index({ performedBy: 1, createdAt: -1 });
 AuditLogSchema.index({ entityType: 1, entityId: 1 });
 AuditLogSchema.index({ action: 1, createdAt: -1 });
 AuditLogSchema.index({ severity: 1, createdAt: -1 });
+AuditLogSchema.index({ tenantId: 1, createdAt: -1 });

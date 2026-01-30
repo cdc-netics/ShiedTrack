@@ -15,7 +15,7 @@ const bcrypt = require('bcrypt');
 // Modelos (importar según estructura del proyecto)
 // const { User, Client, Area, Project, Finding } = require('../src/modules');
 
-const MONGO_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/shieldtrack-test';
+const MONGO_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/shieldtrack';
 
 // Colores para output
 const colors = {
@@ -37,18 +37,44 @@ async function seedTestData() {
 
     // Limpiar datos previos
     log('\n🗑️  Limpiando colecciones de test...', 'yellow');
-    await mongoose.connection.db.collection('users').deleteMany({ email: /@shieldtrack\.com$/ });
+    await mongoose.connection.db.collection('users').deleteMany({ 
+      email: { $regex: /@(shieldtrack\.com|acmecorp\.com)$/ } 
+    });
     await mongoose.connection.db.collection('clients').deleteMany({ code: /^TEST-/ });
+    await mongoose.connection.db.collection('areas').deleteMany({ code: /^TEST-/ });
+    await mongoose.connection.db.collection('projects').deleteMany({ code: /^TEST-/ });
+    await mongoose.connection.db.collection('findings').deleteMany({ code: /^FND-(TEST|EVIL)-/ });
     
     log('✅ Colecciones limpias', 'green');
 
-    // === CLIENTES (2 tenants para probar IDOR) ===
+    // === TENANTS ===
+    log('\n🏢 Creando tenants de prueba...', 'blue');
+
+    const tenantACME = await mongoose.connection.db.collection('tenants').insertOne({
+      name: 'ACME Corporation',
+      code: 'TEN-ACME',
+      isActive: true,
+      createdAt: new Date()
+    });
+
+    const tenantEvil = await mongoose.connection.db.collection('tenants').insertOne({
+      name: 'Evil Corp',
+      code: 'TEN-EVIL',
+      isActive: true,
+      createdAt: new Date()
+    });
+
+    log(`✅ Tenant ACME: ${tenantACME.insertedId}`, 'green');
+    log(`✅ Tenant Evil: ${tenantEvil.insertedId}`, 'green');
+
+    // === CLIENTES (asociados a Tenants) ===
     log('\n👥 Creando clientes de prueba...', 'blue');
     
     const clientA = await mongoose.connection.db.collection('clients').insertOne({
       name: 'ACME Corporation',
       code: 'TEST-ACME',
       isActive: true,
+      tenantId: tenantACME.insertedId,
       createdAt: new Date()
     });
     
@@ -56,6 +82,7 @@ async function seedTestData() {
       name: 'Evil Corp',
       code: 'TEST-EVIL',
       isActive: true,
+      tenantId: tenantEvil.insertedId,
       createdAt: new Date()
     });
     
@@ -65,14 +92,18 @@ async function seedTestData() {
     // === ÁREAS ===
     const areaInfra = await mongoose.connection.db.collection('areas').insertOne({
       name: 'Infraestructura',
+      code: 'TEST-INFRA',
       clientId: clientA.insertedId,
+      tenantId: tenantACME.insertedId,
       isActive: true,
       createdAt: new Date()
     });
 
     const areaApps = await mongoose.connection.db.collection('areas').insertOne({
       name: 'Aplicaciones',
+      code: 'TEST-APPS',
       clientId: clientA.insertedId,
+      tenantId: tenantACME.insertedId,
       isActive: true,
       createdAt: new Date()
     });
@@ -81,14 +112,28 @@ async function seedTestData() {
     log('\n🔐 Creando usuarios con los 6 roles RBAC...', 'blue');
     
     const hashedPassword = await bcrypt.hash('Password123!', 10);
+    const hashedDevPassword = await bcrypt.hash('Admin123!', 10);
     
     const users = await mongoose.connection.db.collection('users').insertMany([
+      {
+        email: 'admin@shieldtrack.com',
+        password: hashedDevPassword,
+        firstName: 'Dev',
+        lastName: 'Admin',
+        role: 'OWNER',
+        tenantIds: [tenantACME.insertedId, tenantEvil.insertedId],
+        mfaEnabled: false,
+        isActive: true,
+        createdAt: new Date()
+      },
       {
         email: 'owner@shieldtrack.com',
         password: hashedPassword,
         firstName: 'System',
         lastName: 'Owner',
         role: 'OWNER',
+        tenantIds: [tenantACME.insertedId],
+        activeTenantId: tenantACME.insertedId,
         mfaEnabled: false, // Para testing (en prod debería ser true)
         isActive: true,
         createdAt: new Date()
@@ -99,6 +144,8 @@ async function seedTestData() {
         firstName: 'Platform',
         lastName: 'Admin',
         role: 'PLATFORM_ADMIN',
+        tenantIds: [tenantACME.insertedId],
+        activeTenantId: tenantACME.insertedId,
         mfaEnabled: false,
         isActive: true,
         createdAt: new Date()
@@ -110,6 +157,8 @@ async function seedTestData() {
         lastName: 'Admin',
         role: 'CLIENT_ADMIN',
         clientId: clientA.insertedId,
+        tenantIds: [tenantACME.insertedId],
+        activeTenantId: tenantACME.insertedId,
         mfaEnabled: false,
         isActive: true,
         createdAt: new Date()
@@ -122,6 +171,8 @@ async function seedTestData() {
         role: 'AREA_ADMIN',
         clientId: clientA.insertedId,
         areaId: areaInfra.insertedId,
+        tenantIds: [tenantACME.insertedId],
+        activeTenantId: tenantACME.insertedId,
         mfaEnabled: false,
         isActive: true,
         createdAt: new Date()
@@ -133,6 +184,8 @@ async function seedTestData() {
         lastName: 'Analyst',
         role: 'ANALYST',
         clientId: clientA.insertedId,
+        tenantIds: [tenantACME.insertedId],
+        activeTenantId: tenantACME.insertedId,
         mfaEnabled: false,
         isActive: true,
         createdAt: new Date()
@@ -144,6 +197,8 @@ async function seedTestData() {
         lastName: 'Viewer',
         role: 'VIEWER',
         clientId: clientA.insertedId,
+        tenantIds: [tenantACME.insertedId],
+        activeTenantId: tenantACME.insertedId,
         mfaEnabled: false,
         isActive: true,
         createdAt: new Date()
@@ -151,6 +206,35 @@ async function seedTestData() {
     ]);
 
     log('✅ 6 usuarios creados (password: Password123!)', 'green');
+
+    // === ASIGNACIONES DE ÁREA ===
+    log('\n🔗 Asignando usuarios a áreas...', 'blue');
+    
+    const ownerId = users.insertedIds[0];
+    const areaAdminId = users.insertedIds[3];
+
+    await mongoose.connection.db.collection('userareaassignments').insertMany([
+      {
+        userId: areaAdminId,
+        areaId: areaInfra.insertedId,
+        assignedBy: ownerId,
+        assignedAt: new Date(),
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      },
+      {
+        userId: areaAdminId,
+        areaId: areaApps.insertedId,
+        assignedBy: ownerId,
+        assignedAt: new Date(),
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      }
+    ]);
+    
+    log('✅ Area Admin asignado a Infraestructura y Aplicaciones', 'green');
 
     // === PROYECTOS ===
     log('\n📂 Creando proyectos de prueba...', 'blue');
@@ -160,6 +244,7 @@ async function seedTestData() {
       code: 'TEST-PROJECT-001',
       clientId: clientA.insertedId,
       areaId: areaApps.insertedId,
+      tenantId: tenantACME.insertedId,
       serviceArchitecture: 'WEB',
       projectStatus: 'ACTIVE',
       retestPolicy: {
@@ -177,6 +262,7 @@ async function seedTestData() {
       name: 'Red Team Engagement Evil Corp',
       code: 'TEST-PROJECT-EVIL',
       clientId: clientB.insertedId,
+      tenantId: tenantEvil.insertedId,
       serviceArchitecture: 'CLOUD',
       projectStatus: 'ACTIVE',
       retestPolicy: { enabled: false },
@@ -196,6 +282,7 @@ async function seedTestData() {
         severity: 'CRITICAL',
         status: 'OPEN',
         projectId: projectA.insertedId,
+        tenantId: tenantACME.insertedId,
         retestIncluded: true,
         description: 'Hallazgo de prueba 1',
         createdAt: new Date()
@@ -206,6 +293,7 @@ async function seedTestData() {
         severity: 'HIGH',
         status: 'IN_PROGRESS',
         projectId: projectA.insertedId,
+        tenantId: tenantACME.insertedId,
         retestIncluded: true,
         description: 'Hallazgo de prueba 2',
         createdAt: new Date()
@@ -216,6 +304,7 @@ async function seedTestData() {
         severity: 'MEDIUM',
         status: 'OPEN',
         projectId: projectA.insertedId,
+        tenantId: tenantACME.insertedId,
         retestIncluded: false,
         description: 'Hallazgo de prueba 3',
         createdAt: new Date()
@@ -228,6 +317,7 @@ async function seedTestData() {
       severity: 'CRITICAL',
       status: 'OPEN',
       projectId: projectB_EvilCorp.insertedId,
+       tenantId: tenantEvil.insertedId,
       retestIncluded: true,
       description: '🔒 Este hallazgo NO debe ser accesible por usuarios de ACME Corp',
       createdAt: new Date()

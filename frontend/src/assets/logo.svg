@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="ShieldTrack logo">
+  <defs>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3f51b5"/>
+      <stop offset="100%" stop-color="#00bcd4"/>
+    </linearGradient>
+  </defs>
+  <path d="M60 8l38 14v34c0 22-16 42-38 51-22-9-38-29-38-51V22z" fill="url(#grad)" stroke="#1a237e" stroke-width="4"/>
+  <path d="M60 30l18 8-18 44-18-44z" fill="#e3f2fd" stroke="#0d47a1" stroke-width="3"/>
+  <circle cx="60" cy="32" r="6" fill="#1a237e"/>
+</svg>

@@ -2,6 +2,7 @@ import { Controller, Post, Body, Get, UseGuards, Patch, Param, Delete } from '@n
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { UserAreaService } from './user-area.service';
+import { UserAssignmentService } from './user-assignment.service';
 import { RegisterUserDto, LoginDto, EnableMfaDto, UpdateUserDto } from './dto/auth.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { RolesGuard } from './guards/roles.guard';
@@ -18,6 +19,7 @@ export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly userAreaService: UserAreaService,
+    private readonly userAssignmentService: UserAssignmentService,
   ) {}
 
   @Post('register')
@@ -93,6 +95,20 @@ export class AuthController {
   // ENDPOINTS DE ASIGNACIÓN DE ÁREAS
   // ============================================
 
+  @Post('users/:userId/areas/bulk')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.OWNER)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Asignar múltiples áreas a un usuario de una vez (solo OWNER)' })
+  @ApiResponse({ status: 201, description: 'Áreas asignadas exitosamente' })
+  async assignMultipleAreas(
+    @Param('userId') userId: string,
+    @Body() body: { areaIds: string[] },
+    @CurrentUser() currentUser: any,
+  ) {
+    return this.userAreaService.replaceUserAreas(userId, body.areaIds, currentUser.userId);
+  }
+
   @Post('users/:userId/areas/:areaId')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.OWNER)
@@ -120,20 +136,6 @@ export class AuthController {
     return this.userAreaService.removeArea(userId, areaId);
   }
 
-  @Post('users/:userId/areas/bulk')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.OWNER)
-  @ApiBearerAuth('JWT-auth')
-  @ApiOperation({ summary: 'Asignar múltiples áreas a un usuario de una vez (solo OWNER)' })
-  @ApiResponse({ status: 201, description: 'Áreas asignadas exitosamente' })
-  async assignMultipleAreas(
-    @Param('userId') userId: string,
-    @Body() body: { areaIds: string[] },
-    @CurrentUser() currentUser: any,
-  ) {
-    return this.userAreaService.replaceUserAreas(userId, body.areaIds, currentUser.userId);
-  }
-
   @Get('users/:userId/areas')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('JWT-auth')
@@ -151,5 +153,66 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'Lista de usuarios' })
   async getAreaUsers(@Param('areaId') areaId: string) {
     return this.userAreaService.getAreaUsers(areaId);
+  }
+
+  // ============================================
+  // SOFT DELETE - Desactivar usuarios
+  // ============================================
+
+  @Delete('users/:id/soft')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.OWNER, UserRole.PLATFORM_ADMIN)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Desactivar usuario (soft delete - no eliminación física)' })
+  @ApiResponse({ status: 200, description: 'Usuario desactivado' })
+  async softDeleteUser(@Param('id') id: string, @CurrentUser() currentUser: any) {
+    return this.authService.deleteUser(id, currentUser);
+  }
+
+  @Post('users/:id/reactivate')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.OWNER, UserRole.PLATFORM_ADMIN)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Reactivar usuario previamente desactivado' })
+  @ApiResponse({ status: 200, description: 'Usuario reactivado' })
+  async reactivateUser(@Param('id') id: string) {
+    return this.authService.reactivateUser(id);
+  }
+
+  // ============================================
+  // TENANT SWITCHING - Solo para OWNER
+  // ============================================
+
+  @Post('users/:userId/assignments')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.OWNER, UserRole.PLATFORM_ADMIN)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Actualizar asignaciones centralizadas de usuario (clientes, proyectos, áreas)' })
+  @ApiResponse({ status: 200, description: 'Asignaciones actualizadas exitosamente' })
+  async updateUserAssignments(
+    @Param('userId') userId: string,
+    @Body() body: { clientIds?: string[]; projectIds?: string[]; areaIds?: string[] },
+    @CurrentUser() currentUser: any,
+  ) {
+    return this.userAssignmentService.updateAssignments(userId, body, currentUser.userId);
+  }
+
+  @Get('users/:userId/assignments')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Obtener asignaciones centralizadas del usuario' })
+  @ApiResponse({ status: 200, description: 'Asignaciones del usuario' })
+  async getUserAssignments(@Param('userId') userId: string) {
+    return this.userAssignmentService.getAssignments(userId);
+  }
+
+  @Post('switch-tenant/:clientId')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.OWNER, UserRole.PLATFORM_ADMIN)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Cambiar contexto de tenant sin logout (OWNER/PLATFORM_ADMIN)' })
+  @ApiResponse({ status: 200, description: 'Contexto cambiado, nuevo token JWT emitido' })
+  async switchTenant(@Param('clientId') clientId: string, @CurrentUser() currentUser: any) {
+    return this.authService.switchTenant(clientId, currentUser);
   }
 }

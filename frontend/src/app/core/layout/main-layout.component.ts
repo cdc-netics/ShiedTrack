@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, OnInit, AfterViewInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { MatSidenavModule } from '@angular/material/sidenav';
@@ -8,7 +8,12 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatListModule } from '@angular/material/list';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatDividerModule } from '@angular/material/divider';
+import { MatChipsModule } from '@angular/material/chips';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { AuthService } from '../services/auth.service';
+import { ThemeService } from '../services/theme.service';
+import { HttpClient } from '@angular/common/http';
+import { firstValueFrom } from 'rxjs';
 
 /**
  * Layout principal con sidebar y navegación
@@ -25,7 +30,9 @@ import { AuthService } from '../services/auth.service';
     MatIconModule,
     MatListModule,
     MatMenuModule,
-    MatDividerModule
+    MatDividerModule,
+    MatChipsModule,
+    MatTooltipModule
   ],
   template: `
     <mat-sidenav-container class="sidenav-container">
@@ -33,7 +40,10 @@ import { AuthService } from '../services/auth.service';
           [attr.role]="'navigation'"
           mode="side"
           opened>
-        <mat-toolbar color="primary">ShieldTrack</mat-toolbar>
+        <mat-toolbar class="dynamic-primary">
+          <img class="brand-logo" [src]="theme.currentLogo" alt="Logo" />
+          <span class="brand-name">ShieldTrack</span>
+        </mat-toolbar>
         <mat-nav-list>
           <a mat-list-item routerLink="/dashboard" routerLinkActive="active">
             <mat-icon>dashboard</mat-icon>
@@ -61,9 +71,9 @@ import { AuthService } from '../services/auth.service';
                 <mat-icon>people</mat-icon>
                 <span>Usuarios</span>
               </a>
-              <a mat-list-item routerLink="/admin/areas" routerLinkActive="active">
+              <a mat-list-item routerLink="/admin/tenants" routerLinkActive="active">
                 <mat-icon>business</mat-icon>
-                <span>Áreas</span>
+                <span>Tenants</span>
               </a>
               <a mat-list-item routerLink="/admin/templates" routerLinkActive="active">
                 <mat-icon>description</mat-icon>
@@ -72,6 +82,14 @@ import { AuthService } from '../services/auth.service';
               <a mat-list-item routerLink="/admin/audit" routerLinkActive="active">
                 <mat-icon>history</mat-icon>
                 <span>Auditoría</span>
+              </a>
+              <a mat-list-item routerLink="/admin/branding" routerLinkActive="active">
+                <mat-icon>palette</mat-icon>
+                <span>Branding</span>
+              </a>
+              <a mat-list-item routerLink="/admin/backup" routerLinkActive="active">
+                <mat-icon>backup</mat-icon>
+                <span>Backup</span>
               </a>
               <a mat-list-item routerLink="/admin/config" routerLinkActive="active">
                 <mat-icon>settings</mat-icon>
@@ -82,7 +100,15 @@ import { AuthService } from '../services/auth.service';
         </mat-nav-list>
       </mat-sidenav>
       <mat-sidenav-content>
-        <mat-toolbar color="primary">
+        <mat-toolbar class="dynamic-primary">
+          @if (currentTenant) {
+            <mat-chip-set class="tenant-chip">
+              <mat-chip [matTooltip]="'Cliente actual: ' + currentTenant.name">
+                <mat-icon matChipAvatar>business</mat-icon>
+                {{ currentTenant.displayName || currentTenant.name }}
+              </mat-chip>
+            </mat-chip-set>
+          }
           <span class="toolbar-spacer"></span>
           <span class="user-name">{{ authService.currentUser()?.firstName }} {{ authService.currentUser()?.lastName }}</span>
           <button mat-icon-button [matMenuTriggerFor]="userMenu">
@@ -116,6 +142,7 @@ import { AuthService } from '../services/auth.service';
 
     .sidenav .mat-toolbar {
       background: inherit;
+      gap: 8px;
     }
 
     .mat-toolbar.mat-primary {
@@ -178,8 +205,83 @@ import { AuthService } from '../services/auth.service';
     mat-divider {
       margin: 8px 0;
     }
+
+    .brand-logo {
+      width: 28px;
+      height: 28px;
+      object-fit: contain;
+    }
+
+    .brand-name {
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+
+    .dynamic-primary {
+      background-color: var(--primary-color, #3f51b5) !important;
+      color: #fff;
+    }
+
+    .tenant-chip {
+      margin-right: 16px;
+    }
+
+    .tenant-chip mat-chip {
+      background-color: rgba(255, 255, 255, 0.2) !important;
+      color: #fff;
+      font-weight: 500;
+      font-size: 13px;
+    }
+
+    .tenant-chip mat-chip mat-icon {
+      color: #fff;
+    }
   `]
 })
-export class MainLayoutComponent {
-  constructor(public authService: AuthService) {}
+export class MainLayoutComponent implements OnInit, AfterViewInit {
+  private http = inject(HttpClient);
+  currentTenant: any = null;
+
+  constructor(public authService: AuthService, public theme: ThemeService) {}
+
+  ngOnInit(): void {
+    const clientSettings = (this.authService.currentUser() as any)?.clientSettings;
+    this.theme.applyTheme({
+      primaryColor: clientSettings?.primaryColor,
+      logoUrl: clientSettings?.logoUrl,
+    });
+
+    // Cargar información del tenant actual
+    this.loadCurrentTenant();
+  }
+
+  async loadCurrentTenant(): Promise<void> {
+    const user = this.authService.currentUser();
+    const clientId = (user as any)?.clientId;
+    
+    if (clientId) {
+      try {
+        this.currentTenant = await firstValueFrom(
+          this.http.get(`/api/clients/${clientId}`)
+        );
+      } catch (err) {
+        console.error('Error al cargar tenant actual:', err);
+      }
+    }
+  }
+
+  async ngAfterViewInit(): Promise<void> {
+    try {
+      const anime = (await import('animejs')).default;
+      anime({
+        targets: '.content',
+        opacity: [0, 1],
+        translateY: [12, 0],
+        duration: 450,
+        easing: 'easeOutQuad',
+      });
+    } catch (err) {
+      console.warn('Animación no cargada (anime.js):', err);
+    }
+  }
 }

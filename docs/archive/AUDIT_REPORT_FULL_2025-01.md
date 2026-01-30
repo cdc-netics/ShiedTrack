@@ -1,7 +1,7 @@
 # 🔒 AUDITORÍA DE SEGURIDAD - ShieldTrack
 ## Revisión Senior Full-Stack - Implementación vs Prompt Maestro
 
-**Fecha:** ${new Date().toISOString().split('T')[0]}  
+**Fecha:** 2026-01-05  
 **Revisor:** Senior Full-Stack Security Auditor  
 **Repositorio:** ShieldTrack (NestJS + Angular 17)  
 **Stack:** NestJS 10, MongoDB (Mongoose), Angular 17 (Standalone + Signals)
@@ -1384,5 +1384,5 @@ npm run start:prod
 ---
 
 **Aprobado por:** Senior Full-Stack Security Auditor  
-**Fecha:** ${new Date().toISOString().split('T')[0]}  
+**Fecha:** 2026-01-05  
 **Firma Digital:** [PGP Signature]

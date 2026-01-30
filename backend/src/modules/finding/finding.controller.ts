@@ -73,6 +73,13 @@ export class FindingController {
     return this.findingService.close(id, dto, user.userId);
   }
 
+  @Post('bulk-close')
+  @Roles(UserRole.OWNER, UserRole.PLATFORM_ADMIN, UserRole.CLIENT_ADMIN, UserRole.AREA_ADMIN)
+  @ApiOperation({ summary: 'Cerrar múltiples hallazgos' })
+  async bulkClose(@Body() body: { ids: string[] }, @CurrentUser() user: any) {
+    return this.findingService.bulkClose(body.ids, user.userId);
+  }
+
   @Post('updates')
   @Roles(UserRole.OWNER, UserRole.PLATFORM_ADMIN, UserRole.CLIENT_ADMIN, UserRole.AREA_ADMIN, UserRole.ANALYST)
   @ApiOperation({ summary: 'Agregar actualización al timeline de hallazgo' })

@@ -21,6 +21,8 @@ export class AuditService {
     entityType: string;
     entityId: string;
     performedBy: string;
+    clientId?: string;
+    areaId?: string;
     metadata?: Record<string, any>;
     ip?: string;
     userAgent?: string;

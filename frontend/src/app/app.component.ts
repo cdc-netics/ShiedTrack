@@ -1,9 +1,11 @@
-import { Component } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
+import { BrandingService } from './core/services/branding.service';
 
 /**
  * Componente raíz de ShieldTrack
  * Standalone Component (Angular 17+)
+ * Carga branding dinámico al iniciar
  */
 @Component({
   selector: 'app-root',
@@ -19,6 +21,12 @@ import { RouterOutlet } from '@angular/router';
     }
   `]
 })
-export class AppComponent {
+export class AppComponent implements OnInit {
   title = 'ShieldTrack';
+  private brandingService = inject(BrandingService);
+
+  ngOnInit(): void {
+    // Cargar y aplicar branding al iniciar la aplicación
+    this.brandingService.loadBranding();
+  }
 }

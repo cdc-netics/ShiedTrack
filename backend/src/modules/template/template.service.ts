@@ -33,7 +33,8 @@ export class TemplateService {
       }
       // CLIENT_ADMIN solo puede crear plantillas de su cliente
       if (currentUser.role === 'CLIENT_ADMIN') {
-        dto.clientId = currentUser.clientId;
+        // Tenant-scoped: usar tenantId activo del usuario
+        dto.tenantId = currentUser.activeTenantId || currentUser.clientId;
       }
     }
 
@@ -64,7 +65,7 @@ export class TemplateService {
     if (currentUser.role !== 'OWNER' && currentUser.role !== 'PLATFORM_ADMIN') {
       filter.$or = [
         { scope: 'GLOBAL' },
-        { scope: 'TENANT', clientId: currentUser.clientId }
+        { scope: 'TENANT', tenantId: currentUser.activeTenantId || currentUser.clientId }
       ];
     }
 
@@ -104,7 +105,7 @@ export class TemplateService {
     if (template.scope === 'TENANT') {
       const canAccess = 
         ['OWNER', 'PLATFORM_ADMIN'].includes(currentUser.role) ||
-        (template.clientId?.toString() === currentUser.clientId?.toString());
+        (template.tenantId?.toString() === (currentUser.activeTenantId || currentUser.clientId)?.toString());
 
       if (!canAccess) {
         throw new ForbiddenException('No tiene acceso a esta plantilla');
@@ -155,7 +156,7 @@ export class TemplateService {
     if (currentUser.role !== 'OWNER' && currentUser.role !== 'PLATFORM_ADMIN') {
       filter.$or = [
         { scope: 'GLOBAL' },
-        { scope: 'TENANT', clientId: currentUser.clientId }
+        { scope: 'TENANT', tenantId: currentUser.activeTenantId || currentUser.clientId }
       ];
     }
 

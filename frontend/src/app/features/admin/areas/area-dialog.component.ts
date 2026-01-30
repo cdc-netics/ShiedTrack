@@ -26,10 +26,19 @@ import { HttpClient } from '@angular/common/http';
     <h2 mat-dialog-title>{{ data.area ? 'Editar' : 'Crear' }} Área</h2>
     <mat-dialog-content>
       <form [formGroup]="areaForm">
+        <!-- Cliente eliminado: el tenant se determina automáticamente por contexto -->
+
         <mat-form-field appearance="outline" class="full-width">
           <mat-label>Nombre del Área</mat-label>
           <input matInput formControlName="name" placeholder="Ej: Ciberseguridad">
           <mat-hint>Nombre descriptivo del área (TI, RRHH, Legal, etc.)</mat-hint>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Prefijo para Hallazgos (Opcional)</mat-label>
+          <input matInput formControlName="findingCodePrefix" placeholder="Ej: CIBER" oninput="this.value = this.value.toUpperCase()">
+          <mat-hint>Sobrescribe configuración global. Ej: CIBER-001</mat-hint>
+          <mat-error>Solo letras mayúsculas, números y guiones (2-10 caracteres)</mat-error>
         </mat-form-field>
 
         @if (data.area) {
@@ -84,6 +93,7 @@ import { HttpClient } from '@angular/common/http';
 export class AreaDialogComponent implements OnInit {
   // Formulario de alta/edicion del area
   areaForm: FormGroup;
+  clients: any[] = []; // Lista de clientes para el selector
 
   constructor(
     @Inject(MAT_DIALOG_DATA) public data: { area?: any, clientId: string },
@@ -95,27 +105,32 @@ export class AreaDialogComponent implements OnInit {
     // Configura validaciones base
     this.areaForm = this.fb.group({
       name: ['', [Validators.required, Validators.minLength(3)]],
-      description: ['']
+      description: [''],
+      findingCodePrefix: ['', [Validators.pattern('^[A-Z0-9-]{2,10}$')]]
     });
   }
 
   ngOnInit(): void {
+    // Si no viene clientId, cargar lista de clientes
+    // El tenant se toma desde el contexto (JWT/header); no se requiere cargar clientes.
+
     // Si viene area, precarga valores para edicion
     if (this.data.area) {
       this.areaForm.patchValue({
         name: this.data.area.name,
-        description: this.data.area.description || ''
+        description: this.data.area.description || '',
+        findingCodePrefix: this.data.area.findingCodePrefix || ''
       });
     }
   }
+  // Cliente/tenant ya no se selecciona aquí; se usa el contexto.
 
   onSave(): void {
     // Persiste cambios en backend y cierra el dialogo
     if (!this.areaForm.valid) return;
 
     const areaData = {
-      ...this.areaForm.value,
-      clientId: this.data.clientId
+      ...this.areaForm.value
     };
 
     const request = this.data.area

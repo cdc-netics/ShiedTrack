@@ -12,10 +12,12 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatMenuModule } from '@angular/material/menu'; // Added
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { tap } from 'rxjs';
 import { ClientDialogComponent } from '../client-dialog/client-dialog.component';
+import { environment } from '../../../../environments/environment'; // Standardize env usage
 
 /**
  * Componente de Lista de Clientes
@@ -38,7 +40,8 @@ import { ClientDialogComponent } from '../client-dialog/client-dialog.component'
     MatTooltipModule,
     MatProgressSpinnerModule,
     MatDialogModule,
-    MatSnackBarModule
+    MatSnackBarModule,
+    MatMenuModule // Added
   ],
   template: `
     <div class="client-list-container">
@@ -142,10 +145,19 @@ import { ClientDialogComponent } from '../client-dialog/client-dialog.component'
                         matTooltip="Ver detalles">
                   <mat-icon>visibility</mat-icon>
                 </button>
-                <button mat-icon-button (click)="exportClient(client._id)" 
-                        matTooltip="Exportar portfolio">
+                <button mat-icon-button [matMenuTriggerFor]="exportMenu" matTooltip="Exportar datos">
                   <mat-icon>cloud_download</mat-icon>
                 </button>
+                <mat-menu #exportMenu="matMenu">
+                  <button mat-menu-item (click)="exportClientZip(client._id)">
+                    <mat-icon>folder_zip</mat-icon>
+                    <span>Portfolio Completo (ZIP)</span>
+                  </button>
+                  <button mat-menu-item (click)="exportClientCSV(client._id)">
+                    <mat-icon>grid_on</mat-icon>
+                    <span>Reporte General (CSV)</span>
+                  </button>
+                </mat-menu>
                 <button mat-icon-button (click)="deleteClient(client)" 
                         matTooltip="Eliminar" color="warn">
                   <mat-icon>delete</mat-icon>
@@ -376,8 +388,62 @@ export class ClientListComponent implements OnInit {
     return new Date(date).toLocaleDateString('es-ES');
   }
 
-  exportClient(clientId: string) {
-    // Exporta portfolio del cliente en nueva pestana
-    window.open(`http://localhost:3000/api/export/client/${clientId}/portfolio`, '_blank');
+  exportClientZip(clientId: string) {
+    console.log('📥 Exportando portfolio ZIP de cliente:', clientId);
+    const url = `${environment.apiUrl}/export/client/${clientId}/portfolio`;
+    
+    // Usar HttpClient para incluir el token JWT automáticamente
+    this.http.get(url, { responseType: 'blob' }).subscribe({
+      next: (blob) => {
+        console.log('✅ Portfolio recibido, tamaño:', blob.size, 'bytes');
+        if (blob && blob.size > 0) {
+          const downloadUrl = window.URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = downloadUrl;
+          link.download = `cliente_${clientId}_portfolio_${Date.now()}.zip`;
+          link.click();
+          window.URL.revokeObjectURL(downloadUrl);
+          this.snackBar.open('Portfolio exportado correctamente', 'Cerrar', { duration: 3000 });
+        } else {
+          this.snackBar.open('El portfolio está vacío', 'Cerrar', { duration: 3000 });
+        }
+      },
+      error: (err) => {
+        console.error('❌ Error exportando portfolio:', err);
+        this.snackBar.open(
+          err.error?.message || 'Error al exportar portfolio',
+          'Cerrar',
+          { duration: 5000 }
+        );
+      }
+    });
+  }
+
+  exportClientCSV(clientId: string) {
+    console.log('📥 Exportando CSV de cliente:', clientId);
+    const url = `${environment.apiUrl}/export/client/${clientId}/csv`;
+    
+    // Usar HttpClient para incluir el token JWT automáticamente
+    this.http.get(url, { responseType: 'text' }).subscribe({
+      next: (csv) => {
+        console.log('✅ CSV recibido');
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const downloadUrl = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.download = `cliente_${clientId}_hallazgos_${Date.now()}.csv`;
+        link.click();
+        window.URL.revokeObjectURL(downloadUrl);
+        this.snackBar.open('CSV exportado correctamente', 'Cerrar', { duration: 3000 });
+      },
+      error: (err) => {
+        console.error('❌ Error exportando CSV:', err);
+        this.snackBar.open(
+          err.error?.message || 'Error al exportar CSV',
+          'Cerrar',
+          { duration: 5000 }
+        );
+      }
+    });
   }
 }

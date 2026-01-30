@@ -1,13 +1,40 @@
-import { IsString, IsOptional, IsBoolean, IsEmail } from 'class-validator';
+import { IsString, IsOptional, IsBoolean, IsEmail, ValidateNested } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 
 /**
- * DTO para crear un nuevo cliente
+ * DTO para crear el primer admin del tenant
+ */
+export class CreateTenantAdminDto {
+  @ApiProperty({ example: 'admin@acme.com' })
+  @IsEmail()
+  email: string;
+
+  @ApiProperty({ example: 'SecurePass123!' })
+  @IsString()
+  password: string;
+
+  @ApiProperty({ example: 'John' })
+  @IsString()
+  firstName: string;
+
+  @ApiProperty({ example: 'Doe' })
+  @IsString()
+  lastName: string;
+}
+
+/**
+ * DTO para crear un nuevo cliente (tenant)
  */
 export class CreateClientDto {
   @ApiProperty({ example: 'Acme Corporation', description: 'Nombre del cliente' })
   @IsString()
   name: string;
+
+  @ApiPropertyOptional({ example: 'ACME', description: 'Nombre corto para mostrar en UI' })
+  @IsOptional()
+  @IsString()
+  displayName?: string;
 
   @ApiPropertyOptional({ example: 'CLI001', description: 'Código identificador corto' })
   @IsOptional()
@@ -28,6 +55,15 @@ export class CreateClientDto {
   @IsOptional()
   @IsString()
   contactPhone?: string;
+
+  @ApiPropertyOptional({ 
+    description: 'Crear primer usuario admin del tenant (opcional)',
+    type: CreateTenantAdminDto
+  })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => CreateTenantAdminDto)
+  initialAdmin?: CreateTenantAdminDto;
 }
 
 /**
