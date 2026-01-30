@@ -27,6 +27,9 @@
 - Relaciones
 - Patrones de implementación
 
+### 🧩 Quiero entender Multi‑Tenancy
+→ **[docs/MULTI-TENANCY.md](docs/MULTI-TENANCY.md)** - Aislamiento por tenant y estado actual
+
 ### 🧪 Quiero ejecutar tests
 → **[docs/TESTING-GUIDE.md](docs/TESTING-GUIDE.md)** - Guía completa de testing
 
@@ -35,6 +38,9 @@
 
 ### 📋 Quiero detalles de QA y validaciones
 → **[docs/archive/](docs/archive/)** - Carpeta con reportes de QA detallados
+
+### 🛡️ Quiero robustez de MongoDB
+→ **[MONGODB-ROBUSTNESS-IMPROVEMENTS.md](MONGODB-ROBUSTNESS-IMPROVEMENTS.md)** - Conexión robusta y scripts
 
 ### 💻 Tengo la contraseña original del proyecto
 → **[Promp.txt](Promp.txt)** - Prompt original del sistema (referencia)

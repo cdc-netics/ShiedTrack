@@ -1,5 +1,16 @@
 # ShieldTrack Multi-Tenancy (Tenant Isolation)
 
+**Documento canónico:** este archivo es la única fuente de verdad sobre multi‑tenancy.  
+Otros documentos similares fueron consolidados para evitar inconsistencias.
+
+## Estado actual (repositorio)
+- **Backend:** aislamiento por tenant con `TenantContextGuard` (CLS) + `multiTenantPlugin` en schemas.  
+- **Frontend:** se mantiene la terminología **Áreas** y el rol **AREA_ADMIN** (no TENANT_ADMIN).  
+- **UI:** “Áreas” se usa para separar dominios internos (QA, Ciber, etc.).  
+- **Nota técnica:** existe un plugin alternativo `tenantPlugin` (AsyncLocalStorage) registrado globalmente; debe unificarse con el enfoque CLS para evitar duplicidad técnica.
+
+---
+
 Este documento define el rediseño para multi-tenancy real (aislamiento por Tenant) y la transición desde el modelo actual basado en "Áreas".
 
 ## Objetivos
@@ -20,7 +31,7 @@ Este documento define el rediseño para multi-tenancy real (aislamiento por Tena
   - Ver todos los tenants y administrar configuración global.
   - Mover usuarios entre tenants, asignar multi-tenant.
   - Acceso total a datos de cualquier tenant.
-- Roles por Tenant (ejemplos): `TENANT_ADMIN`, `ANALYST`, `VIEWER`.
+- Roles por Tenant (ejemplos): `AREA_ADMIN`, `ANALYST`, `VIEWER`.
   - Visibilidad y acciones limitadas a su `tenantId`.
 
 ## Contexto de Tenant (Runtime)
@@ -49,7 +60,7 @@ Este documento define el rediseño para multi-tenancy real (aislamiento por Tena
   - Campos personalizados.
   - Reglas específicas (por ejemplo, retest policy).
 
-## Migración desde "Áreas" a Tenants
+## Migración desde "Áreas" a Tenants (plan)
 1. Crear colección `tenants`.
 2. Migrar `areas` → `tenants` (1:1 inicialmente):
    - `areas.name` → `tenants.name`
@@ -58,7 +69,7 @@ Este documento define el rediseño para multi-tenancy real (aislamiento por Tena
 3. Agregar `tenantId` en todas las colecciones y backfill con el `tenant` derivado de área.
 4. Actualizar usuarios:
    - `areaIds` → `tenantIds`.
-   - Rol `AREA_ADMIN` → `TENANT_ADMIN`.
+   - Rol `AREA_ADMIN` → `TENANT_ADMIN` (solo si se decide cambiar terminología).
 5. Adaptar servicios/repositorios para filtrar por `tenantId`.
 6. Mantener compatibilidad temporal (legacy):
    - Alias de endpoints `/api/areas` → `/api/tenants` según feature flag.
@@ -74,7 +85,7 @@ Este documento define el rediseño para multi-tenancy real (aislamiento por Tena
 
 ## UX / Visibilidad
 - Usuario normal: solo ve su `tenant`.
-- TENANT_ADMIN: experiencia completa de administración dentro de su tenant.
+- AREA_ADMIN: experiencia completa de administración dentro de su tenant (área).
 - OWNER: vista global con cambio de contexto a cualquier tenant.
 
 ## Seed y Datos de Prueba
