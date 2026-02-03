@@ -44,6 +44,8 @@ Además, antes de arreglar todo, se definió como prioridad **actualizar el fron
 | M2 | Mejoras | Multi‑tenancy inconsistente | Pendiente | CLS vs AsyncLocalStorage |
 | M3 | Mejoras | Permisos de lectura por proyecto para clientes | Pendiente | Asignar proyectos visibles por admin |
 | M4 | Mejoras | Exceso de scripts / duplicidad | Pendiente | Revisar y consolidar scripts |
+| M5 | Mejoras | Gestión avanzada de notificaciones por correo | Pendiente | Configurar reglas y plantillas |
+| M6 | Mejoras | Métricas/estadísticas exportables para BI | Pendiente | Integración con Metabase/PowerBI |
 
 ---
 
@@ -308,6 +310,51 @@ Además, antes de arreglar todo, se definió como prioridad **actualizar el fron
   - Revisar carpeta raíz y `backend/scripts/` para identificar scripts redundantes.  
   - Consolidar en 1–2 scripts canónicos (start/seed/fix).  
   - Documentar el flujo correcto en `SETUP.md`.  
+
+#### **M5 — Gestión avanzada de notificaciones por correo**
+- **Estado:** Pendiente  
+- **Descripción:** Falta una forma clara de configurar notificaciones (quién recibe, cuándo, y con qué plantilla).  
+- **Solución sugerida (simple):** Crear un módulo de configuración de notificaciones y plantillas en UI.  
+- **Recomendación técnica:**  
+  - **Crear modelos nuevos** (backend):
+    - `NotificationRule`: `{ name, event, scope, tenantId?, projectId?, enabled, channel, recipients, templateId?, throttleMinutes?, createdAt }`
+    - `NotificationTemplate`: `{ code, subject, bodyHtml, variables[] }`
+  - **Eventos sugeridos** (reusar los que ya existen en `EmailService` y `RetestScheduler`):
+    - `USER_CREATED`, `USER_ASSIGNED_AREA`, `FINDING_ASSIGNED`, `FINDING_CLOSED`, `RETEST_UPCOMING`
+  - **Campos a agregar** (config SMTP ya existe en `SystemConfig`):
+    - `smtp_reply_to`, `smtp_timeout_ms`, `smtp_tls_reject_unauthorized` (opcional)
+  - **Dónde tocar código**:
+    - `backend/src/modules/email/email.service.ts`: leer plantilla + regla antes de enviar
+    - `backend/src/modules/retest-scheduler/retest-scheduler.service.ts`: usar reglas por proyecto/tenant
+    - `backend/src/modules/system-config/*`: extender DTO si se agregan campos SMTP
+  - **UI**:
+    - Crear pantalla de “Notificaciones” en admin para activar/desactivar reglas por tenant/proyecto
+    - Permitir seleccionar destinatarios por rol/usuario/email
+
+#### **M6 — Métricas/estadísticas exportables para BI**
+- **Estado:** Pendiente  
+- **Descripción:** No existe un mecanismo fácil para consumir métricas en Metabase/PowerBI.  
+- **Solución sugerida (simple):** Exponer endpoints de métricas agregadas (API de reporting).  
+- **Recomendación técnica:**  
+  - **Crear módulo de métricas**: `backend/src/modules/metrics/*`
+  - **Endpoints sugeridos**:
+    - `GET /api/metrics/summary` (totales de clientes/proyectos/hallazgos)
+    - `GET /api/metrics/findings-by-severity`
+    - `GET /api/metrics/findings-by-status`
+    - `GET /api/metrics/projects-by-status`
+    - `GET /api/metrics/clients-usage`
+    - `GET /api/metrics/export?format=csv|json&from=&to=&tenantId=`
+  - **Filtros mínimos**: `from`, `to`, `tenantId`, `clientId`, `projectId`
+  - **Campos clave ya existentes**:
+    - Findings: `severity`, `status`, `retestIncluded`, `createdAt`, `closedAt`, `projectId`, `tenantId`
+    - Projects: `projectStatus`, `serviceArchitecture`, `tenantId`, `clientId`, `createdAt`
+    - Clients: `isActive`, `createdAt`
+  - **Índices recomendados**:
+    - `findings`: `{ tenantId, projectId, severity, status, createdAt }`
+    - `projects`: `{ tenantId, projectStatus, createdAt }`
+  - **Para BI externo**:
+    - Exponer JSON/CSV estable y documentado
+    - Opcional: colección materializada `metrics_daily` para acelerar dashboards
 
 ---
 
