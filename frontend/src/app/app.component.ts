@@ -8,13 +8,12 @@ import { BrandingService } from './core/services/branding.service';
  * Carga branding dinámico al iniciar
  */
 @Component({
-  selector: 'app-root',
-  standalone: true,
-  imports: [RouterOutlet],
-  template: `
+    selector: 'app-root',
+    imports: [RouterOutlet],
+    template: `
     <router-outlet />
   `,
-  styles: [`
+    styles: [`
     :host {
       display: block;
       height: 100%;

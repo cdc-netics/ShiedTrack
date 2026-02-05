@@ -27,21 +27,20 @@ export interface AddUpdateDialogResult {
  * Diálogo para agregar seguimiento/actualización a un hallazgo
  */
 @Component({
-  selector: 'app-add-update-dialog',
-  standalone: true,
-  imports: [
-    CommonModule,
-    ReactiveFormsModule,
-    MatDialogModule,
-    MatButtonModule,
-    MatFormFieldModule,
-    MatSelectModule,
-    MatInputModule,
-    MatIconModule,
-    MatChipsModule,
-    MatSnackBarModule
-  ],
-  template: `
+    selector: 'app-add-update-dialog',
+    imports: [
+        CommonModule,
+        ReactiveFormsModule,
+        MatDialogModule,
+        MatButtonModule,
+        MatFormFieldModule,
+        MatSelectModule,
+        MatInputModule,
+        MatIconModule,
+        MatChipsModule,
+        MatSnackBarModule
+    ],
+    template: `
     <h2 mat-dialog-title>
       <mat-icon>add_comment</mat-icon>
       Agregar Seguimiento
@@ -128,7 +127,7 @@ export interface AddUpdateDialogResult {
       </button>
     </mat-dialog-actions>
   `,
-  styles: [`
+    styles: [`
     .dialog-subtitle {
       color: rgba(0, 0, 0, 0.6);
       margin-bottom: 20px;

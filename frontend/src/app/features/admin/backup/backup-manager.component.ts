@@ -28,19 +28,18 @@ interface BackupStats {
 }
 
 @Component({
-  selector: 'app-backup-manager',
-  standalone: true,
-  imports: [
-    CommonModule,
-    MatCardModule,
-    MatIconModule,
-    MatButtonModule,
-    MatProgressBarModule,
-    MatTooltipModule,
-    MatDialogModule,
-    MatSnackBarModule
-  ],
-  template: `
+    selector: 'app-backup-manager',
+    imports: [
+        CommonModule,
+        MatCardModule,
+        MatIconModule,
+        MatButtonModule,
+        MatProgressBarModule,
+        MatTooltipModule,
+        MatDialogModule,
+        MatSnackBarModule
+    ],
+    template: `
     <div class="backup-container">
       <h2>
         <mat-icon>backup</mat-icon>
@@ -148,7 +147,7 @@ interface BackupStats {
       </mat-card>
     </div>
   `,
-  styles: [`
+    styles: [`
     .backup-container {
       padding: 20px;
       max-width: 1200px;

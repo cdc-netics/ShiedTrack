@@ -82,29 +82,28 @@ interface FindingUpdate {
  * Visualización completa y edición de hallazgos de seguridad
  */
 @Component({
-  selector: 'app-finding-detail',
-  standalone: true,
-  imports: [
-    CommonModule,
-    RouterLink,
-    ReactiveFormsModule,
-    FormsModule,
-    MatCardModule,
-    MatButtonModule,
-    MatIconModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatSelectModule,
-    MatChipsModule,
-    MatDividerModule,
-    MatTabsModule,
-    MatProgressSpinnerModule,
-    MatSnackBarModule,
-    MatDialogModule,
-    MatTooltipModule,
-    MatExpansionModule
-  ],
-  template: `
+    selector: 'app-finding-detail',
+    imports: [
+        CommonModule,
+        RouterLink,
+        ReactiveFormsModule,
+        FormsModule,
+        MatCardModule,
+        MatButtonModule,
+        MatIconModule,
+        MatFormFieldModule,
+        MatInputModule,
+        MatSelectModule,
+        MatChipsModule,
+        MatDividerModule,
+        MatTabsModule,
+        MatProgressSpinnerModule,
+        MatSnackBarModule,
+        MatDialogModule,
+        MatTooltipModule,
+        MatExpansionModule
+    ],
+    template: `
     <div class="finding-detail-container">
       @if (loading()) {
         <div class="loading-container">
@@ -586,7 +585,7 @@ interface FindingUpdate {
       }
     </div>
   `,
-  styles: [`
+    styles: [`
     .finding-detail-container {
       padding: 24px;
       max-width: 1400px;
@@ -1304,7 +1303,7 @@ export class FindingDetailComponent implements OnInit {
             affectedAsset: data.affectedAsset || '',
             cweId: data.cweId || '',
             cvss_score: data.cvss_score || '',
-            cve_id: data.cve_id || '',
+            cve_id: data?.cve_id || '',
             detection_source: data.detection_source || '',
             recommendation: data.recommendation || '',
             impact: data.impact || '',

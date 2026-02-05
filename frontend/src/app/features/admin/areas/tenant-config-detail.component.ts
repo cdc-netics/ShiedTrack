@@ -27,29 +27,28 @@ interface TenantConfig {
 }
 
 @Component({
-  selector: 'app-tenant-config-detail',
-  standalone: true,
-  imports: [
-    CommonModule,
-    RouterLink,
-    FormsModule,
-    MatCardModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatButtonModule,
-    MatIconModule,
-    MatTabsModule,
-    MatSnackBarModule,
-    MatDividerModule
-  ],
-  template: `
+    selector: 'app-tenant-config-detail',
+    imports: [
+        CommonModule,
+        RouterLink,
+        FormsModule,
+        MatCardModule,
+        MatFormFieldModule,
+        MatInputModule,
+        MatButtonModule,
+        MatIconModule,
+        MatTabsModule,
+        MatSnackBarModule,
+        MatDividerModule
+    ],
+    template: `
     <div class="config-detail-container">
       <!-- Header -->
       <div class="header">
         <button mat-icon-button routerLink="/admin/tenants">
           <mat-icon>arrow_back</mat-icon>
         </button>
-        <h1>Configuración de Tenant: {{ tenantId }}</h1>
+        <h1>Configuración de Tenant: {{ tenantId() }}</h1>
       </div>
 
       <mat-card class="config-card">
@@ -80,8 +79,8 @@ interface TenantConfig {
                 <div class="status-field">
                   <label>Estado</label>
                   <div class="status-toggle">
-                    <input type="checkbox" [(ngModel)]="config().isActive" [id]="'active-' + tenantId">
-                    <label [for]="'active-' + tenantId">{{ config().isActive ? '✅ Activo' : '❌ Inactivo' }}</label>
+                    <input type="checkbox" [(ngModel)]="config().isActive" [id]="'active-' + tenantId()">
+                    <label [for]="'active-' + tenantId()">{{ config().isActive ? '✅ Activo' : '❌ Inactivo' }}</label>
                   </div>
                 </div>
               </div>
@@ -203,7 +202,7 @@ interface TenantConfig {
       </mat-card>
     </div>
   `,
-  styles: [`
+    styles: [`
     .config-detail-container {
       padding: 20px;
       max-width: 900px;

@@ -16,17 +16,16 @@ import { ProjectService } from '../../core/services/project.service';
  * Desktop-First: Optimizado para pantallas ≥1366px
  */
 @Component({
-  selector: 'app-dashboard',
-  standalone: true,
-  imports: [
-    CommonModule,
-    RouterLink,
-    MatCardModule,
-    MatButtonModule,
-    MatIconModule,
-    MatTableModule
-  ],
-  template: `
+    selector: 'app-dashboard',
+    imports: [
+        CommonModule,
+        RouterLink,
+        MatCardModule,
+        MatButtonModule,
+        MatIconModule,
+        MatTableModule
+    ],
+    template: `
     <div class="dashboard-container">
       <h1>📊 Dashboard</h1>
 
@@ -203,7 +202,7 @@ import { ProjectService } from '../../core/services/project.service';
       </div>
     </div>
   `,
-  styles: [`
+    styles: [`
     .dashboard-container {
       padding: 0;
     }

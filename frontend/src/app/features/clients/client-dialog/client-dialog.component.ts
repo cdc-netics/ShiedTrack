@@ -14,22 +14,21 @@ import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../environments/environment';
 
 @Component({
-  selector: 'app-client-dialog',
-  standalone: true,
-  imports: [
-    CommonModule,
-    FormsModule,
-    ReactiveFormsModule,
-    MatDialogModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatButtonModule,
-    MatIconModule,
-    MatProgressSpinnerModule,
-    MatTabsModule,
-    MatCheckboxModule
-  ],
-  template: `
+    selector: 'app-client-dialog',
+    imports: [
+        CommonModule,
+        FormsModule,
+        ReactiveFormsModule,
+        MatDialogModule,
+        MatFormFieldModule,
+        MatInputModule,
+        MatButtonModule,
+        MatIconModule,
+        MatProgressSpinnerModule,
+        MatTabsModule,
+        MatCheckboxModule
+    ],
+    template: `
     <h2 mat-dialog-title>
       <mat-icon>{{ data ? 'edit' : 'add' }}</mat-icon>
       {{ data ? 'Editar Cliente' : 'Nuevo Cliente' }}
@@ -148,7 +147,7 @@ import { environment } from '../../../../environments/environment';
       </button>
     </mat-dialog-actions>
   `,
-  styles: [`
+    styles: [`
     .full-width {
       width: 100%;
       margin-bottom: 16px;
