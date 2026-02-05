@@ -104,20 +104,30 @@ npm run build
 
 ### Vulnerabilidades de npm
 
+**Estado actual:** 12 vulnerabilidades (5 low, 3 moderate, 4 high)
+
+✅ **Ya corregidas:** 24 de 36 vulnerabilidades (67% reducción)
+- diff, fast-xml-parser, AWS SDK, qs: actualizados
+- nodemailer 6.9.7 → 8.0.0: vulnerabilidades moderate corregidas
+
+⚠️ **Pendientes:**
+- 4 HIGH: glob, tar, webpack (solo dev dependencies, no afectan producción)
+- 3 MODERATE: js-yaml, lodash (requieren actualizar NestJS v10 → v11)
+
 Si `npm install` muestra vulnerabilidades:
 
 ```bash
-# Ver detalles de vulnerabilidades
+# Ver detalles
 npm audit
 
-# Corregir vulnerabilidades automáticamente (seguro)
-npm audit fix
+# Las versiones corregidas ya están en package.json
+npm install
 
-# PRECAUCIÓN: Solo usar si sabes qué hace
-npm audit fix --force  # Puede introducir breaking changes
+# Compilar y verificar
+npm run build
 ```
 
-**Nota:** Algunas vulnerabilidades pueden ser false positives o requerir actualización manual de dependencias. Revisa [ISSUES.md](ISSUES.md) para vulnerabilidades conocidas.
+**⚠️ ADVERTENCIA:** NO uses `npm audit fix --force` sin revisar cambios. Las vulnerabilidades restantes requieren breaking changes de NestJS v10 → v11.
 
 ## 📋 Características Principales
 
