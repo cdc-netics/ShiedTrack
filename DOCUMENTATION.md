@@ -252,7 +252,7 @@ npm install
 - **Swagger** - Documentación de API
 
 **Frontend:**
-- **Angular** 17.x - Framework modular
+- **Angular** 20.x - Framework modular
 - **Angular Material** - Componentes UI
 - **RxJS** - Programación reactiva
 - **TypeScript** - Lenguaje tipado
@@ -362,7 +362,7 @@ ShieldTrack/
 - Validación de DTOs con class-validator
 
 #### ✅ Interfaz de Usuario (Desktop)
-- Angular 17+ Standalone Components
+- Angular 20+ Standalone Components
 - Angular Signals para state management
 - Material UI con diseño denso
 - Vistas Operativas vs Históricas

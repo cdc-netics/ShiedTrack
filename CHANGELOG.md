@@ -7,6 +7,47 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-02-05
+
+### 🎯 Resumen de Cambios
+**Tema:** Actualización Mayor a Angular 20 y Modernización del Stack Frontend
+- Actualización completa del frontend de Angular 17 a Angular 20.3.16
+- Actualización de Angular Material a 20.2.14 y CDK a 20.2.14
+- Actualización de TypeScript a 5.9.3 para compatibilidad con Angular 20
+- Actualización de Zone.js a 0.15.1
+- Mantenimiento de compatibilidad con RxJS 7.8.0
+- Validación completa de librerías externas (animejs)
+- Build limpio sin errores ni warnings
+
+### ✨ Actualizaciones de Dependencias
+
+#### Frontend
+- **Angular Core:** 17.x → 20.3.16
+- **Angular CLI:** 17.x → 20.3.15
+- **Angular Material:** 17.x → 20.2.14
+- **Angular CDK:** 17.x → 20.2.14
+- **TypeScript:** 5.x → 5.9.3
+- **Zone.js:** 0.14.x → 0.15.1
+- **RxJS:** 7.8.0 (sin cambios, compatible)
+
+### 📚 Documentación
+- Actualizado README.md con badge de Angular 20
+- Actualizado DOCUMENTATION.md con versión correcta del stack
+- Actualizado ISSUES.md marcando completada la actualización a Angular 20
+- Actualizado docs/architecture.md con referencias a Angular 20+
+- Actualizado INDEX.md para reflejar la nueva versión
+
+### 🔧 Cambios Técnicos
+- Validación de breaking changes de Angular 20
+- Pruebas de compatibilidad con Standalone Components
+- Verificación de Signals y state management
+- Validación de Material Design components
+- Pruebas de build en producción
+
+### ⚠️ Breaking Changes
+- Requiere Node.js 18.x o superior
+- Librerías de terceros deben ser compatibles con Angular 20+
+
 ## [1.7.0] - 2025-01-14
 
 ### 🎯 Resumen de Cambios
@@ -235,7 +276,7 @@ Creado nuevo archivo de referencia:
 ### 🔧 Mejoras Técnicas
 - Importación de `AuthService` en `ClientModule` para crear usuarios desde tenant
 - Manejo robusto de errores en creación de admin (no-blocking)
-- Compilación exitosa del frontend (Angular 17+)
+- Compilación exitosa del frontend (Angular 20+)
 - Downgrade de `animejs` v4 → v3.2.2 para compatibilidad
 - Integración de `MatChipsModule` y `MatTooltipModule`
 
