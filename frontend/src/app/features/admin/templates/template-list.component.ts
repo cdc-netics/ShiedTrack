@@ -16,23 +16,22 @@ import { environment } from '../../../../environments/environment';
 import { TemplateDialogComponent } from './template-dialog.component';
 
 @Component({
-  selector: 'app-template-list',
-  standalone: true,
-  imports: [
-    CommonModule,
-    MatTableModule,
-    MatButtonModule,
-    MatIconModule,
-    MatChipsModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatSelectModule,
-    MatDialogModule,
-    MatSnackBarModule,
-    MatTooltipModule,
-    FormsModule
-  ],
-  template: `
+    selector: 'app-template-list',
+    imports: [
+        CommonModule,
+        MatTableModule,
+        MatButtonModule,
+        MatIconModule,
+        MatChipsModule,
+        MatFormFieldModule,
+        MatInputModule,
+        MatSelectModule,
+        MatDialogModule,
+        MatSnackBarModule,
+        MatTooltipModule,
+        FormsModule
+    ],
+    template: `
     <div class="template-container">
       <div class="header">
         <h1>� Plantillas de Vulnerabilidades</h1>
@@ -136,7 +135,7 @@ import { TemplateDialogComponent } from './template-dialog.component';
       }
     </div>
   `,
-  styles: [`
+    styles: [`
     .template-container {
       padding: 0;
     }

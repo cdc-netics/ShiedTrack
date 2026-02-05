@@ -31,27 +31,26 @@ interface Template {
 }
 
 @Component({
-  selector: 'app-finding-wizard',
-  standalone: true,
-  imports: [
-    CommonModule,
-    RouterLink,
-    FormsModule,
-    ReactiveFormsModule,
-    MatStepperModule,
-    MatButtonModule,
-    MatInputModule,
-    MatFormFieldModule,
-    MatSelectModule,
-    MatCardModule,
-    MatIconModule,
-    MatChipsModule,
-    MatAutocompleteModule,
-    MatProgressSpinnerModule,
-    MatDividerModule,
-    MatTooltipModule
-  ],
-  template: `
+    selector: 'app-finding-wizard',
+    imports: [
+        CommonModule,
+        RouterLink,
+        FormsModule,
+        ReactiveFormsModule,
+        MatStepperModule,
+        MatButtonModule,
+        MatInputModule,
+        MatFormFieldModule,
+        MatSelectModule,
+        MatCardModule,
+        MatIconModule,
+        MatChipsModule,
+        MatAutocompleteModule,
+        MatProgressSpinnerModule,
+        MatDividerModule,
+        MatTooltipModule
+    ],
+    template: `
     <div class="wizard-container">
       <mat-card>
         <mat-card-header>
@@ -428,8 +427,10 @@ interface Template {
                     @if (submitting()) {
                       <mat-spinner diameter="20"></mat-spinner>
                     } @else {
-                      <mat-icon>save</mat-icon>
-                      Crear Hallazgo
+                      <span class="button-content">
+                        <mat-icon>save</mat-icon>
+                        <span>Crear Hallazgo</span>
+                      </span>
                     }
                   </button>
                 </div>
@@ -440,7 +441,7 @@ interface Template {
       </mat-card>
     </div>
   `,
-  styles: [`
+    styles: [`
     .wizard-container { padding: 0; max-width: 1200px; margin: 0 auto; }
     mat-card-title { display: flex; align-items: center; gap: 12px; font-size: 24px; }
     .wizard-form { padding: 24px 0; }
@@ -460,6 +461,7 @@ interface Template {
     .upload-zone:hover { border-color: #2196f3; background: #f5f5f5; }
     .file-list { margin: 16px 0; }
     .actions { display: flex; justify-content: space-between; margin-top: 24px; padding-top: 16px; border-top: 1px solid #e0e0e0; }
+    .button-content { display: inline-flex; align-items: center; gap: 6px; }
     .severity-critical { background: #ffebee; color: #c62828; }
     .severity-high { background: #fff3e0; color: #e65100; }
     .severity-medium { background: #fff9c4; color: #f57f17; }

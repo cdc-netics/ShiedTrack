@@ -33,19 +33,18 @@ const DEV_ADMIN_PASSWORD = 'Admin123!';
  * Standalone component con Material UI y anime.js
  */
 @Component({
-  selector: 'app-login',
-  standalone: true,
-  imports: [
-    CommonModule,
-    FormsModule,
-    MatCardModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatButtonModule,
-    MatProgressSpinnerModule,
-    MatSelectModule
-  ],
-  template: `
+    selector: 'app-login',
+    imports: [
+        CommonModule,
+        FormsModule,
+        MatCardModule,
+        MatFormFieldModule,
+        MatInputModule,
+        MatButtonModule,
+        MatProgressSpinnerModule,
+        MatSelectModule
+    ],
+    template: `
     <div class="login-container">
       <!-- Animación de fondo con partículas -->
       <div class="particles" #particles>
@@ -141,7 +140,7 @@ const DEV_ADMIN_PASSWORD = 'Admin123!';
       </mat-card>
     </div>
   `,
-  styles: [`
+    styles: [`
     .login-container {
       position: relative;
       display: flex;

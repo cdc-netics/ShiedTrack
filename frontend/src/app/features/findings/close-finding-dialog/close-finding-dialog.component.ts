@@ -23,19 +23,18 @@ export interface CloseDialogResult {
  * Permite seleccionar motivo de cierre y agregar comentario opcional
  */
 @Component({
-  selector: 'app-close-finding-dialog',
-  standalone: true,
-  imports: [
-    CommonModule,
-    ReactiveFormsModule,
-    MatDialogModule,
-    MatButtonModule,
-    MatFormFieldModule,
-    MatSelectModule,
-    MatInputModule,
-    MatIconModule
-  ],
-  template: `
+    selector: 'app-close-finding-dialog',
+    imports: [
+        CommonModule,
+        ReactiveFormsModule,
+        MatDialogModule,
+        MatButtonModule,
+        MatFormFieldModule,
+        MatSelectModule,
+        MatInputModule,
+        MatIconModule
+    ],
+    template: `
     <h2 mat-dialog-title>
       <mat-icon>lock</mat-icon>
       Cerrar Hallazgo
@@ -110,7 +109,7 @@ export interface CloseDialogResult {
       </button>
     </mat-dialog-actions>
   `,
-  styles: [`
+    styles: [`
     .dialog-subtitle {
       color: rgba(0, 0, 0, 0.6);
       margin-bottom: 20px;

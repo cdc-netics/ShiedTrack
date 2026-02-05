@@ -87,7 +87,7 @@ Además, antes de arreglar todo, se definió como prioridad **actualizar el fron
   npm test
   ```
 
-#### **F1-1 — Subir Angular Core/CLI**
+#### **F1-1 — Subir Angular Core/CLI** ---DONE
 - **Estado:** Pendiente  
 - **Descripción:** Paso base para llegar a v20.  
 - **Solución sugerida (simple):** Actualizar core y CLI.  
@@ -97,7 +97,7 @@ Además, antes de arreglar todo, se definió como prioridad **actualizar el fron
   npx ng update @angular/core@20 @angular/cli@20
   ```
 
-#### **F1-2 — Subir Angular Material/CDK**
+#### **F1-2 — Subir Angular Material/CDK** ---DONE
 - **Estado:** Pendiente  
 - **Descripción:** Mantener UI compatible con v20.  
 - **Solución sugerida (simple):** Actualizar Material/CDK.  

@@ -14,19 +14,18 @@ import { BrandingService, SystemBranding } from '../../../core/services/branding
  * Permite configurar favicon, logo, nombre y colores
  */
 @Component({
-  selector: 'app-branding-config',
-  standalone: true,
-  imports: [
-    CommonModule,
-    FormsModule,
-    MatCardModule,
-    MatButtonModule,
-    MatInputModule,
-    MatFormFieldModule,
-    MatIconModule,
-    MatSnackBarModule
-  ],
-  template: `
+    selector: 'app-branding-config',
+    imports: [
+        CommonModule,
+        FormsModule,
+        MatCardModule,
+        MatButtonModule,
+        MatInputModule,
+        MatFormFieldModule,
+        MatIconModule,
+        MatSnackBarModule
+    ],
+    template: `
     <div class="branding-container">
       <mat-card>
         <mat-card-header>
@@ -109,7 +108,7 @@ import { BrandingService, SystemBranding } from '../../../core/services/branding
       </mat-card>
     </div>
   `,
-  styles: [`
+    styles: [`
     .branding-container {
       padding: 24px;
       max-width: 800px;
