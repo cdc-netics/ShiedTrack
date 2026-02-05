@@ -81,6 +81,44 @@ npm run seed:test
 - `analyst@shieldtrack.com` / `Password123!`
 - `viewer@shieldtrack.com` / `Password123!`
 
+## 🔧 Solución de Problemas Comunes
+
+### Error: "Cannot find module './modules/evidence/evidence.module'"
+
+Si obtienes este error al compilar o ejecutar el backend:
+
+```bash
+# 1. Asegúrate de tener la última versión del repositorio
+git pull origin main
+
+# 2. Reinstala dependencias
+cd backend
+rm -rf node_modules package-lock.json
+npm install
+
+# 3. Compila nuevamente
+npm run build
+```
+
+**Causa:** El archivo `.gitignore` anteriormente bloqueaba el módulo `evidence`. Esto se corrigió en el commit más reciente.
+
+### Vulnerabilidades de npm
+
+Si `npm install` muestra vulnerabilidades:
+
+```bash
+# Ver detalles de vulnerabilidades
+npm audit
+
+# Corregir vulnerabilidades automáticamente (seguro)
+npm audit fix
+
+# PRECAUCIÓN: Solo usar si sabes qué hace
+npm audit fix --force  # Puede introducir breaking changes
+```
+
+**Nota:** Algunas vulnerabilidades pueden ser false positives o requerir actualización manual de dependencias. Revisa [ISSUES.md](ISSUES.md) para vulnerabilidades conocidas.
+
 ## 📋 Características Principales
 
 - ✅ **Multi-Tenant**: Gestión por cliente con aislamiento lógico.
