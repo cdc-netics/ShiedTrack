@@ -31,25 +31,24 @@ export interface AssignmentData {
  * Permite multi-selección y gestión granular de permisos
  */
 @Component({
-  selector: 'app-user-assignment-dialog',
-  standalone: true,
-  imports: [
-    CommonModule,
-    FormsModule,
-    MatDialogModule,
-    MatButtonModule,
-    MatCheckboxModule,
-    MatTabsModule,
-    MatListModule,
-    MatChipsModule,
-    MatIconModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatSelectModule,
-    MatProgressBarModule,
-    MatSnackBarModule
-  ],
-  template: `
+    selector: 'app-user-assignment-dialog',
+    imports: [
+        CommonModule,
+        FormsModule,
+        MatDialogModule,
+        MatButtonModule,
+        MatCheckboxModule,
+        MatTabsModule,
+        MatListModule,
+        MatChipsModule,
+        MatIconModule,
+        MatFormFieldModule,
+        MatInputModule,
+        MatSelectModule,
+        MatProgressBarModule,
+        MatSnackBarModule
+    ],
+    template: `
     <h2 mat-dialog-title>
       <mat-icon>assignment</mat-icon>
       Asignar Permisos - {{ data.userName }}
@@ -209,7 +208,7 @@ export interface AssignmentData {
       </button>
     </mat-dialog-actions>
   `,
-  styles: [`
+    styles: [`
     .tab-content {
       padding: 16px;
       max-height: 400px;

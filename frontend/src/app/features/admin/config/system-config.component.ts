@@ -14,21 +14,20 @@ import { AuthService } from '../../../core/services/auth.service';
 import { environment } from '../../../../environments/environment';
 
 @Component({
-  selector: 'app-system-config',
-  standalone: true,
-  imports: [
-    CommonModule,
-    MatExpansionModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatSlideToggleModule,
-    MatButtonModule,
-    MatIconModule,
-    MatSelectModule,
-    MatDividerModule,
-    FormsModule
-  ],
-  template: `
+    selector: 'app-system-config',
+    imports: [
+        CommonModule,
+        MatExpansionModule,
+        MatFormFieldModule,
+        MatInputModule,
+        MatSlideToggleModule,
+        MatButtonModule,
+        MatIconModule,
+        MatSelectModule,
+        MatDividerModule,
+        FormsModule
+    ],
+    template: `
     <div class="config-container">
       <h1>⚙️ Configuración del Sistema</h1>
 
@@ -464,7 +463,7 @@ import { environment } from '../../../../environments/environment';
       </mat-accordion>
     </div>
   `,
-  styles: [`
+    styles: [`
     .config-container {
       padding: 0;
       max-width: 1400px;

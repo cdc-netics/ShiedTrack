@@ -10,19 +10,18 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { HttpClient } from '@angular/common/http';
 
 @Component({
-  selector: 'app-area-dialog',
-  standalone: true,
-  imports: [
-    CommonModule,
-    ReactiveFormsModule,
-    MatDialogModule,
-    MatButtonModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatSelectModule,
-    MatSnackBarModule
-  ],
-  template: `
+    selector: 'app-area-dialog',
+    imports: [
+        CommonModule,
+        ReactiveFormsModule,
+        MatDialogModule,
+        MatButtonModule,
+        MatFormFieldModule,
+        MatInputModule,
+        MatSelectModule,
+        MatSnackBarModule
+    ],
+    template: `
     <h2 mat-dialog-title>{{ data.area ? 'Editar' : 'Crear' }} Área</h2>
     <mat-dialog-content>
       <form [formGroup]="areaForm">
@@ -65,7 +64,7 @@ import { HttpClient } from '@angular/common/http';
       </button>
     </mat-dialog-actions>
   `,
-  styles: [`
+    styles: [`
     mat-dialog-content {
       min-width: 500px;
       padding: 24px;

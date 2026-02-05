@@ -27,27 +27,26 @@ import { UserAssignmentDialogComponent } from './user-assignment-dialog.componen
  * - Cambio rápido de rol
  */
 @Component({
-  selector: 'app-user-list-improved',
-  standalone: true,
-  imports: [
-    CommonModule,
-    FormsModule,
-    MatTableModule,
-    MatButtonModule,
-    MatIconModule,
-    MatChipsModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatSelectModule,
-    MatCardModule,
-    MatTooltipModule,
-    MatMenuModule,
-    MatBadgeModule,
-    MatDividerModule,
-    MatDialogModule,
-    MatSnackBarModule
-  ],
-  template: `
+    selector: 'app-user-list-improved',
+    imports: [
+        CommonModule,
+        FormsModule,
+        MatTableModule,
+        MatButtonModule,
+        MatIconModule,
+        MatChipsModule,
+        MatFormFieldModule,
+        MatInputModule,
+        MatSelectModule,
+        MatCardModule,
+        MatTooltipModule,
+        MatMenuModule,
+        MatBadgeModule,
+        MatDividerModule,
+        MatDialogModule,
+        MatSnackBarModule
+    ],
+    template: `
     <mat-card class="users-container">
       <mat-card-header>
         <mat-card-title>
@@ -217,7 +216,7 @@ import { UserAssignmentDialogComponent } from './user-assignment-dialog.componen
       </mat-card-content>
     </mat-card>
   `,
-  styles: [`
+    styles: [`
     .users-container {
       margin: 20px;
     }

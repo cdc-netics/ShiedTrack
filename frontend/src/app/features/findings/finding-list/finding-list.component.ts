@@ -31,30 +31,29 @@ import { environment } from '../../../../environments/environment';
  * Panel de filtros expandible con animaciones
  */
 @Component({
-  selector: 'app-finding-list',
-  standalone: true,
-  imports: [
-    CommonModule,
-    RouterLink,
-    FormsModule,
-    MatTableModule,
-    MatButtonModule,
-    MatIconModule,
-    MatChipsModule,
-    MatInputModule,
-    MatFormFieldModule,
-    MatSelectModule,
-    MatCardModule,
-    MatTooltipModule,
-    MatProgressSpinnerModule,
-    MatMenuModule,
-    MatCheckboxModule,
-    MatExpansionModule,
-    MatDatepickerModule,
-    MatNativeDateModule,
-    MatBadgeModule
-  ],
-  template: `
+    selector: 'app-finding-list',
+    imports: [
+        CommonModule,
+        RouterLink,
+        FormsModule,
+        MatTableModule,
+        MatButtonModule,
+        MatIconModule,
+        MatChipsModule,
+        MatInputModule,
+        MatFormFieldModule,
+        MatSelectModule,
+        MatCardModule,
+        MatTooltipModule,
+        MatProgressSpinnerModule,
+        MatMenuModule,
+        MatCheckboxModule,
+        MatExpansionModule,
+        MatDatepickerModule,
+        MatNativeDateModule,
+        MatBadgeModule
+    ],
+    template: `
     <div class="finding-list-container">
       <mat-card class="header-card">
         <mat-card-header>
@@ -315,7 +314,7 @@ import { environment } from '../../../../environments/environment';
       </mat-card>
     </div>
   `,
-  styles: [`
+    styles: [`
     .finding-list-container {
       padding: 24px;
       max-width: 1800px;
