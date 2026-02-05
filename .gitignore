@@ -39,9 +39,12 @@ Thumbs.db
 
 # Uploads (evidencias/artifacts - no commitear en repo)
 uploads/
-evidence/
+uploads/evidence/
 artifacts/
 backups/
+
+# Excepciones: Permitir código fuente del módulo evidence
+!backend/src/modules/evidence/
 
 # MongoDB
 *.mongodb
