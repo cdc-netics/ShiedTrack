@@ -22,6 +22,7 @@ import { TenantModule } from './modules/tenant/tenant.module';
 import { TenantContextGuard } from './common/guards/tenant-context.guard';
 import { TenantContextInterceptor } from './common/interceptors/tenant-context.interceptor';
 import { TenantContextMiddleware } from './common/middleware/tenant-context.middleware';
+import { RootController } from './root.controller';
 
 /**
  * Módulo raíz de la aplicación ShieldTrack
@@ -83,6 +84,7 @@ import { TenantContextMiddleware } from './common/middleware/tenant-context.midd
     { provide: APP_GUARD, useClass: TenantContextGuard },
     { provide: APP_INTERCEPTOR, useClass: TenantContextInterceptor },
   ],
+  controllers: [RootController],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {

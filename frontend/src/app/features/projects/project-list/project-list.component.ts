@@ -26,26 +26,25 @@ import { UserRole } from '../../../shared/enums';
  * Desktop-First: Optimizado para analistas SOC
  */
 @Component({
-  selector: 'app-project-list',
-  standalone: true,
-  imports: [
-    CommonModule,
-    RouterLink,
-    FormsModule,
-    MatTableModule,
-    MatButtonModule,
-    MatIconModule,
-    MatChipsModule,
-    MatInputModule,
-    MatFormFieldModule,
-    MatSelectModule,
-    MatCardModule,
-    MatTooltipModule,
-    MatProgressSpinnerModule,
-    MatDialogModule,
-    MatSnackBarModule
-  ],
-  template: `
+    selector: 'app-project-list',
+    imports: [
+        CommonModule,
+        RouterLink,
+        FormsModule,
+        MatTableModule,
+        MatButtonModule,
+        MatIconModule,
+        MatChipsModule,
+        MatInputModule,
+        MatFormFieldModule,
+        MatSelectModule,
+        MatCardModule,
+        MatTooltipModule,
+        MatProgressSpinnerModule,
+        MatDialogModule,
+        MatSnackBarModule
+    ],
+    template: `
     <div class="project-list-container">
       <mat-card class="header-card">
         <mat-card-header>
@@ -213,7 +212,7 @@ import { UserRole } from '../../../shared/enums';
       </mat-card>
     </div>
   `,
-  styles: [`
+    styles: [`
     .project-list-container {
       padding: 24px;
       max-width: 1600px;

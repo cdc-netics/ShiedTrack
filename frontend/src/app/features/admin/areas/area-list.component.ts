@@ -29,24 +29,23 @@ interface Area {
 }
 
 @Component({
-  selector: 'app-area-list',
-  standalone: true,
-  imports: [
-    CommonModule,
-    RouterLink,
-    MatTableModule,
-    MatButtonModule,
-    MatIconModule,
-    MatChipsModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatSelectModule,
-    MatDialogModule,
-    MatSnackBarModule,
-    MatTooltipModule,
-    FormsModule
-  ],
-  template: `
+    selector: 'app-area-list',
+    imports: [
+        CommonModule,
+        RouterLink,
+        MatTableModule,
+        MatButtonModule,
+        MatIconModule,
+        MatChipsModule,
+        MatFormFieldModule,
+        MatInputModule,
+        MatSelectModule,
+        MatDialogModule,
+        MatSnackBarModule,
+        MatTooltipModule,
+        FormsModule
+    ],
+    template: `
     <div class="area-container">
       <div class="header">
         <h1>🏢 Gestión de Áreas</h1>
@@ -179,7 +178,7 @@ interface Area {
       }
     </div>
   `,
-  styles: [`
+    styles: [`
     .area-container {
       padding: 0;
     }

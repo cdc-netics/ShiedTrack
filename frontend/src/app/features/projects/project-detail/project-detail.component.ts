@@ -21,27 +21,26 @@ import { AuthService } from '../../../core/services/auth.service';
 import { UserRole } from '../../../shared/enums';
 
 @Component({
-  selector: 'app-project-detail',
-  standalone: true,
-  imports: [
-    CommonModule,
-    RouterLink,
-    ReactiveFormsModule,
-    MatCardModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatButtonModule,
-    MatIconModule,
-    MatSelectModule,
-    MatDatepickerModule,
-    MatNativeDateModule,
-    MatChipsModule,
-    MatDividerModule,
-    MatTooltipModule,
-    MatSnackBarModule,
-    MatDialogModule
-  ],
-  template: `
+    selector: 'app-project-detail',
+    imports: [
+        CommonModule,
+        RouterLink,
+        ReactiveFormsModule,
+        MatCardModule,
+        MatFormFieldModule,
+        MatInputModule,
+        MatButtonModule,
+        MatIconModule,
+        MatSelectModule,
+        MatDatepickerModule,
+        MatNativeDateModule,
+        MatChipsModule,
+        MatDividerModule,
+        MatTooltipModule,
+        MatSnackBarModule,
+        MatDialogModule
+    ],
+    template: `
     <div class="project-detail-container">
       <div class="header">
         <button mat-icon-button routerLink="/projects">
@@ -309,7 +308,7 @@ import { UserRole } from '../../../shared/enums';
       }
     </div>
   `,
-  styles: [`
+    styles: [`
     .project-detail-container {
       padding: 0;
       max-width: 1200px;

@@ -15,23 +15,22 @@ import { environment } from '../../../../environments/environment';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 
 @Component({
-  selector: 'app-audit-log',
-  standalone: true,
-  imports: [
-    CommonModule,
-    MatTableModule,
-    MatChipsModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatSelectModule,
-    MatIconModule,
-    MatProgressBarModule,
-    MatPaginatorModule,
-    MatButtonModule,
-    FormsModule,
-    MatSnackBarModule
-  ],
-  template: `
+    selector: 'app-audit-log',
+    imports: [
+        CommonModule,
+        MatTableModule,
+        MatChipsModule,
+        MatFormFieldModule,
+        MatInputModule,
+        MatSelectModule,
+        MatIconModule,
+        MatProgressBarModule,
+        MatPaginatorModule,
+        MatButtonModule,
+        FormsModule,
+        MatSnackBarModule
+    ],
+    template: `
     <div class="audit-container">
       <h1>📜 Registro de Auditoría</h1>
 
@@ -128,7 +127,7 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
       </mat-paginator>
     </div>
   `,
-  styles: [`
+    styles: [`
     .audit-container {
       padding: 0;
     }

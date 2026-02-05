@@ -19,22 +19,21 @@ import { firstValueFrom } from 'rxjs';
  * Layout principal con sidebar y navegación
  */
 @Component({
-  selector: 'app-main-layout',
-  standalone: true,
-  imports: [
-    CommonModule,
-    RouterModule,
-    MatSidenavModule,
-    MatToolbarModule,
-    MatButtonModule,
-    MatIconModule,
-    MatListModule,
-    MatMenuModule,
-    MatDividerModule,
-    MatChipsModule,
-    MatTooltipModule
-  ],
-  template: `
+    selector: 'app-main-layout',
+    imports: [
+        CommonModule,
+        RouterModule,
+        MatSidenavModule,
+        MatToolbarModule,
+        MatButtonModule,
+        MatIconModule,
+        MatListModule,
+        MatMenuModule,
+        MatDividerModule,
+        MatChipsModule,
+        MatTooltipModule
+    ],
+    template: `
     <mat-sidenav-container class="sidenav-container">
       <mat-sidenav #drawer class="sidenav" fixedInViewport
           [attr.role]="'navigation'"
@@ -131,7 +130,7 @@ import { firstValueFrom } from 'rxjs';
       </mat-sidenav-content>
     </mat-sidenav-container>
   `,
-  styles: [`
+    styles: [`
     .sidenav-container {
       height: 100vh;
     }

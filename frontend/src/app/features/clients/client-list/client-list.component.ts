@@ -24,26 +24,25 @@ import { environment } from '../../../../environments/environment'; // Standardi
  * Gestión de clientes a los que se les presta servicios
  */
 @Component({
-  selector: 'app-client-list',
-  standalone: true,
-  imports: [
-    CommonModule,
-    RouterLink,
-    FormsModule,
-    MatTableModule,
-    MatButtonModule,
-    MatIconModule,
-    MatChipsModule,
-    MatInputModule,
-    MatFormFieldModule,
-    MatCardModule,
-    MatTooltipModule,
-    MatProgressSpinnerModule,
-    MatDialogModule,
-    MatSnackBarModule,
-    MatMenuModule // Added
-  ],
-  template: `
+    selector: 'app-client-list',
+    imports: [
+        CommonModule,
+        RouterLink,
+        FormsModule,
+        MatTableModule,
+        MatButtonModule,
+        MatIconModule,
+        MatChipsModule,
+        MatInputModule,
+        MatFormFieldModule,
+        MatCardModule,
+        MatTooltipModule,
+        MatProgressSpinnerModule,
+        MatDialogModule,
+        MatSnackBarModule,
+        MatMenuModule // Added
+    ],
+    template: `
     <div class="client-list-container">
       <mat-card class="header-card">
         <mat-card-header>
@@ -172,7 +171,7 @@ import { environment } from '../../../../environments/environment'; // Standardi
       </mat-card>
     </div>
   `,
-  styles: [`
+    styles: [`
     .client-list-container {
       padding: 24px;
       max-width: 1600px;

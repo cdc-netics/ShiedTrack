@@ -12,20 +12,19 @@ import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../environments/environment';
 
 @Component({
-  selector: 'app-template-dialog',
-  standalone: true,
-  imports: [
-    CommonModule,
-    ReactiveFormsModule,
-    MatDialogModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatButtonModule,
-    MatSelectModule,
-    MatProgressSpinnerModule,
-    MatSnackBarModule
-  ],
-  template: `
+    selector: 'app-template-dialog',
+    imports: [
+        CommonModule,
+        ReactiveFormsModule,
+        MatDialogModule,
+        MatFormFieldModule,
+        MatInputModule,
+        MatButtonModule,
+        MatSelectModule,
+        MatProgressSpinnerModule,
+        MatSnackBarModule
+    ],
+    template: `
     <h2 mat-dialog-title>{{ isEditMode ? 'Editar Plantilla' : 'Nueva Plantilla' }}</h2>
     
     <mat-dialog-content>
@@ -123,7 +122,7 @@ import { environment } from '../../../../environments/environment';
       </button>
     </mat-dialog-actions>
   `,
-  styles: [`
+    styles: [`
     .template-form {
       display: flex;
       flex-direction: column;
