@@ -442,7 +442,7 @@ await this.auditService.log({
 - **Documentación:** Swagger (@nestjs/swagger)
 
 ### Frontend
-- **Framework:** Angular 17+ (Standalone Components)
+- **Framework:** Angular 20+ (Standalone Components)
 - **State Management:** ANGULAR SIGNALS (signal(), computed(), effect()) - NO NgRx
 - **Routing:** Router standalone
 - **HTTP:** HttpClient con interceptor JWT

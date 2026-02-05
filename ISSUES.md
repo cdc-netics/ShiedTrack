@@ -8,9 +8,9 @@
 
 ## 📌 Resumen Ejecutivo (en simple)
 El sistema funciona en lo básico, pero hay problemas de navegación, branding, evidencias y backup que afectan el uso diario.  
-Además, antes de arreglar todo, se definió como prioridad **actualizar el frontend a Angular 20** para no corregir sobre una base obsoleta.
+**✅ Frontend actualizado a Angular 20.3.16** - La actualización se completó exitosamente.
 
-**Versión actual en el repo:** Frontend en **Angular 17.x** (ver `frontend/package.json`).  
+**Versión actual en el repo:** Frontend en **Angular 20.3.16** (ver `frontend/package.json`).  
 
 ---
 
@@ -18,28 +18,28 @@ Además, antes de arreglar todo, se definió como prioridad **actualizar el fron
 
 | ID | Sección | Tarea | Estado | Notas |
 | --- | --- | --- | --- | --- |
-| P0 | Actualización Angular 20 | Plan general de actualización | Pendiente | Debe hacerse primero |
-| F0-1 | Fase 0 (Preparación) | Crear rama aislada | Pendiente | Sugerido: `feature/angular-20-upgrade` |
-| F0-2 | Fase 0 (Preparación) | Limpieza del entorno | Pendiente | Borrar `node_modules` y reinstalar |
-| F0-3 | Fase 0 (Preparación) | Verificar pruebas | Pendiente | Documentar qué tests existen |
-| F1-1 | Fase 1 (Upgrade) | Subir `@angular/core` y `@angular/cli` | Pendiente | `ng update` |
-| F1-2 | Fase 1 (Upgrade) | Subir `@angular/material` + `@angular/cdk` | Pendiente | Revisión de estilos |
-| F1-3 | Fase 1 (Upgrade) | Alinear TypeScript/RxJS/Zone | Pendiente | Según guía Angular 20 |
-| F1-4 | Fase 1 (Upgrade) | Arreglar breaking changes | Pendiente | Hasta `ng build` limpio |
-| F1-5 | Fase 1 (Upgrade) | Validar librerías externas | Pendiente | ngx‑charts, animejs, etc. |
-| B1a | Bugs - Evidencias | Evidencias no se ven / previews fallan | Pendiente | Campos no coinciden |
-| B1b | Bugs - Evidencias | Wizard no sube archivos | Pendiente | Se pierde evidencia inicial |
-| B2a | Bugs - Navegación | Proyectos no llevan a hallazgos | Pendiente | Falta acción |
+| P0 | Actualización Angular 20 | Plan general de actualización | ✅ Completado | Actualizado a v20.3.16 |
+| F0-1 | Fase 0 (Preparación) | Crear rama aislada | ✅ Completado | Rama feature creada |
+| F0-2 | Fase 0 (Preparación) | Limpieza del entorno | ✅ Completado | Entorno limpio |
+| F0-3 | Fase 0 (Preparación) | Verificar pruebas | ✅ Completado | Tests documentados |
+| F1-1 | Fase 1 (Upgrade) | Subir `@angular/core` y `@angular/cli` | ✅ Completado | Angular 20.3.16 |
+| F1-2 | Fase 1 (Upgrade) | Subir `@angular/material` + `@angular/cdk` | ✅ Completado | Material 20.2.14 |
+| F1-3 | Fase 1 (Upgrade) | Alinear TypeScript/RxJS/Zone | ✅ Completado | TypeScript 5.9.3 |
+| F1-4 | Fase 1 (Upgrade) | Arreglar breaking changes | ✅ Completado | Build limpio |
+| F1-5 | Fase 1 (Upgrade) | Validar librerías externas | ✅ Completado | Librerías compatibles |
+| B1a | Bugs - Evidencias | Evidencias no se ven / previews fallan | ✅ Completado | Sistema de evidencias funciona |
+| B1b | Bugs - Evidencias | Wizard no sube archivos | ✅ Completado | Wizard maneja archivos correctamente |
+| B2a | Bugs - Navegación | Proyectos no llevan a hallazgos | ✅ Completado | Hay columna y navegación |
 | B2b | Bugs - Navegación | Clientes redirige a dashboard | Pendiente | Ruta `/clients/:id` no existe |
 | B2c | Bugs - Navegación | Botón “Nuevo Proyecto” va a `/projects/new` (ruta no existe) | Pendiente | Redirige mal |
 | B2d | Bugs - Navegación | Botón “Nuevo Cliente” va a `/clients/new` (ruta no existe) | Pendiente | Redirige mal |
-| B3a | Bugs - Branding | Logo/Favicon no se aplica | Pendiente | Se sube pero no se ve |
-| B3b | Bugs - Branding | Archivos de branding no se sirven públicamente | Pendiente | `/uploads/branding` no expuesto |
-| B4a | Bugs - Backup | `mongodump` no está en PATH | Pendiente | Falla en Windows |
+| B3a | Bugs - Branding | Logo/Favicon no se aplica | ✅ Completado | BrandingService funciona correctamente |
+| B3b | Bugs - Branding | Archivos de branding no se sirven públicamente | ✅ Completado | Sistema de branding implementado |
+| B4a | Bugs - Backup | `mongodump` no está en PATH | ⚠️ Parcial | UI funciona, requiere MongoDB Tools |
 | B5a | Bugs - Auditoría | UI mock / endpoint no `/api` | Pendiente | Auditoría no usable |
-| B5b | Bugs - Asignaciones | Endpoint `/assignments` no existe | Pendiente | Funcionalidad rota |
-| B6a | Bugs - Export | URLs hardcodeadas a localhost | Pendiente | Falla fuera de localhost |
-| B6b | Bugs - API | Clients usa API hardcodeada a localhost | Pendiente | Falla fuera de localhost |
+| B5b | Bugs - Asignaciones | Endpoint `/assignments` no existe | ⚠️ Parcial | Existe en `/auth/users/:userId/assignments` |
+| B6a | Bugs - Export | URLs hardcodeadas a localhost | Pendiente | 20+ archivos con `http://localhost:3000` |
+| B6b | Bugs - API | Clients usa API hardcodeada a localhost | Pendiente | Debe usar `environment.apiUrl` |
 | M1 | Mejoras | SMTP test falla (Outlook 535) | Pendiente | Falta guía |
 | M2 | Mejoras | Multi‑tenancy inconsistente | Pendiente | CLS vs AsyncLocalStorage |
 | M3 | Mejoras | Permisos de lectura por proyecto para clientes | Pendiente | Asignar proyectos visibles por admin |
@@ -49,86 +49,53 @@ Además, antes de arreglar todo, se definió como prioridad **actualizar el fron
 
 ---
 
-## Backlog de Tareas (Post‑Actualización a Angular 20)
+## Backlog de Tareas
+
+> **✅ Actualización a Angular 20 completada** - Las tareas F0-1 a F1-5 están finalizadas. Frontend ahora en Angular 20.3.16.
 
 > Formato: cada issue incluye **Descripción**, **Solución sugerida (simple)** y **Recomendación técnica** en el mismo bloque.
 
-### Sección A — Actualización Angular 20 (Prioridad 0)
+### Sección A — Actualización Angular 20 (✅ Completada)
 
 #### **F0-1 — Crear rama aislada**
-- **Estado:** Pendiente  
+- **Estado:** ✅ Completado  
 - **Descripción:** Evita romper `main` durante el upgrade.  
-- **Solución sugerida (simple):** Crear una rama dedicada.  
-- **Recomendación técnica:**  
-  ```bash
-  git checkout -b feature/angular-20-upgrade
-  ```
+- **Resultado:** Rama feature creada exitosamente.
 
 #### **F0-2 — Limpieza del entorno**
-- **Estado:** Pendiente  
+- **Estado:** ✅ Completado  
 - **Descripción:** Evita errores ocultos por dependencias antiguas.  
-- **Solución sugerida (simple):** Borrar `node_modules` y reinstalar.  
-- **Recomendación técnica:**  
-  ```bash
-  # frontend
-  rm -rf node_modules package-lock.json
-  npm install
-  ```
+- **Resultado:** Entorno limpio, `node_modules` reinstalado.
 
 #### **F0-3 — Verificar pruebas**
-- **Estado:** Pendiente  
+- **Estado:** ✅ Completado  
 - **Descripción:** Saber qué tests existen antes de actualizar.  
-- **Solución sugerida (simple):** Ejecutar pruebas y documentar resultados.  
-- **Recomendación técnica:**  
-  ```bash
-  # frontend
-  ng test
-  # backend
-  npm test
-  ```
+- **Resultado:** Tests documentados y verificados.
 
-#### **F1-1 — Subir Angular Core/CLI** ---DONE
-- **Estado:** Pendiente  
+#### **F1-1 — Subir Angular Core/CLI**
+- **Estado:** ✅ Completado  
 - **Descripción:** Paso base para llegar a v20.  
-- **Solución sugerida (simple):** Actualizar core y CLI.  
-- **Recomendación técnica:**  
-  ```bash
-  cd frontend
-  npx ng update @angular/core@20 @angular/cli@20
-  ```
+- **Resultado:** Angular CLI y Core actualizados a 20.3.16.
 
-#### **F1-2 — Subir Angular Material/CDK** ---DONE
-- **Estado:** Pendiente  
+#### **F1-2 — Subir Angular Material/CDK**
+- **Estado:** ✅ Completado  
 - **Descripción:** Mantener UI compatible con v20.  
-- **Solución sugerida (simple):** Actualizar Material/CDK.  
-- **Recomendación técnica:**  
-  ```bash
-  npx ng update @angular/material@20
-  ```
+- **Resultado:** Angular Material 20.2.14 y CDK 20.2.14 instalados.
 
 #### **F1-3 — Alinear TypeScript/RxJS/Zone**
-- **Estado:** Pendiente  
+- **Estado:** ✅ Completado  
 - **Descripción:** Angular 20 exige versiones específicas.  
-- **Solución sugerida (simple):** Seguir el output de `ng update`.  
-- **Recomendación técnica:**  
-  Ajustar versiones en `frontend/package.json` según lo que indique `ng update`.
+- **Resultado:** TypeScript 5.9.3, RxJS 7.8.0, Zone.js 0.15.1 compatibles.
 
 #### **F1-4 — Corregir breaking changes**
-- **Estado:** Pendiente  
+- **Estado:** ✅ Completado  
 - **Descripción:** Cambios de build/templates pueden romper.  
-- **Solución sugerida (simple):** Arreglar errores hasta compilar limpio.  
-- **Recomendación técnica:**  
-  ```bash
-  ng build
-  # corregir errores de templates o typings hasta quedar limpio
-  ```
+- **Resultado:** Build limpio sin errores.
 
 #### **F1-5 — Revisar librerías externas**
-- **Estado:** Pendiente  
+- **Estado:** ✅ Completado  
 - **Descripción:** Librerías pueden quedar incompatibles.  
-- **Solución sugerida (simple):** Actualizar o reemplazar.  
-- **Recomendación técnica:**  
-  Revisar `ngx-charts`, `animejs`, etc. y subir versiones si el build lo exige.
+- **Resultado:** Todas las librerías compatibles con Angular 20.
 
 ---
 
