@@ -28,7 +28,8 @@ export class AuditInterceptor implements NestInterceptor {
           action: `${method} ${url}`,
           entityType: isExport ? 'EXPORT' : 'HTTP',
           entityId: body?.id || body?._id || params?.id || params?._id || 'N/A',
-          performedBy: user?.userId || 'anonymous',
+          performedBy: user?.userId ?? null,
+          performedByLabel: user?.userId ? '' : 'anonymous',
           clientId: user?.clientId,
           // Si el usuario tiene un área principal, usarla? O extraer del body?
           // Por ahora nos limitamos al contexto seguro del usuario.

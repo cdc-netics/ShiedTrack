@@ -1,4 +1,15 @@
-import { IsString, IsOptional, IsEnum, IsBoolean, IsDateString, IsArray, IsEmail, IsNumber, ValidateNested, ArrayMaxSize } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsEnum,
+  IsBoolean,
+  IsDateString,
+  IsArray,
+  IsEmail,
+  IsNumber,
+  ValidateNested,
+  ArrayMaxSize
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { ServiceArchitecture, ProjectStatus } from '../../../common/enums';
@@ -10,11 +21,11 @@ export class NotifyConfigDto {
   @IsArray()
   @IsEmail({}, { each: true })
   @ArrayMaxSize(3, { message: 'Máximo 3 destinatarios de notificaciones' })
-  recipients: string[];
+  recipients: string[] = [];
 
   @IsArray()
   @IsNumber({}, { each: true })
-  offsetDays: number[];
+  offsetDays: number[] = [];
 }
 
 /**
@@ -56,6 +67,12 @@ export class CreateProjectDto {
   @IsOptional()
   @IsString()
   code?: string;
+
+  // ✅ AGREGAR ESTO
+  @ApiPropertyOptional({ description: 'ID del cliente' })
+  @IsOptional()
+  @IsString()
+  clientId?: string;
 
   @ApiPropertyOptional({ description: 'Descripción del proyecto' })
   @IsOptional()
@@ -111,6 +128,12 @@ export class UpdateProjectDto {
   @IsOptional()
   @IsString()
   code?: string;
+
+  // ✅ si quieres permitir update del cliente también, agrega esto:
+  @ApiPropertyOptional({ description: 'ID del cliente' })
+  @IsOptional()
+  @IsString()
+  clientId?: string;
 
   @ApiPropertyOptional()
   @IsOptional()

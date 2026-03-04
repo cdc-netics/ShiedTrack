@@ -14,33 +14,33 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { MatDialogModule } from '@angular/material/dialog';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../environments/environment';
 import { AuthService } from '../../../core/services/auth.service';
 import { UserRole } from '../../../shared/enums';
 
 @Component({
-    selector: 'app-project-detail',
-    imports: [
-        CommonModule,
-        RouterLink,
-        ReactiveFormsModule,
-        MatCardModule,
-        MatFormFieldModule,
-        MatInputModule,
-        MatButtonModule,
-        MatIconModule,
-        MatSelectModule,
-        MatDatepickerModule,
-        MatNativeDateModule,
-        MatChipsModule,
-        MatDividerModule,
-        MatTooltipModule,
-        MatSnackBarModule,
-        MatDialogModule
-    ],
-    template: `
+  selector: 'app-project-detail',
+  imports: [
+    CommonModule,
+    RouterLink,
+    ReactiveFormsModule,
+    MatCardModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatButtonModule,
+    MatIconModule,
+    MatSelectModule,
+    MatDatepickerModule,
+    MatNativeDateModule,
+    MatChipsModule,
+    MatDividerModule,
+    MatTooltipModule,
+    MatSnackBarModule,
+    MatDialogModule
+  ],
+  template: `
     <div class="project-detail-container">
       <div class="header">
         <button mat-icon-button routerLink="/projects">
@@ -54,14 +54,14 @@ import { UserRole } from '../../../shared/enums';
           }
         </h1>
         <div class="header-actions">
-           @if (isEditMode()) {
-             <button mat-icon-button color="primary" matTooltip="Descargar Reporte PDF" (click)="downloadPdf()">
-               <mat-icon>picture_as_pdf</mat-icon>
-             </button>
-             <button mat-icon-button color="accent" matTooltip="Descargar Evidencias (ZIP)" (click)="downloadZip()">
-                <mat-icon>folder_zip</mat-icon>
-             </button>
-           }
+          @if (isEditMode()) {
+            <button mat-icon-button color="primary" matTooltip="Descargar Reporte PDF" (click)="downloadPdf()">
+              <mat-icon>picture_as_pdf</mat-icon>
+            </button>
+            <button mat-icon-button color="accent" matTooltip="Descargar Evidencias (ZIP)" (click)="downloadZip()">
+              <mat-icon>folder_zip</mat-icon>
+            </button>
+          }
         </div>
       </div>
 
@@ -73,6 +73,7 @@ import { UserRole } from '../../../shared/enums';
         </mat-card>
       } @else {
         <form [formGroup]="projectForm" (ngSubmit)="saveProject()">
+
           <!-- INFORMACIÓN BÁSICA -->
           <mat-card class="section-card">
             <mat-card-header>
@@ -99,16 +100,16 @@ import { UserRole } from '../../../shared/enums';
                   <mat-hint>Opcional, se genera automáticamente</mat-hint>
                 </mat-form-field>
 
+                <!-- OJO: lo dejamos visible, pero NO lo enviamos al backend porque te da:
+                     "property clientId should not exist" -->
                 <mat-form-field appearance="outline" class="half-width">
                   <mat-label>Cliente</mat-label>
                   <mat-select formControlName="clientId">
-                    @for (client of clients(); track client.id) {
-                      <mat-option [value]="client.id">{{ client.name }}</mat-option>
+                    @for (client of clients(); track client._id) {
+                      <mat-option [value]="client._id">{{ client.name }}</mat-option>
                     }
                   </mat-select>
-                  @if (projectForm.get('clientId')?.hasError('required')) {
-                    <mat-error>El cliente es requerido</mat-error>
-                  }
+                  <mat-hint>Si el backend no lo acepta, no se enviará</mat-hint>
                 </mat-form-field>
               </div>
 
@@ -126,7 +127,7 @@ import { UserRole } from '../../../shared/enums';
               <div class="form-row">
                 <mat-form-field appearance="outline" class="full-width">
                   <mat-label>Descripción</mat-label>
-                  <textarea matInput formControlName="description" rows="3" 
+                  <textarea matInput formControlName="description" rows="3"
                             placeholder="Descripción breve del proyecto"></textarea>
                 </mat-form-field>
               </div>
@@ -158,7 +159,7 @@ import { UserRole } from '../../../shared/enums';
             </mat-card-content>
           </mat-card>
 
-          <!-- FECHAS Y DURACIÓN -->
+          <!-- FECHAS Y DURACIÓN (se muestran pero NO se envían al backend) -->
           <mat-card class="section-card">
             <mat-card-header>
               <mat-card-title>
@@ -173,7 +174,6 @@ import { UserRole } from '../../../shared/enums';
                   <input matInput [matDatepicker]="pickerCreated" formControlName="createdAt">
                   <mat-datepicker-toggle matSuffix [for]="pickerCreated"></mat-datepicker-toggle>
                   <mat-datepicker #pickerCreated></mat-datepicker>
-                  <mat-hint>Fecha en que se creó el proyecto</mat-hint>
                 </mat-form-field>
 
                 <mat-form-field appearance="outline" class="half-width">
@@ -181,7 +181,6 @@ import { UserRole } from '../../../shared/enums';
                   <input matInput [matDatepicker]="pickerStart" formControlName="serviceStartDate">
                   <mat-datepicker-toggle matSuffix [for]="pickerStart"></mat-datepicker-toggle>
                   <mat-datepicker #pickerStart></mat-datepicker>
-                  <mat-hint>Fecha en que inicia el servicio (puede ser posterior)</mat-hint>
                 </mat-form-field>
               </div>
 
@@ -191,7 +190,6 @@ import { UserRole } from '../../../shared/enums';
                   <input matInput [matDatepicker]="pickerEnd" formControlName="endDate">
                   <mat-datepicker-toggle matSuffix [for]="pickerEnd"></mat-datepicker-toggle>
                   <mat-datepicker #pickerEnd></mat-datepicker>
-                  <mat-hint>Fecha estimada de finalización</mat-hint>
                 </mat-form-field>
 
                 @if (projectDuration()) {
@@ -239,7 +237,7 @@ import { UserRole } from '../../../shared/enums';
                       </mat-select>
                     </mat-form-field>
 
-                    <button mat-icon-button color="warn" type="button" 
+                    <button mat-icon-button color="warn" type="button"
                             (click)="removeTeamMember($index)"
                             [disabled]="teamMembers.length === 1">
                       <mat-icon>delete</mat-icon>
@@ -255,7 +253,7 @@ import { UserRole } from '../../../shared/enums';
             </mat-card-content>
           </mat-card>
 
-          <!-- ESTADO Y CIERRE -->
+          <!-- ESTADO (se muestra pero NO se envía al backend para evitar: projectStatus should not exist) -->
           <mat-card class="section-card">
             <mat-card-header>
               <mat-card-title>
@@ -267,29 +265,13 @@ import { UserRole } from '../../../shared/enums';
               <div class="form-row">
                 <mat-form-field appearance="outline" class="full-width">
                   <mat-label>Estado</mat-label>
-                  <mat-select formControlName="projectStatus" 
-                              [disabled]="!canChangeStatus()">
+                  <mat-select formControlName="projectStatus" [disabled]="!canChangeStatus()">
                     <mat-option value="ACTIVE">🟢 Activo</mat-option>
                     <mat-option value="CLOSED">🔴 Cerrado</mat-option>
                     <mat-option value="ARCHIVED">📦 Archivado</mat-option>
                   </mat-select>
-                  @if (!canChangeStatus()) {
-                    <mat-hint class="warning-hint">
-                      Solo OWNER o ADMIN del tenant/área pueden cambiar el estado
-                    </mat-hint>
-                  }
                 </mat-form-field>
               </div>
-
-              @if (projectForm.get('projectStatus')?.value === 'CLOSED') {
-                <div class="warning-box">
-                  <mat-icon>warning</mat-icon>
-                  <div>
-                    <strong>⚠️ Proyecto Cerrado</strong>
-                    <p>Al cerrar el proyecto, todos los hallazgos asociados quedarán en modo solo lectura y no podrán modificarse.</p>
-                  </div>
-                </div>
-              }
             </mat-card-content>
           </mat-card>
 
@@ -298,8 +280,7 @@ import { UserRole } from '../../../shared/enums';
             <button mat-button type="button" routerLink="/projects">
               Cancelar
             </button>
-            <button mat-raised-button color="primary" type="submit" 
-                    [disabled]="projectForm.invalid || saving()">
+            <button mat-raised-button color="primary" type="submit" [disabled]="projectForm.invalid || saving()">
               <mat-icon>{{ saving() ? 'hourglass_empty' : 'save' }}</mat-icon>
               {{ saving() ? 'Guardando...' : 'Guardar Proyecto' }}
             </button>
@@ -308,145 +289,28 @@ import { UserRole } from '../../../shared/enums';
       }
     </div>
   `,
-    styles: [`
-    .project-detail-container {
-      padding: 0;
-      max-width: 1200px;
-      margin: 0 auto;
-    }
-
-    .header {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      margin-bottom: 24px;
-    }
-
-    .header h1 {
-      margin: 0;
-      font-size: 28px;
-      font-weight: 500;
-    }
-
-    .section-card {
-      margin-bottom: 24px;
-    }
-
-    mat-card-header {
-      margin-bottom: 16px;
-    }
-
-    mat-card-title {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 18px;
-    }
-
-    .form-row {
-      display: flex;
-      gap: 16px;
-      margin-bottom: 16px;
-    }
-
-    .full-width {
-      flex: 1;
-      width: 100%;
-    }
-
-    .half-width {
-      flex: 1;
-      min-width: 0;
-    }
-
-    .team-member-row {
-      display: flex;
-      gap: 12px;
-      align-items: flex-start;
-      margin-bottom: 16px;
-    }
-
-    .member-name {
-      flex: 2;
-    }
-
-    .member-email {
-      flex: 2;
-    }
-
-    .member-role {
-      flex: 1;
-    }
-
-    .duration-info {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 16px;
-      background: #e3f2fd;
-      border-radius: 4px;
-    }
-
-    .duration-info mat-icon {
-      color: #1976d2;
-      font-size: 32px;
-      width: 32px;
-      height: 32px;
-    }
-
-    .duration-info strong {
-      display: block;
-      font-size: 14px;
-      color: rgba(0,0,0,0.6);
-    }
-
-    .duration-info p {
-      margin: 4px 0 0 0;
-      font-size: 18px;
-      font-weight: 500;
-      color: #1976d2;
-    }
-
-    .warning-box {
-      display: flex;
-      gap: 12px;
-      padding: 16px;
-      background: #fff3e0;
-      border-left: 4px solid #ff9800;
-      border-radius: 4px;
-      margin-top: 16px;
-    }
-
-    .warning-box mat-icon {
-      color: #ff9800;
-    }
-
-    .warning-box strong {
-      display: block;
-      margin-bottom: 4px;
-    }
-
-    .warning-box p {
-      margin: 0;
-      font-size: 14px;
-      color: rgba(0,0,0,0.7);
-    }
-
-    .warning-hint {
-      color: #ff9800 !important;
-    }
-
-    .actions {
-      display: flex;
-      justify-content: flex-end;
-      gap: 16px;
-      margin-top: 24px;
-      padding-bottom: 24px;
-    }
+  styles: [`
+    .project-detail-container { padding: 0; max-width: 1200px; margin: 0 auto; }
+    .header { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; }
+    .header h1 { margin: 0; font-size: 28px; font-weight: 500; }
+    .section-card { margin-bottom: 24px; }
+    mat-card-header { margin-bottom: 16px; }
+    mat-card-title { display: flex; align-items: center; gap: 8px; font-size: 18px; }
+    .form-row { display: flex; gap: 16px; margin-bottom: 16px; }
+    .full-width { flex: 1; width: 100%; }
+    .half-width { flex: 1; min-width: 0; }
+    .team-member-row { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 16px; }
+    .member-name { flex: 2; }
+    .member-email { flex: 2; }
+    .member-role { flex: 1; }
+    .duration-info { display: flex; align-items: center; gap: 12px; padding: 16px; background: #e3f2fd; border-radius: 4px; }
+    .duration-info mat-icon { color: #1976d2; font-size: 32px; width: 32px; height: 32px; }
+    .duration-info strong { display: block; font-size: 14px; color: rgba(0,0,0,0.6); }
+    .duration-info p { margin: 4px 0 0 0; font-size: 18px; font-weight: 500; color: #1976d2; }
+    .actions { display: flex; justify-content: flex-end; gap: 16px; margin-top: 24px; padding-bottom: 24px; }
   `]
 })
 export class ProjectDetailComponent implements OnInit {
-  // Dependencias para formularios, enrutamiento y mensajeria
   private fb = inject(FormBuilder);
   private http = inject(HttpClient);
   private route = inject(ActivatedRoute);
@@ -458,17 +322,17 @@ export class ProjectDetailComponent implements OnInit {
   private CLIENT_API_URL = `${environment.apiUrl}/clients`;
   private AREA_API_URL = `${environment.apiUrl}/areas`;
 
-  // Estado principal de la pantalla
   projectForm!: FormGroup;
+
   loading = signal(false);
   saving = signal(false);
   isEditMode = signal(false);
   projectId = signal<string | null>(null);
+
   clients = signal<any[]>([]);
   areas = signal<any[]>([]);
 
   projectDuration = computed(() => {
-    // Calcula una duracion legible desde la fecha de inicio del servicio
     const startDate = this.projectForm?.get('serviceStartDate')?.value;
     if (!startDate) return null;
 
@@ -477,38 +341,22 @@ export class ProjectDetailComponent implements OnInit {
     const diffTime = Math.abs(now.getTime() - start.getTime());
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-    if (diffDays < 30) {
-      return `${diffDays} días`;
-    } else if (diffDays < 365) {
+    if (diffDays < 30) return `${diffDays} días`;
+    if (diffDays < 365) {
       const months = Math.floor(diffDays / 30);
       const days = diffDays % 30;
       return `${months} ${months === 1 ? 'mes' : 'meses'}${days > 0 ? ` y ${days} días` : ''}`;
-    } else {
-      const years = Math.floor(diffDays / 365);
-      const months = Math.floor((diffDays % 365) / 30);
-      return `${years} ${years === 1 ? 'año' : 'años'}${months > 0 ? ` y ${months} meses` : ''}`;
     }
+    const years = Math.floor(diffDays / 365);
+    const months = Math.floor((diffDays % 365) / 30);
+    return `${years} ${years === 1 ? 'año' : 'años'}${months > 0 ? ` y ${months} meses` : ''}`;
   });
 
-  downloadPdf() {
-    if (!this.projectId()) return;
-    const url = `${environment.apiUrl}/export/project/${this.projectId()}/pdf`;
-    window.open(url, '_blank');
-  }
-
-  downloadZip() {
-    if (!this.projectId()) return;
-    const url = `${environment.apiUrl}/export/project/${this.projectId()}/zip`;
-    window.open(url, '_blank');
-  }
-
   get teamMembers() {
-    // Acceso tipado al FormArray de miembros del equipo
     return this.projectForm.get('teamMembers') as FormArray;
   }
 
   ngOnInit(): void {
-    // Inicializa formulario y determina si es alta o edicion
     this.initForm();
     this.loadClients();
     this.loadAreas();
@@ -519,17 +367,16 @@ export class ProjectDetailComponent implements OnInit {
       this.projectId.set(id);
       this.loadProject(id);
     } else {
-      // Agregar un miembro por defecto
       this.addTeamMember();
     }
   }
 
   initForm(): void {
-    // Estructura base del formulario para proyecto
     this.projectForm = this.fb.group({
       name: ['', Validators.required],
       code: [''],
-      clientId: ['', Validators.required],
+      // ⚠️ lo dejamos en UI, pero NO será obligatorio porque el backend no lo acepta
+      clientId: [''],
       areaIds: [[]],
       description: [''],
       serviceArchitecture: ['WEB'],
@@ -543,7 +390,6 @@ export class ProjectDetailComponent implements OnInit {
   }
 
   loadClients(): void {
-    // Carga clientes para el selector de cliente
     this.http.get<any[]>(this.CLIENT_API_URL).subscribe({
       next: (data) => this.clients.set(data),
       error: (err) => console.error('Error al cargar clientes:', err)
@@ -558,29 +404,26 @@ export class ProjectDetailComponent implements OnInit {
   }
 
   loadProject(id: string): void {
-    // Carga datos del proyecto y los vuelca al formulario
     this.loading.set(true);
     this.http.get<any>(`${this.API_URL}/${id}`).subscribe({
       next: (project) => {
         this.projectForm.patchValue({
           name: project.name,
           code: project.code,
-          clientId: project.clientId?._id || project.clientId,
-          areaIds: project.areaIds?.map((a: any) => a._id || a) || (project.areaId ? [project.areaId._id || project.areaId] : []),
+          clientId: project.clientId?._id || project.clientId || '',
+          areaIds: project.areaIds?.map((a: any) => a._id || a) || [],
           description: project.description,
           serviceArchitecture: project.serviceArchitecture,
           testType: project.testType,
           createdAt: project.createdAt ? new Date(project.createdAt) : new Date(),
           serviceStartDate: project.serviceStartDate ? new Date(project.serviceStartDate) : new Date(),
           endDate: project.endDate ? new Date(project.endDate) : null,
-          projectStatus: project.projectStatus
+          projectStatus: project.projectStatus || 'ACTIVE'
         });
 
-        // Cargar equipo
+        this.teamMembers.clear();
         if (project.teamMembers && project.teamMembers.length > 0) {
-          project.teamMembers.forEach((member: any) => {
-            this.teamMembers.push(this.createTeamMember(member));
-          });
+          project.teamMembers.forEach((member: any) => this.teamMembers.push(this.createTeamMember(member)));
         } else {
           this.addTeamMember();
         }
@@ -596,7 +439,6 @@ export class ProjectDetailComponent implements OnInit {
   }
 
   createTeamMember(data?: any): FormGroup {
-    // Crea un grupo de formulario para un miembro del equipo
     return this.fb.group({
       name: [data?.name || '', Validators.required],
       email: [data?.email || '', [Validators.required, Validators.email]],
@@ -605,63 +447,193 @@ export class ProjectDetailComponent implements OnInit {
   }
 
   addTeamMember(): void {
-    // Agrega un miembro vacio al formulario
     this.teamMembers.push(this.createTeamMember());
   }
 
   removeTeamMember(index: number): void {
-    // Evita dejar el equipo vacio por error de usuario
-    if (this.teamMembers.length > 1) {
-      this.teamMembers.removeAt(index);
-    }
+    if (this.teamMembers.length > 1) this.teamMembers.removeAt(index);
   }
 
   canChangeStatus(): boolean {
-    // Regla de permisos para cambio de estado del proyecto
     const user = this.authService.currentUser();
     if (!user) return false;
-    
-    // OWNER puede cambiar cualquier estado
     if (user.role === UserRole.OWNER) return true;
-    
-    // CLIENT_ADMIN y AREA_ADMIN pueden cambiar estado de proyectos de su tenant
-    if (user.role === UserRole.CLIENT_ADMIN || user.role === UserRole.AREA_ADMIN) {
-      // TODO: Verificar que el proyecto pertenece al mismo tenant del admin
-      return true;
-    }
-    
+    if (user.role === UserRole.CLIENT_ADMIN || user.role === UserRole.AREA_ADMIN) return true;
     return false;
   }
 
-  saveProject(): void {
-    // Valida y persiste el proyecto (alta o edicion)
-    if (this.projectForm.invalid) {
-      this.snackBar.open('Por favor completa todos los campos requeridos', 'Cerrar', { duration: 3000 });
-      return;
-    }
+  downloadPdf() {
+    if (!this.projectId()) return;
+    window.open(`${environment.apiUrl}/export/project/${this.projectId()}/pdf`, '_blank');
+  }
 
-    this.saving.set(true);
-    const projectData = this.projectForm.value;
+  downloadZip() {
+    if (!this.projectId()) return;
+    window.open(`${environment.apiUrl}/export/project/${this.projectId()}/zip`, '_blank');
+  }
 
-    const request = this.isEditMode()
-      ? this.http.put(`${this.API_URL}/${this.projectId()}`, projectData)
-      : this.http.post(this.API_URL, projectData);
+saveProject(): void {
+  if (this.projectForm.invalid) {
+    this.projectForm.markAllAsTouched();
+    this.snackBar.open('Por favor completa todos los campos requeridos', 'Cerrar', { duration: 3000 });
+    return;
+  }
 
-    request.subscribe({
-      next: (response) => {
-        this.snackBar.open(
-          this.isEditMode() ? '✅ Proyecto actualizado' : '✅ Proyecto creado',
-          'Cerrar',
-          { duration: 3000 }
-        );
-        // Navega a listado tras guardar
-        this.router.navigate(['/projects']);
-      },
-      error: (err) => {
-        console.error('Error al guardar proyecto:', err);
-        this.snackBar.open('❌ Error al guardar el proyecto', 'Cerrar', { duration: 3000 });
-        this.saving.set(false);
+  const raw = this.projectForm.getRawValue();
+
+  // 🔎 Cliente seleccionado en UI (string o null)
+  const selectedClientId = this.normalizeId(raw.clientId);
+
+  // ✅ Resuelve tenantId (como lo venías haciendo)
+  // (si estabas usando effectiveTenantId, mantenlo aquí)
+  const tenantId = this.resolveTenantId();
+  if (!tenantId) {
+    this.snackBar.open('❌ No se pudo resolver el tenantId del usuario', 'Cerrar', { duration: 5000 });
+    return;
+  }
+
+  const cleanAreaIds = Array.isArray(raw.areaIds)
+    ? raw.areaIds.map((a: any) => this.normalizeId(a)).filter(Boolean)
+    : [];
+
+  // ✅ Base payload común (lo que SIEMPRE se manda)
+  const basePayload = this.cleanUndefined({
+    name: (raw.name ?? '').trim(),
+    code: raw.code?.trim() || undefined,
+    description: raw.description?.trim() || undefined,
+    serviceArchitecture: raw.serviceArchitecture || 'WEB',
+    areaIds: cleanAreaIds.length ? cleanAreaIds : undefined,
+  });
+
+  // ✅ CREATE payload (POST) — NO mandamos clientId aquí para evitar el 400 del backend
+  const createPayload: any = this.cleanUndefined({
+    ...basePayload,
+    tenantId: String(tenantId),
+  });
+
+  // 🔥 Aseguramos que no se vaya clientId en CREATE
+  delete createPayload.clientId;
+
+  // ✅ UPDATE payload (PUT) — no mandamos tenantId
+  const updatePayload: any = this.cleanUndefined({
+    ...basePayload,
+  });
+
+  console.log('✅ tenantId resuelto:', tenantId);
+  console.log('🟦 CREATE payload (POST):', createPayload);
+  console.log('🟨 UPDATE payload (PUT):', updatePayload);
+  console.log('🧩 Cliente seleccionado en UI:', selectedClientId);
+
+  this.saving.set(true);
+
+  const req$ = this.isEditMode()
+    ? this.http.put(`${this.API_URL}/${this.projectId()}`, updatePayload)
+    : this.http.post(this.API_URL, createPayload);
+
+  req$.subscribe({
+    next: (createdOrUpdated: any) => {
+      console.log('🧾 Resultado create/update:', createdOrUpdated);
+
+      // ✅ Si fue CREATE y hay cliente seleccionado, lo asignamos con PUT
+      if (!this.isEditMode() && selectedClientId && createdOrUpdated?._id) {
+        console.log('🧩 Asignando cliente al proyecto:', createdOrUpdated._id, selectedClientId);
+
+        this.http.put(`${this.API_URL}/${createdOrUpdated._id}`, { clientId: selectedClientId }).subscribe({
+          next: (r) => {
+            console.log('✅ Cliente asignado OK:', r);
+            this.snackBar.open('✅ Proyecto creado y cliente asignado', 'Cerrar', { duration: 3000 });
+            this.router.navigate(['/projects']);
+          },
+          error: (e) => {
+            console.error('❌ Falló asignación de cliente:', e);
+            console.log('❌ Error body asignación:', e?.error);
+
+            this.snackBar.open(
+              '⚠️ Proyecto creado pero no se pudo asignar el cliente',
+              'Cerrar',
+              { duration: 7000 }
+            );
+
+            this.router.navigate(['/projects']);
+          },
+        });
+
+        return; // 🔥 importante: no seguir con el flujo normal
       }
-    });
+
+      // ✅ Flujo normal (UPDATE o CREATE sin cliente)
+      this.snackBar.open(this.isEditMode() ? '✅ Proyecto actualizado' : '✅ Proyecto creado', 'Cerrar', { duration: 3000 });
+      this.router.navigate(['/projects']);
+    },
+
+    error: (err) => {
+      console.error('❌ Error al guardar proyecto:', err);
+      console.log('❌ Error body:', err?.error);
+
+      const msg = err?.error?.message;
+      this.snackBar.open(
+        Array.isArray(msg) ? msg.join(' | ') : (msg || '❌ Error al guardar el proyecto'),
+        'Cerrar',
+        { duration: 9000 }
+      );
+      this.saving.set(false);
+    },
+  });
+}
+
+
+  // =========================
+  // Helpers (ordenados)
+  // =========================
+
+  private decodeJwt(token: string): any | null {
+    try {
+      const base64Url = token.split('.')[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(
+        atob(base64)
+          .split('')
+          .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+          .join('')
+      );
+      return JSON.parse(jsonPayload);
+    } catch {
+      return null;
+    }
+  }
+
+  private resolveTenantId(): string | null {
+    const user: any = this.authService.currentUser();
+
+    const fromUser =
+      user?.activeTenantId ||
+      user?.tenantId ||
+      user?.tenant?._id ||
+      (Array.isArray(user?.tenantIds) ? user.tenantIds[0] : null);
+
+    if (fromUser) return String(fromUser);
+
+    const token = localStorage.getItem('shieldtrack_token');
+    const jwt = token ? this.decodeJwt(token) : null;
+
+    const fromJwt =
+      jwt?.activeTenantId ||
+      jwt?.tenantId ||
+      jwt?.tenant?._id ||
+      jwt?.tenant ||
+      (Array.isArray(jwt?.tenantIds) ? jwt.tenantIds[0] : null);
+
+    return fromJwt ? String(fromJwt) : null;
+  }
+
+  private normalizeId(value: any): string | null {
+    if (!value) return null;
+    if (typeof value === 'string') return value;
+    if (typeof value === 'object') return String(value._id ?? value.id ?? '');
+    return null;
+  }
+
+  private cleanUndefined<T extends Record<string, any>>(obj: T): Partial<T> {
+    return Object.fromEntries(Object.entries(obj).filter(([, v]) => v !== undefined)) as Partial<T>;
   }
 }

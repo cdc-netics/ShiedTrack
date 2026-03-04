@@ -130,8 +130,8 @@ import { UserRole } from '../../../shared/enums';
             <ng-container matColumnDef="client">
               <th mat-header-cell *matHeaderCellDef>Cliente</th>
               <td mat-cell *matCellDef="let project">
-                {{ getClientName(project.clientId) }}
-              </td>
+              {{ getClientName(project.client || project.clientId) }}
+            </td>
             </ng-container>
 
             <!-- Columna Arquitectura -->
@@ -384,8 +384,21 @@ export class ProjectListComponent implements OnInit {
   }
 
   ngOnInit() {
-    // Carga inicial para poblar la tabla
+    this.loadClients();
     this.loadProjects();
+  }
+
+  loadClients() {
+    this.http.get<any[]>(this.CLIENTS_URL).subscribe({
+      next: (clients) => {
+        this.clients.set(clients || []);
+        this.clientNameById.clear();
+        for (const c of (clients || [])) {
+          if (c?._id) this.clientNameById.set(String(c._id), c.name || 'N/A');
+        }
+      },
+      error: (err) => console.error('Error loading clients', err),
+    });
   }
 
   loadProjects() {
@@ -419,6 +432,7 @@ export class ProjectListComponent implements OnInit {
   canCloseProject(project: any): boolean {
     // Regla de negocio simple para permitir cierre segun rol
     const user = this.authService.currentUser();
+    console.log('currentUser:', user);
     if (!user) return false;
     
     // OWNER puede cerrar cualquier proyecto
@@ -497,10 +511,22 @@ export class ProjectListComponent implements OnInit {
     });
   }
 
-  getClientName(clientId: any): string {
-    // Normaliza el nombre del cliente si viene poblado o solo como id
-    if (typeof clientId === 'string') return 'Cliente';
-    return clientId?.name || 'N/A';
+  private CLIENTS_URL = `${environment.apiUrl}/clients`;
+  clients = signal<any[]>([]);
+  private clientNameById = new Map<string, string>();
+
+
+  getClientName(client: any): string {
+    if (!client) return 'N/A';
+
+    // Caso 1: viene populado { _id, name }
+    if (typeof client === 'object') {
+      return client?.name || 'N/A';
+    }
+
+    // Caso 2: viene como string (id)
+    const id = String(client);
+    return this.clientNameById.get(id) || 'N/A';
   }
 
   getStatusLabel(status: string): string {
