@@ -8,6 +8,8 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { HttpClient } from '@angular/common/http';
+import { environment } from '../../../../environments/environment';
+
 
 @Component({
     selector: 'app-area-dialog',
@@ -133,8 +135,8 @@ export class AreaDialogComponent implements OnInit {
     };
 
     const request = this.data.area
-      ? this.http.put(`http://localhost:3000/api/areas/${this.data.area._id}`, areaData)
-      : this.http.post('http://localhost:3000/api/areas', areaData);
+      ? this.http.put(`${environment.apiUrl}/areas/${this.data.area._id}`, areaData)
+      : this.http.post(`${environment.apiUrl}/areas`, areaData);
 
     request.subscribe({
       next: () => {

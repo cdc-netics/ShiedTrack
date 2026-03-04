@@ -9,6 +9,7 @@ import { HttpClient } from '@angular/common/http';
 import { AuthService } from '../../core/services/auth.service';
 import { FindingService } from '../../core/services/finding.service';
 import { ProjectService } from '../../core/services/project.service';
+import { environment } from '../../../environments/environment';
 
 /**
  * Componente de Dashboard
@@ -424,13 +425,13 @@ export class DashboardComponent implements OnInit {
     const user = this.authService.currentUser();
     if (user && !this.authService.isAdmin()) {
       if (user.clientId) {
-        this.http.get<any>(`http://localhost:3000/api/clients/${user.clientId}`).subscribe({
+        this.http.get<any>(`${environment.apiUrl}/clients/${user.clientId}`).subscribe({
           next: (client) => this.clientName.set(client.name),
           error: () => this.clientName.set('Error cargando cliente')
         });
 
         // Cargar áreas
-        this.http.get<any[]>(`http://localhost:3000/api/areas?clientId=${user.clientId}`).subscribe({
+        this.http.get<any[]>(`${environment.apiUrl}/areas?clientId=${user.clientId}`).subscribe({
           next: (areas) => {
             // Filtrar solo las áreas asignadas al usuario
             const myAreas = areas.filter(a => user.areaIds?.includes(a._id));

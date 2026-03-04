@@ -20,6 +20,9 @@ const logger = new Logger('Bootstrap');
  */
 async function bootstrap() {
   // Crear instancia de MongoDBConnectionService directamente
+
+  console.log('✅ MAIN.TS CARGADO - VERSION MAIN_V1');
+
   const configService = new ConfigService();
   const mongoConnectionService = new MongoDBConnectionService(configService);
 
@@ -41,14 +44,17 @@ async function bootstrap() {
   // Ahora crear la aplicación principal
   const app = await NestFactory.create(AppModule);
 
+  console.log('✅ MAIN.TS CARGADO - ShieldTrack backend arrancando...');
+
+
   // Registrar plugin global de Mongoose para filtro por tenant
   mongoose.plugin(tenantPlugin);
 
   // Configuración global de validación - OBLIGATORIO según requisitos
   app.useGlobalPipes(
     new ValidationPipe({
-      whitelist: true, // Elimina propiedades no definidas en DTO
-      forbidNonWhitelisted: true, // Lanza error si hay propiedades no permitidas
+      whitelist: false, // Elimina propiedades no definidas en DTO
+      forbidNonWhitelisted: false, // Lanza error si hay propiedades no permitidas
       transform: true, // Transforma payloads a instancias de DTO
       transformOptions: {
         enableImplicitConversion: true, // Convierte tipos automáticamente

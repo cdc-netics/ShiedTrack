@@ -315,7 +315,7 @@ export class AreaListComponent implements OnInit {
 
   loadClients(): void {
     // Carga catalogo de clientes para filtro OWNER
-    this.http.get<any[]>('http://localhost:3000/api/clients').subscribe({
+    this.http.get<any[]>(`${environment.apiUrl}/clients`).subscribe({
       next: (data) => {
         this.clients.set(data);
         // Por defecto mostrar todas las áreas ("Todos")
@@ -333,7 +333,7 @@ export class AreaListComponent implements OnInit {
     // Recupera areas del cliente seleccionado con inactivas
     this.loading.set(true);
     
-    let url = 'http://localhost:3000/api/areas?includeInactive=true';
+    let url = `${environment.apiUrl}/areas?includeInactive=true`;
     if (this.selectedClient) {
       url += `&clientId=${this.selectedClient}`;
     }
@@ -397,7 +397,7 @@ export class AreaListComponent implements OnInit {
     const confirmed = confirm(`Confirmar: desea ${action} el area "${area.name}"?`);
     if (!confirmed) return;
 
-    this.http.put(`http://localhost:3000/api/areas/${area._id}`, { isActive: !area.isActive }).subscribe({
+    this.http.put(`${environment.apiUrl}/areas/${area._id}`, { isActive: !area.isActive }).subscribe({
       next: () => {
         this.snackBar.open(`Área ${area.isActive ? 'desactivada' : 'activada'}`, 'Cerrar', { duration: 3000 });
         this.loadAreas();

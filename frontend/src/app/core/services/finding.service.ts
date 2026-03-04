@@ -2,6 +2,7 @@ import { Injectable, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { tap } from 'rxjs/operators';
 import { Finding, FindingUpdate } from '../../shared/models';
+import { environment } from '../../../environments/environment';
 
 /**
  * Servicio de gestión de Hallazgos con Signals
@@ -11,7 +12,7 @@ import { Finding, FindingUpdate } from '../../shared/models';
   providedIn: 'root'
 })
 export class FindingService {
-  private readonly API_URL = 'http://localhost:3000/api/findings';
+  private readonly API_URL = `${environment.apiUrl}/findings`;
   
   // Signal para la lista de hallazgos
   private findingsSignal = signal<Finding[]>([]);

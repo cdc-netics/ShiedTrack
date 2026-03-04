@@ -86,10 +86,10 @@ import { environment } from '../../../../environments/environment'; // Standardi
             <mat-icon>business_center</mat-icon>
             <h3>No hay clientes</h3>
             <p>Crea tu primer cliente/tenant para comenzar</p>
-            <button mat-raised-button color="primary" routerLink="/clients/new">
-              <mat-icon>add</mat-icon>
-              Crear Cliente
-            </button>
+          <button mat-raised-button color="primary" (click)="openClientDialog()">
+            <mat-icon>add</mat-icon>
+            Crear Cliente
+          </button>
           </div>
         } @else {
           <table mat-table [dataSource]="filteredClients()" class="clients-table">
@@ -303,7 +303,7 @@ export class ClientListComponent implements OnInit {
   private http = inject(HttpClient);
   private dialog = inject(MatDialog);
   private snackBar = inject(MatSnackBar);
-  private readonly API_URL = 'http://localhost:3000/api/clients';
+  private readonly API_URL = `${environment.apiUrl}/clients`;
   
   // Columnas visibles en la tabla
   displayedColumns = ['name', 'projects', 'status', 'created', 'actions'];
