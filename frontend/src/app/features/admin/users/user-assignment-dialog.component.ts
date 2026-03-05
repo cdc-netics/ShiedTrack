@@ -1,4 +1,4 @@
-import { Component, Inject, OnInit, signal, inject } from '@angular/core';
+import { Component, OnInit, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatDialogModule, MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
@@ -31,24 +31,24 @@ export interface AssignmentData {
  * Permite multi-selección y gestión granular de permisos
  */
 @Component({
-    selector: 'app-user-assignment-dialog',
-    imports: [
-        CommonModule,
-        FormsModule,
-        MatDialogModule,
-        MatButtonModule,
-        MatCheckboxModule,
-        MatTabsModule,
-        MatListModule,
-        MatChipsModule,
-        MatIconModule,
-        MatFormFieldModule,
-        MatInputModule,
-        MatSelectModule,
-        MatProgressBarModule,
-        MatSnackBarModule
-    ],
-    template: `
+  selector: 'app-user-assignment-dialog',
+  imports: [
+    CommonModule,
+    FormsModule,
+    MatDialogModule,
+    MatButtonModule,
+    MatCheckboxModule,
+    MatTabsModule,
+    MatListModule,
+    MatChipsModule,
+    MatIconModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatSelectModule,
+    MatProgressBarModule,
+    MatSnackBarModule
+  ],
+  template: `
     <h2 mat-dialog-title>
       <mat-icon>assignment</mat-icon>
       Asignar Permisos - {{ data.userName }}
@@ -77,7 +77,7 @@ export interface AssignmentData {
             <mat-list>
               @for (client of filteredClients(); track client._id) {
                 <mat-list-item>
-                  <mat-checkbox 
+                  <mat-checkbox
                     [checked]="isClientSelected(client._id)"
                     (change)="toggleClient(client._id)">
                     {{ client.name }}
@@ -119,7 +119,7 @@ export interface AssignmentData {
             <mat-list>
               @for (project of filteredProjects(); track project._id) {
                 <mat-list-item>
-                  <mat-checkbox 
+                  <mat-checkbox
                     [checked]="isProjectSelected(project._id)"
                     (change)="toggleProject(project._id)">
                     {{ project.name }}
@@ -151,7 +151,7 @@ export interface AssignmentData {
             <mat-list>
               @for (area of filteredAreas(); track area._id) {
                 <mat-list-item>
-                  <mat-checkbox 
+                  <mat-checkbox
                     [checked]="isAreaSelected(area._id)"
                     (change)="toggleArea(area._id)">
                     {{ area.name }}
@@ -167,9 +167,10 @@ export interface AssignmentData {
         </mat-tab>
       </mat-tab-group>
 
-      <!-- Resumen de cambios -->
+      <!-- Resumen -->
       <div class="summary">
         <h3>Resumen de Asignaciones</h3>
+
         @if (selectedClients().length > 0) {
           <div class="summary-item">
             <strong>Clientes:</strong>
@@ -178,6 +179,7 @@ export interface AssignmentData {
             }
           </div>
         }
+
         @if (selectedProjects().length > 0) {
           <div class="summary-item">
             <strong>Proyectos:</strong>
@@ -186,6 +188,7 @@ export interface AssignmentData {
             }
           </div>
         }
+
         @if (selectedAreas().length > 0) {
           <div class="summary-item">
             <strong>Áreas:</strong>
@@ -194,6 +197,7 @@ export interface AssignmentData {
             }
           </div>
         }
+
         @if (selectedClients().length === 0 && selectedProjects().length === 0 && selectedAreas().length === 0) {
           <p class="no-selection">Sin asignaciones seleccionadas</p>
         }
@@ -208,71 +212,29 @@ export interface AssignmentData {
       </button>
     </mat-dialog-actions>
   `,
-    styles: [`
-    .tab-content {
-      padding: 16px;
-      max-height: 400px;
-      overflow-y: auto;
-    }
-
-    .search-field {
-      width: 100%;
-      margin-bottom: 16px;
-    }
-
-    mat-list-item {
-      padding: 8px 0;
-    }
-
-    .info-chip {
-      margin-left: 8px;
-      font-size: 11px;
-    }
-
-    .summary {
-      margin-top: 24px;
-      padding: 16px;
-      background: #f5f5f5;
-      border-radius: 4px;
-    }
-
-    .summary h3 {
-      margin: 0 0 12px 0;
-      font-size: 14px;
-      color: rgba(0,0,0,0.7);
-    }
-
-    .summary-item {
-      margin-bottom: 12px;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      align-items: center;
-    }
-
-    .summary-item strong {
-      min-width: 80px;
-    }
-
-    .no-selection {
-      color: rgba(0,0,0,0.5);
-      font-style: italic;
-      margin: 0;
-    }
-
-    mat-dialog-actions {
-      margin-top: 24px;
-    }
+  styles: [`
+    .tab-content { padding: 16px; max-height: 400px; overflow-y: auto; }
+    .search-field { width: 100%; margin-bottom: 16px; }
+    mat-list-item { padding: 8px 0; }
+    .info-chip { margin-left: 8px; font-size: 11px; }
+    .summary { margin-top: 24px; padding: 16px; background: #f5f5f5; border-radius: 4px; }
+    .summary h3 { margin: 0 0 12px 0; font-size: 14px; color: rgba(0,0,0,0.7); }
+    .summary-item { margin-bottom: 12px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .summary-item strong { min-width: 80px; }
+    .no-selection { color: rgba(0,0,0,0.5); font-style: italic; margin: 0; }
+    mat-dialog-actions { margin-top: 24px; }
   `]
 })
 export class UserAssignmentDialogComponent implements OnInit {
   dialogRef = inject(MatDialogRef<UserAssignmentDialogComponent>);
-  @Inject(MAT_DIALOG_DATA) data: AssignmentData = { userId: '', userName: '' };
+  // ✅ Inyección correcta del data
+  data = inject(MAT_DIALOG_DATA) as AssignmentData;
+
   private http = inject(HttpClient);
   private snackBar = inject(MatSnackBar);
 
   loading = signal(false);
-  
+
   clients = signal<any[]>([]);
   projects = signal<any[]>([]);
   areas = signal<any[]>([]);
@@ -288,16 +250,16 @@ export class UserAssignmentDialogComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadData();
-    // Inicializar selecciones previas
-    if (this.data.currentAssignments) {
-      this.selectedClients.set(this.data.currentAssignments.clients || []);
-      this.selectedProjects.set(this.data.currentAssignments.projects || []);
-      this.selectedAreas.set(this.data.currentAssignments.areas || []);
-    }
+    this.loadCurrentAssignments();
+  }
+
+  private assignmentsUrl(): string {
+    return `${environment.apiUrl}/auth/users/${this.data.userId}/assignments`;
   }
 
   loadData(): void {
     this.loading.set(true);
+
     Promise.all([
       this.http.get<any[]>(`${environment.apiUrl}/clients`).toPromise(),
       this.http.get<any[]>(`${environment.apiUrl}/projects`).toPromise(),
@@ -314,23 +276,54 @@ export class UserAssignmentDialogComponent implements OnInit {
     });
   }
 
+  loadCurrentAssignments(): void {
+    if (!this.data?.userId) {
+      // Si esto aparece, ya sabemos que no llegó el id
+      this.snackBar.open('No se recibió el ID del usuario para cargar asignaciones', 'Cerrar', { duration: 4000 });
+      console.error('MAT_DIALOG_DATA recibido:', this.data);
+      return;
+    }
+
+    this.loading.set(true);
+
+    this.http.get<any>(this.assignmentsUrl()).subscribe({
+      next: (res) => {
+        // soporte ambas formas
+        const clients = res?.clients ?? res?.clientIds ?? [];
+        const projects = res?.projects ?? res?.projectIds ?? [];
+        const areas = res?.areas ?? res?.areaIds ?? [];
+
+        this.selectedClients.set(clients);
+        this.selectedProjects.set(projects);
+        this.selectedAreas.set(areas);
+
+        this.loading.set(false);
+      },
+      error: (err) => {
+        console.error('Error cargando asignaciones:', err);
+        this.snackBar.open('No se pudieron cargar asignaciones actuales', 'Cerrar', { duration: 3000 });
+        this.loading.set(false);
+      }
+    });
+  }
+
   filteredClients() {
     return this.clients().filter(c =>
-      c.name.toLowerCase().includes(this.clientSearch.toLowerCase())
+      (c.name || '').toLowerCase().includes(this.clientSearch.toLowerCase())
     );
   }
 
   filteredProjects() {
     return this.projects().filter(p => {
       const matchClient = !this.projectClientFilter || p.clientId === this.projectClientFilter;
-      const matchSearch = p.name.toLowerCase().includes(this.projectSearch.toLowerCase());
+      const matchSearch = (p.name || '').toLowerCase().includes(this.projectSearch.toLowerCase());
       return matchClient && matchSearch;
     });
   }
 
   filteredAreas() {
     return this.areas().filter(a =>
-      a.name.toLowerCase().includes(this.areaSearch.toLowerCase())
+      (a.name || '').toLowerCase().includes(this.areaSearch.toLowerCase())
     );
   }
 
@@ -382,25 +375,41 @@ export class UserAssignmentDialogComponent implements OnInit {
     return this.areas().find(a => a._id === areaId)?.name || 'N/A';
   }
 
-  saveAssignments(): void {
-    this.loading.set(true);
-    const payload = {
-      clientIds: this.selectedClients(),
-      projectIds: this.selectedProjects(),
-      areaIds: this.selectedAreas()
-    };
+  private cleanIds(ids: any[]): string[] {
+  const asStrings = (ids || []).map(x => (x ?? '').toString().trim());
+  // ObjectId de Mongo: 24 chars hex
+  return asStrings.filter(x => /^[a-fA-F0-9]{24}$/.test(x));
+}
 
-    this.http.post(`${environment.apiUrl}/auth/users/${this.data.userId}/assignments`, payload)
-      .subscribe({
-        next: () => {
-          this.snackBar.open('Asignaciones actualizadas', 'Cerrar', { duration: 3000 });
-          this.dialogRef.close(true);
-        },
-        error: (err) => {
-          console.error('Error guardando asignaciones:', err);
-          this.snackBar.open('Error al guardar asignaciones', 'Cerrar', { duration: 3000 });
-          this.loading.set(false);
-        }
-      });
+saveAssignments(): void {
+  if (!this.data?.userId) {
+    this.snackBar.open('No se recibió el ID del usuario. Cierra y vuelve a abrir el diálogo.', 'Cerrar', { duration: 4000 });
+    return;
+  }
+
+  this.loading.set(true);
+
+  const clients = this.cleanIds(this.selectedClients());
+  const projects = this.cleanIds(this.selectedProjects());
+  const areas = this.cleanIds(this.selectedAreas());
+
+  const payload = {
+    clients,
+    projects,
+    areas
+  };
+
+  this.http.post(this.assignmentsUrl(), payload).subscribe({
+    next: () => {
+      this.snackBar.open('Asignaciones actualizadas', 'Cerrar', { duration: 3000 });
+      this.dialogRef.close(true);
+      this.loading.set(false);
+    },
+    error: (err) => {
+      console.error('Error guardando asignaciones:', err);
+      this.snackBar.open('Error al guardar asignaciones', 'Cerrar', { duration: 3000 });
+      this.loading.set(false);
+      }
+    });
   }
 }
