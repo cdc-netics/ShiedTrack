@@ -196,6 +196,7 @@ export class UpdateFindingDto {
   @IsOptional()
   @IsString()
   assignedTo?: string;
+  projectId: any;
 }
 
 /**

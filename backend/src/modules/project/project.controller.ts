@@ -12,10 +12,10 @@ import {
   UsePipes,
   ValidationPipe,
 } from '@nestjs/common';
+
 import {
   ApiTags,
   ApiOperation,
-  ApiResponse,
   ApiBearerAuth,
   ApiQuery,
 } from '@nestjs/swagger';
@@ -37,6 +37,9 @@ import { UserRole, ProjectStatus } from '../../common/enums';
 export class ProjectController {
   constructor(private readonly projectService: ProjectService) {}
 
+  /**
+   * Ping endpoint
+   */
   @Get('ping')
   @ApiOperation({ summary: 'Ping de Projects' })
   ping() {
@@ -47,7 +50,9 @@ export class ProjectController {
     };
   }
 
-  // ✅ CREATE
+  /**
+   * CREATE PROJECT
+   */
   @Post()
   @Roles(
     UserRole.OWNER,
@@ -59,36 +64,45 @@ export class ProjectController {
     new ValidationPipe({
       transform: true,
       whitelist: true,
-      forbidNonWhitelisted: false, // 🔥 Permite clientId
+      forbidNonWhitelisted: false, // permite clientId
     }),
   )
   @ApiOperation({ summary: 'Crear un nuevo proyecto' })
-  async create(@Body() dto: CreateProjectDto) {
-    return this.projectService.create(dto);
+  async create(
+    @Body() dto: CreateProjectDto,
+    @CurrentUser() user?: any,
+  ) {
+    return this.projectService.create(dto, user);
   }
 
-  // ✅ LIST
+  /**
+   * LIST PROJECTS
+   */
   @Get()
   @ApiOperation({ summary: 'Listar proyectos con filtros opcionales' })
-  @ApiQuery({ name: 'tenantId', required: false })
   @ApiQuery({ name: 'status', required: false, enum: ProjectStatus })
   async findAll(
-    @Query('tenantId') tenantId?: string,
     @Query('status') status?: ProjectStatus,
     @CurrentUser() user?: any,
   ) {
-    const effectiveTenantId = tenantId ?? user?.clientId?.toString();
-    return this.projectService.findAll(effectiveTenantId, status, user);
+    return this.projectService.findAll(status, user);
   }
 
-  // ✅ FIND BY ID
+  /**
+   * FIND PROJECT BY ID
+   */
   @Get(':id')
   @ApiOperation({ summary: 'Obtener proyecto por ID' })
-  async findById(@Param('id') id: string, @CurrentUser() user?: any) {
+  async findById(
+    @Param('id') id: string,
+    @CurrentUser() user?: any,
+  ) {
     return this.projectService.findById(id, user);
   }
 
-  // ✅ UPDATE
+  /**
+   * UPDATE PROJECT (FULL)
+   */
   @Put(':id')
   @Roles(
     UserRole.OWNER,
@@ -104,11 +118,14 @@ export class ProjectController {
   async update(
     @Param('id') id: string,
     @Body() dto: UpdateProjectDto,
+    @CurrentUser() user?: any,
   ) {
-    return this.projectService.update(id, dto);
+    return this.projectService.update(id, dto, user);
   }
 
-  // ✅ PATCH
+  /**
+   * PATCH PROJECT (PARTIAL UPDATE)
+   */
   @Patch(':id')
   @Roles(
     UserRole.OWNER,
@@ -122,30 +139,43 @@ export class ProjectController {
   async patch(
     @Param('id') id: string,
     @Body() dto: Partial<UpdateProjectDto>,
+    @CurrentUser() user?: any,
   ) {
-    return this.projectService.update(id, dto as UpdateProjectDto);
+    return this.projectService.update(id, dto as UpdateProjectDto, user);
   }
 
-  // ✅ ARCHIVE
+  /**
+   * ARCHIVE PROJECT (soft delete)
+   */
   @Delete(':id')
   @Roles(UserRole.OWNER, UserRole.PLATFORM_ADMIN)
   @ApiOperation({ summary: 'Archivar proyecto' })
-  async archive(@Param('id') id: string) {
-    return this.projectService.archive(id);
+  async archive(
+    @Param('id') id: string,
+    @CurrentUser() user?: any,
+  ) {
+    return this.projectService.archive(id, user);
   }
 
-  // ✅ HARD DELETE
+  /**
+   * HARD DELETE PROJECT
+   */
   @Delete(':id/hard')
   @Roles(UserRole.OWNER)
   @ApiOperation({
     summary: 'Eliminar proyecto permanentemente',
   })
-  async hardDelete(@Param('id') id: string) {
-    await this.projectService.hardDelete(id);
+  async hardDelete(
+    @Param('id') id: string,
+    @CurrentUser() user?: any,
+  ) {
+    await this.projectService.hardDelete(id, user);
     return { message: 'Proyecto eliminado permanentemente' };
   }
 
-  // ✅ MERGE
+  /**
+   * MERGE PROJECTS
+   */
   @Post('merge')
   @Roles(UserRole.OWNER, UserRole.PLATFORM_ADMIN)
   @ApiOperation({
@@ -153,10 +183,12 @@ export class ProjectController {
   })
   async mergeProjects(
     @Body() body: { sourceProjectId: string; targetProjectId: string },
+    @CurrentUser() user?: any,
   ) {
     return this.projectService.mergeProjects(
       body.sourceProjectId,
       body.targetProjectId,
+      user,
     );
   }
 }
