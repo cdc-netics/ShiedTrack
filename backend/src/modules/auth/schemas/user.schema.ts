@@ -29,6 +29,10 @@ export class User extends Document {
   @Prop({ type: [Types.ObjectId], ref: 'Area', default: [] })
   areaIds: Types.ObjectId[]; // Áreas asignadas (para AREA_ADMIN)
 
+    // NUEVO: proyectos visibles para control de lectura
+  @Prop({ type: [Types.ObjectId], ref: 'Project', default: [] })
+  visibleProjectIds: Types.ObjectId[];
+
   // Campos de MFA
   @Prop({ default: false })
   mfaEnabled: boolean;

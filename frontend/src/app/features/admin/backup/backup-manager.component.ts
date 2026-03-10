@@ -315,11 +315,31 @@ export class BackupManagerComponent implements OnInit {
     }
   }
 
-  downloadBackup(filename: string): void {
-    const url = `/api/backup/download/${filename}`;
-    window.open(url, '_blank');
-    this.snackBar.open('Descarga iniciada', 'Cerrar', { duration: 2000 });
-  }
+    async downloadBackup(filename: string): Promise<void> {
+      try {
+        const blob = await firstValueFrom(
+          this.http.get(`/api/backup/download/${filename}`, {
+            responseType: 'blob'
+          })
+        );
+
+        const downloadUrl = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.download = filename;
+        link.click();
+
+        window.URL.revokeObjectURL(downloadUrl);
+
+        this.snackBar.open('✅ Descarga iniciada', 'Cerrar', { duration: 2000 });
+      } catch (error: any) {
+        this.snackBar.open(
+          error.error?.message || 'Error descargando backup',
+          'Cerrar',
+          { duration: 5000 }
+        );
+      }
+    }
 
   confirmRestore(filename: string): void {
     const confirmed = confirm(
