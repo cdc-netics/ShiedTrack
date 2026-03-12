@@ -79,6 +79,132 @@ export class FindingService {
     );
   }
 
+  private getUserFullName(user: any): string {
+    const fullName = `${user?.firstName || ''} ${user?.lastName || ''}`.trim();
+    return fullName || user?.email || 'Usuario';
+  }
+
+  private getProjectName(project: any): string {
+    return project?.name || project?.projectName || 'Proyecto sin nombre';
+  }
+
+  private areObjectIdsEqual(a: any, b: any): boolean {
+    if (!a || !b) return false;
+    return a.toString() === b.toString();
+  }
+
+  private async sendFindingCreatedNotification(
+    finding: any,
+    project: any,
+    createdByUserId: string,
+  ): Promise<void> {
+    try {
+      const creator = await this.userModel.findById(createdByUserId).lean();
+
+      if (!creator || !creator.email) {
+        return;
+      }
+
+      await this.emailService.notifyFindingCreated(
+        creator.email,
+        this.getUserFullName(creator),
+        finding.title,
+        finding.code || finding._id.toString(),
+        finding.severity,
+        this.getProjectName(project),
+        finding.description,
+      );
+
+      this.logger.log(`Email de hallazgo creado enviado a ${creator.email}`);
+    } catch (emailError: any) {
+      this.logger.warn(
+        `No se pudo enviar email de hallazgo creado: ${emailError?.message}`,
+      );
+    }
+  }
+
+  private async sendFindingAssignedNotification(
+    assignedUserId: any,
+    finding: any,
+    project?: any,
+  ): Promise<void> {
+    try {
+      if (!assignedUserId) return;
+
+      const assignedUser = await this.userModel.findById(assignedUserId).lean();
+
+      if (!assignedUser || !assignedUser.email) {
+        return;
+      }
+
+      await this.emailService.notifyFindingAssigned(
+        assignedUser.email,
+        this.getUserFullName(assignedUser),
+        finding.title,
+        finding.code || finding._id.toString(),
+        finding.severity,
+        this.getProjectName(project),
+      );
+
+      this.logger.log(`Email de hallazgo asignado enviado a ${assignedUser.email}`);
+    } catch (emailError: any) {
+      this.logger.warn(
+        `No se pudo enviar email de hallazgo asignado: ${emailError?.message}`,
+      );
+    }
+  }
+
+  private async sendFindingClosedNotifications(
+    finding: any,
+    closeReason: string,
+  ): Promise<void> {
+    try {
+      const recipients = new Map<string, { email: string; name: string }>();
+
+      if (finding.assignedTo) {
+        const assignedUser = await this.userModel.findById(finding.assignedTo).lean();
+        if (assignedUser?.email) {
+          recipients.set(assignedUser.email, {
+            email: assignedUser.email,
+            name: this.getUserFullName(assignedUser),
+          });
+        }
+      }
+
+      if (finding.createdBy) {
+        const createdByUser = await this.userModel.findById(finding.createdBy).lean();
+        if (createdByUser?.email) {
+          recipients.set(createdByUser.email, {
+            email: createdByUser.email,
+            name: this.getUserFullName(createdByUser),
+          });
+        }
+      }
+
+      const projectName =
+        (finding.projectId as any)?.name ||
+        (finding.projectId as any)?.projectName ||
+        'Proyecto sin nombre';
+
+      for (const recipient of recipients.values()) {
+        await this.emailService.notifyFindingClosed(
+          recipient.email,
+          recipient.name,
+          finding.title,
+          finding.code || finding._id.toString(),
+          closeReason,
+          projectName,
+        );
+
+        this.logger.log(`Email de cierre enviado a ${recipient.email}`);
+      }
+    } catch (emailError: any) {
+      this.logger.warn(
+        `No se pudo enviar email de cierre: ${emailError?.message}`,
+      );
+    }
+  }
+
   private validateProjectAreaAccess(project: any, currentUser?: any): void {
     if (!currentUser || !this.isRestrictedByArea(currentUser)) {
       return;
@@ -205,7 +331,6 @@ export class FindingService {
       );
     }
 
-    // GENERACIÓN DE CÓDIGO DINÁMICO
     let prefix = 'VULN';
 
     if (project.areaIds && project.areaIds.length > 0) {
@@ -252,26 +377,10 @@ export class FindingService {
       `Hallazgo creado: ${finding.code} - ${finding.title} (ID: ${finding._id})`,
     );
 
+    await this.sendFindingCreatedNotification(finding, project, createdBy);
+
     if (finding.assignedTo) {
-      try {
-        const assignedUser = await this.userModel.findById(finding.assignedTo);
-        if (assignedUser && assignedUser.email) {
-          await this.emailService.notifyFindingAssigned(
-            assignedUser.email,
-            `${assignedUser.firstName} ${assignedUser.lastName}`,
-            finding.title,
-            finding.code || finding._id.toString(),
-            finding.severity,
-          );
-          this.logger.log(
-            `Email de nuevo hallazgo enviado a ${assignedUser.email}`,
-          );
-        }
-      } catch (emailError: any) {
-        this.logger.warn(
-          `No se pudo enviar email de hallazgo: ${emailError?.message}`,
-        );
-      }
+      await this.sendFindingAssignedNotification(finding.assignedTo, finding, project);
     }
 
     return finding;
@@ -317,12 +426,16 @@ export class FindingService {
         return [];
       }
 
+      const areaObjectIds = allowedAreas
+        .map((id) => this.toObjectId(id))
+        .filter(Boolean);
+
       const accessibleProjects = await this.projectModel
         .find({
           ...(currentTenantId ? { tenantId: this.toObjectId(currentTenantId) } : {}),
           $or: [
-            { areaIds: { $in: allowedAreas.map((id) => this.toObjectId(id)).filter(Boolean) } },
-            { areaId: { $in: allowedAreas.map((id) => this.toObjectId(id)).filter(Boolean) } },
+            { areaIds: { $in: areaObjectIds } },
+            { areaId: { $in: areaObjectIds } },
           ],
         })
         .select('_id');
@@ -367,6 +480,12 @@ export class FindingService {
     const currentTenantId =
       this.getCurrentTenantId(currentUser) || this.resolveFindingTenantId(finding);
 
+    const previousAssignedTo = finding.assignedTo
+      ? (finding.assignedTo as any)?._id?.toString?.() || finding.assignedTo.toString()
+      : undefined;
+
+    const previousStatus = finding.status;
+
     if ((dto as any).tenantId !== undefined) {
       delete (dto as any).tenantId;
     }
@@ -393,7 +512,9 @@ export class FindingService {
     }
 
     const statusChanged = dto.status && dto.status !== finding.status;
-    const previousStatus = finding.status;
+    const assignedChanged =
+      dto.assignedTo !== undefined &&
+      !this.areObjectIdsEqual(dto.assignedTo, previousAssignedTo);
 
     if (statusChanged) {
       if (dto.status === FindingStatus.CLOSED) {
@@ -420,6 +541,15 @@ export class FindingService {
       this.logger.log(
         `Estado del hallazgo ${finding.code} cambiado de ${previousStatus} a ${dto.status}`,
       );
+    }
+
+    if (assignedChanged && finding.assignedTo) {
+      const project = (finding.projectId as any) || undefined;
+      await this.sendFindingAssignedNotification(finding.assignedTo, finding, project);
+    }
+
+    if (statusChanged && dto.status === FindingStatus.CLOSED) {
+      await this.sendFindingClosedNotifications(finding, finding.closeReason || 'Cierre de hallazgo');
     }
 
     this.logger.log(`Hallazgo actualizado: ${finding.code} (ID: ${id})`);
@@ -502,25 +632,7 @@ export class FindingService {
       `Hallazgo cerrado: ${finding.code} - Motivo: ${dto.closeReason}`,
     );
 
-    if (finding.assignedTo) {
-      try {
-        const assignedUser = await this.userModel.findById(finding.assignedTo);
-        if (assignedUser && assignedUser.email) {
-          await this.emailService.notifyFindingClosed(
-            assignedUser.email,
-            `${assignedUser.firstName} ${assignedUser.lastName}`,
-            finding.title,
-            finding.code || finding._id.toString(),
-            dto.closeReason,
-          );
-          this.logger.log(`Email de cierre enviado a ${assignedUser.email}`);
-        }
-      } catch (emailError: any) {
-        this.logger.warn(
-          `No se pudo enviar email de cierre: ${emailError?.message}`,
-        );
-      }
-    }
+    await this.sendFindingClosedNotifications(finding, dto.closeReason);
 
     return finding;
   }
