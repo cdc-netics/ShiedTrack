@@ -9,19 +9,26 @@ async function fixUserClient() {
   console.log('Connected.');
 
   try {
-    // 1. Get the valid client "cliente 1"
-    const validClient = await mongoose.connection.db.collection('clients').findOne({ name: 'cliente 1' });
-    
+    // Buscar un cliente válido y estable para pruebas
+    const validClient = await mongoose.connection.db.collection('clients').findOne({
+      code: 'TEST-ACME'
+    });
+
     if (!validClient) {
-        console.error('Error: Could not find "cliente 1".');
-        return;
+      console.error('Error: Could not find client with code "TEST-ACME".');
+      return;
     }
+
     console.log(`Found valid client: ${validClient.name} (${validClient._id})`);
 
-    // 2. Update the user to belong to this client
+    // Actualizar el usuario para asignarlo a ese cliente
     const result = await mongoose.connection.db.collection('users').updateOne(
-        { email: 'clientadmin@acmecorp.com' },
-        { $set: { clientId: validClient._id } }
+      { email: 'clientadmin@acmecorp.com' },
+      {
+        $set: {
+          clientId: validClient._id
+        }
+      }
     );
 
     console.log(`Updated user clientadmin@acmecorp.com: ${result.modifiedCount} document(s) modified.`);
@@ -30,6 +37,7 @@ async function fixUserClient() {
     console.error('Error:', error);
   } finally {
     await mongoose.disconnect();
+    console.log('Disconnected from MongoDB.');
   }
 }
 

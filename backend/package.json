@@ -5,22 +5,47 @@
   "author": "ShieldTrack Team",
   "private": true,
   "license": "UNLICENSED",
+
   "scripts": {
     "build": "nest build",
-    "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
+
     "start": "node dist/main.js",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
-    "start:prod": "node dist/main",
+    "start:prod": "node dist/main.js",
+
+    "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
+
     "test": "jest",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
-    "seed:test": "node scripts/seed-test-data.js",
-    "seed:owner": "node scripts/create-owner.js"
+
+    "seed:test": "node scripts/seeds/seed-test-data.js",
+    "seed:owner": "node scripts/seeds/create-owner.js",
+
+    "check:users": "node scripts/inspection/check-users.js",
+    "list:clients": "node scripts/inspection/list-clients.js",
+
+    "fix:users": "node scripts/maintenance/fix-shieldtrack-users.js",
+    "fix:user-client": "node scripts/maintenance/fix-user-client.js",
+    "fix:area-indexes": "node scripts/maintenance/fix-area-indexes.js",
+    "fix:all-acme-users": "node scripts/maintenance/fix-all-acme-users.js",
+
+    "inspect:areas": "node scripts/inspection/inspect-areas.js",
+    "inspect:users": "node scripts/inspection/inspect-shieldtrack-users.js",
+
+    "reset:areas": "node scripts/maintenance/reset-all-areas.js",
+
+    "delete:test-data": "node scripts/maintenance/delete-test-data.js",
+    "delete:garbage-data": "node scripts/maintenance/delete-garbage-data.js",
+
+    "diagnose:export": "node scripts/diagnostics/diagnose-export.js",
+    "debug:users-areas": "node scripts/diagnostics/debug-users-areas.js"
   },
+
   "dependencies": {
     "@nestjs/common": "^10.3.0",
     "@nestjs/config": "^4.0.2",
@@ -52,6 +77,7 @@
     "rxjs": "^7.8.1",
     "speakeasy": "^2.0.0"
   },
+
   "devDependencies": {
     "@nestjs/cli": "^10.2.1",
     "@nestjs/schematics": "^10.0.3",
@@ -81,6 +107,7 @@
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.3.3"
   },
+
   "jest": {
     "moduleFileExtensions": [
       "js",
