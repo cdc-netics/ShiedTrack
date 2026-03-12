@@ -3,17 +3,14 @@
 /**
  * Script de seed para tests P0 de ShieldTrack
  * Crea datos de prueba alineados con Promp.txt
- * 
+ *
  * Uso:
  *   npm run seed:test
- *   node scripts/seed-test-data.js
+ *   node scripts/seeds/seed-test-data.js
  */
 
 const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
-
-// Modelos (importar según estructura del proyecto)
-// const { User, Client, Area, Project, Finding } = require('../src/modules');
 
 const MONGO_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/shieldtrack';
 
@@ -37,14 +34,43 @@ async function seedTestData() {
 
     // Limpiar datos previos
     log('\n🗑️  Limpiando colecciones de test...', 'yellow');
-    await mongoose.connection.db.collection('users').deleteMany({ 
-      email: { $regex: /@(shieldtrack\.com|acmecorp\.com)$/ } 
+
+    await mongoose.connection.db.collection('userareaassignments').deleteMany({});
+
+    await mongoose.connection.db.collection('users').deleteMany({
+      email: {
+        $in: [
+          'admin@shieldtrack.com',
+          'owner@shieldtrack.com',
+          'platformadmin@shieldtrack.com',
+          'clientadmin@acmecorp.com',
+          'areaadmin@acmecorp.com',
+          'analyst@shieldtrack.com',
+          'viewer@shieldtrack.com'
+        ]
+      }
     });
-    await mongoose.connection.db.collection('clients').deleteMany({ code: /^TEST-/ });
-    await mongoose.connection.db.collection('areas').deleteMany({ code: /^TEST-/ });
-    await mongoose.connection.db.collection('projects').deleteMany({ code: /^TEST-/ });
-    await mongoose.connection.db.collection('findings').deleteMany({ code: /^FND-(TEST|EVIL)-/ });
-    
+
+    await mongoose.connection.db.collection('clients').deleteMany({
+      code: { $in: ['TEST-ACME', 'TEST-EVIL'] }
+    });
+
+    await mongoose.connection.db.collection('areas').deleteMany({
+      code: { $in: ['TEST-INFRA', 'TEST-APPS'] }
+    });
+
+    await mongoose.connection.db.collection('projects').deleteMany({
+      code: { $in: ['TEST-PROJECT-001', 'TEST-PROJECT-EVIL'] }
+    });
+
+    await mongoose.connection.db.collection('findings').deleteMany({
+      code: { $in: ['FND-TEST-001', 'FND-TEST-002', 'FND-TEST-003', 'FND-EVIL-001'] }
+    });
+
+    await mongoose.connection.db.collection('tenants').deleteMany({
+      code: { $in: ['TEN-ACME', 'TEN-EVIL'] }
+    });
+
     log('✅ Colecciones limpias', 'green');
 
     // === TENANTS ===
@@ -67,9 +93,9 @@ async function seedTestData() {
     log(`✅ Tenant ACME: ${tenantACME.insertedId}`, 'green');
     log(`✅ Tenant Evil: ${tenantEvil.insertedId}`, 'green');
 
-    // === CLIENTES (asociados a Tenants) ===
+    // === CLIENTES ===
     log('\n👥 Creando clientes de prueba...', 'blue');
-    
+
     const clientA = await mongoose.connection.db.collection('clients').insertOne({
       name: 'ACME Corporation',
       code: 'TEST-ACME',
@@ -77,7 +103,7 @@ async function seedTestData() {
       tenantId: tenantACME.insertedId,
       createdAt: new Date()
     });
-    
+
     const clientB = await mongoose.connection.db.collection('clients').insertOne({
       name: 'Evil Corp',
       code: 'TEST-EVIL',
@@ -85,7 +111,7 @@ async function seedTestData() {
       tenantId: tenantEvil.insertedId,
       createdAt: new Date()
     });
-    
+
     log(`✅ Cliente A (ACME): ${clientA.insertedId}`, 'green');
     log(`✅ Cliente B (Evil): ${clientB.insertedId}`, 'green');
 
@@ -108,12 +134,12 @@ async function seedTestData() {
       createdAt: new Date()
     });
 
-    // === USUARIOS (6 roles según Promp.txt) ===
-    log('\n🔐 Creando usuarios con los 6 roles RBAC...', 'blue');
-    
+    // === USUARIOS ===
+    log('\n🔐 Creando usuarios con roles RBAC...', 'blue');
+
     const hashedPassword = await bcrypt.hash('Password123!', 10);
     const hashedDevPassword = await bcrypt.hash('Admin123!', 10);
-    
+
     const users = await mongoose.connection.db.collection('users').insertMany([
       {
         email: 'admin@shieldtrack.com',
@@ -134,7 +160,7 @@ async function seedTestData() {
         role: 'OWNER',
         tenantIds: [tenantACME.insertedId],
         activeTenantId: tenantACME.insertedId,
-        mfaEnabled: false, // Para testing (en prod debería ser true)
+        mfaEnabled: false,
         isActive: true,
         createdAt: new Date()
       },
@@ -205,13 +231,13 @@ async function seedTestData() {
       }
     ]);
 
-    log('✅ 6 usuarios creados (password: Password123!)', 'green');
+    log('✅ 7 usuarios creados', 'green');
 
     // === ASIGNACIONES DE ÁREA ===
     log('\n🔗 Asignando usuarios a áreas...', 'blue');
-    
+
     const ownerId = users.insertedIds[0];
-    const areaAdminId = users.insertedIds[3];
+    const areaAdminId = users.insertedIds[4];
 
     await mongoose.connection.db.collection('userareaassignments').insertMany([
       {
@@ -233,12 +259,12 @@ async function seedTestData() {
         updatedAt: new Date()
       }
     ]);
-    
+
     log('✅ Area Admin asignado a Infraestructura y Aplicaciones', 'green');
 
     // === PROYECTOS ===
     log('\n📂 Creando proyectos de prueba...', 'blue');
-    
+
     const projectA = await mongoose.connection.db.collection('projects').insertOne({
       name: 'Pentesting ACME Web Portal',
       code: 'TEST-PROJECT-001',
@@ -274,7 +300,7 @@ async function seedTestData() {
 
     // === HALLAZGOS ===
     log('\n🔍 Creando hallazgos para testing...', 'blue');
-    
+
     const findingsA = await mongoose.connection.db.collection('findings').insertMany([
       {
         code: 'FND-TEST-001',
@@ -317,42 +343,16 @@ async function seedTestData() {
       severity: 'CRITICAL',
       status: 'OPEN',
       projectId: projectB_EvilCorp.insertedId,
-       tenantId: tenantEvil.insertedId,
+      tenantId: tenantEvil.insertedId,
       retestIncluded: true,
       description: '🔒 Este hallazgo NO debe ser accesible por usuarios de ACME Corp',
       createdAt: new Date()
     });
 
-    log(`✅ 3 hallazgos ACME creados`, 'green');
+    log('✅ 3 hallazgos ACME creados', 'green');
     log(`✅ 1 hallazgo Evil Corp (IDOR test): ${findingEvilCorp.insertedId}`, 'green');
 
-    // === RESUMEN ===
-    log('\n📊 RESUMEN DE DATOS SEED:', 'blue');
-    log('─────────────────────────────────────────', 'blue');
-    log(`Clientes: 2 (ACME + Evil Corp)`);
-    log(`Áreas: 2 (Infraestructura + Aplicaciones)`);
-    log(`Usuarios: 6 (OWNER, PLATFORM_ADMIN, CLIENT_ADMIN, AREA_ADMIN, ANALYST, VIEWER)`);
-    log(`Proyectos: 2 (1 ACME con retest, 1 Evil Corp)`);
-    log(`Hallazgos: 4 (3 ACME, 1 Evil Corp para IDOR)`);
-    log('─────────────────────────────────────────', 'blue');
-
-    log('\n✨ Variables para Postman Collection:', 'yellow');
-    log(`test_project_id: ${projectA.insertedId}`);
-    log(`other_client_finding_id: ${findingEvilCorp.insertedId}`);
-    log(`test_finding_id: ${Object.values(findingsA.insertedIds)[0]}`);
-
-    log('\n🔐 Credenciales de login:', 'yellow');
-    log('────────────────────────────────────────');
-    log('Email: owner@shieldtrack.com | Password: Password123!');
-    log('Email: platformadmin@shieldtrack.com | Password: Password123!');
-    log('Email: clientadmin@acmecorp.com | Password: Password123!');
-    log('Email: areaadmin@acmecorp.com | Password: Password123!');
-    log('Email: analyst@shieldtrack.com | Password: Password123!');
-    log('Email: viewer@shieldtrack.com | Password: Password123!');
-    log('────────────────────────────────────────');
-
     log('\n✅ Seed completado exitosamente!', 'green');
-    log('📝 Ahora puedes ejecutar la Postman Collection P0', 'blue');
 
   } catch (error) {
     log(`\n❌ Error en seed: ${error.message}`, 'red');
@@ -364,7 +364,6 @@ async function seedTestData() {
   }
 }
 
-// Ejecutar si es llamado directamente
 if (require.main === module) {
   seedTestData();
 }
