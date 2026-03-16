@@ -26,24 +26,10 @@
     "seed:test": "node scripts/seeds/seed-test-data.js",
     "seed:owner": "node scripts/seeds/create-owner.js",
 
-    "check:users": "node scripts/inspection/check-users.js",
-    "list:clients": "node scripts/inspection/list-clients.js",
-
-    "fix:users": "node scripts/maintenance/fix-shieldtrack-users.js",
-    "fix:user-client": "node scripts/maintenance/fix-user-client.js",
-    "fix:area-indexes": "node scripts/maintenance/fix-area-indexes.js",
-    "fix:all-acme-users": "node scripts/maintenance/fix-all-acme-users.js",
-
-    "inspect:areas": "node scripts/inspection/inspect-areas.js",
-    "inspect:users": "node scripts/inspection/inspect-shieldtrack-users.js",
-
-    "reset:areas": "node scripts/maintenance/reset-all-areas.js",
-
-    "delete:test-data": "node scripts/maintenance/delete-test-data.js",
-    "delete:garbage-data": "node scripts/maintenance/delete-garbage-data.js",
-
-    "diagnose:export": "node scripts/diagnostics/diagnose-export.js",
-    "debug:users-areas": "node scripts/diagnostics/debug-users-areas.js"
+    "maintenance:fix-users": "node scripts/maintenance/run-maintenance.js fix-users",
+    "maintenance:fix-indexes": "node scripts/maintenance/run-maintenance.js fix-indexes",
+    "maintenance:clean": "node scripts/maintenance/run-maintenance.js clean-test-data",
+    "maintenance:reset": "node scripts/maintenance/run-maintenance.js reset-areas"
   },
 
   "dependencies": {

@@ -16,36 +16,36 @@ El sistema funciona en lo básico, pero hay problemas de navegación, branding, 
 
 ## Estado general (tabla de control)
 
-| ID | Sección | Tarea | Estado | Notas |
+| ID | Estado | Sección | Tarea | Notas |
 | --- | --- | --- | --- | --- |
-| P0 | Actualización Angular 20 | Plan general de actualización | ✅ Completado | Actualizado a v20.3.16 |
-| F0-1 | Fase 0 (Preparación) | Crear rama aislada | ✅ Completado | Rama feature creada |
-| F0-2 | Fase 0 (Preparación) | Limpieza del entorno | ✅ Completado | Entorno limpio |
-| F0-3 | Fase 0 (Preparación) | Verificar pruebas | ✅ Completado | Tests documentados |
-| F1-1 | Fase 1 (Upgrade) | Subir `@angular/core` y `@angular/cli` | ✅ Completado | Angular 20.3.16 |
-| F1-2 | Fase 1 (Upgrade) | Subir `@angular/material` + `@angular/cdk` | ✅ Completado | Material 20.2.14 |
-| F1-3 | Fase 1 (Upgrade) | Alinear TypeScript/RxJS/Zone | ✅ Completado | TypeScript 5.9.3 |
-| F1-4 | Fase 1 (Upgrade) | Arreglar breaking changes | ✅ Completado | Build limpio |
-| F1-5 | Fase 1 (Upgrade) | Validar librerías externas | ✅ Completado | Librerías compatibles |
-| B1a | Bugs - Evidencias | Evidencias no se ven / previews fallan | ✅ Completado | Sistema de evidencias funciona |
-| B1b | Bugs - Evidencias | Wizard no sube archivos | ✅ Completado | Wizard maneja archivos correctamente |
-| B2a | Bugs - Navegación | Proyectos no llevan a hallazgos | ✅ Completado | Hay columna y navegación |
-| B2b | Bugs - Navegación | Clientes redirige a dashboard | Pendiente | Ruta `/clients/:id` no existe |
-| B2c | Bugs - Navegación | Botón “Nuevo Proyecto” va a `/projects/new` (ruta no existe) | Pendiente | Redirige mal |
-| B2d | Bugs - Navegación | Botón “Nuevo Cliente” va a `/clients/new` (ruta no existe) | Pendiente | Redirige mal |
-| B3a | Bugs - Branding | Logo/Favicon no se aplica | ✅ Completado | BrandingService funciona correctamente |
-| B3b | Bugs - Branding | Archivos de branding no se sirven públicamente | ✅ Completado | Sistema de branding implementado |
-| B4a | Bugs - Backup | `mongodump` no está en PATH | ⚠️ Parcial | UI funciona, requiere MongoDB Tools |
-| B5a | Bugs - Auditoría | UI mock / endpoint no `/api` | Pendiente | Auditoría no usable |
-| B5b | Bugs - Asignaciones | Endpoint `/assignments` no existe | ⚠️ Parcial | Existe en `/auth/users/:userId/assignments` |
-| B6a | Bugs - Export | URLs hardcodeadas a localhost | Pendiente | 20+ archivos con `http://localhost:3000` |
-| B6b | Bugs - API | Clients usa API hardcodeada a localhost | Pendiente | Debe usar `environment.apiUrl` |
-| M1 | Mejoras | SMTP test falla (Outlook 535) | Pendiente | Falta guía |
-| M2 | Mejoras | Multi‑tenancy inconsistente | Pendiente | CLS vs AsyncLocalStorage |
-| M3 | Mejoras | Permisos de lectura por proyecto para clientes | Pendiente | Asignar proyectos visibles por admin |
-| M4 | Mejoras | Exceso de scripts / duplicidad | Pendiente | Revisar y consolidar scripts |
-| M5 | Mejoras | Gestión avanzada de notificaciones por correo | Pendiente | Configurar reglas y plantillas |
-| M6 | Mejoras | Métricas/estadísticas exportables para BI | Pendiente | Integración con Metabase/PowerBI |
+| P0 | ✅ Completado | Actualización Angular 20 | Plan general de actualización | Actualizado a v20.3.16 |
+| F0-1 | ✅ Completado | Fase 0 (Preparación) | Crear rama aislada | Rama feature creada |
+| F0-2 | ✅ Completado | Fase 0 (Preparación) | Limpieza del entorno | Entorno limpio |
+| F0-3 | ✅ Completado | Fase 0 (Preparación) | Verificar pruebas | Tests documentados |
+| F1-1 | ✅ Completado | Fase 1 (Upgrade) | Subir `@angular/core` y `@angular/cli` | Angular 20.3.16 |
+| F1-2 | ✅ Completado | Fase 1 (Upgrade) | Subir `@angular/material` + `@angular/cdk` | Material 20.2.14 |
+| F1-3 | ✅ Completado | Fase 1 (Upgrade) | Alinear TypeScript/RxJS/Zone | TypeScript 5.9.3 |
+| F1-4 | ✅ Completado | Fase 1 (Upgrade) | Arreglar breaking changes | Build limpio |
+| F1-5 | ✅ Completado | Fase 1 (Upgrade) | Validar librerías externas | Librerías compatibles |
+| B1a | ✅ Completado | Bugs - Evidencias | Evidencias no se ven / previews fallan | Sistema de evidencias funciona |
+| B1b | ✅ Completado | Bugs - Evidencias | Wizard no sube archivos | Wizard maneja archivos correctamente |
+| B2a | ✅ Completado | Bugs - Navegación | Proyectos no llevan a hallazgos | Hay columna y navegación |
+| B2b | ❌ Pendiente | Bugs - Navegación | Clientes redirige a dashboard | Ruta `/clients/:id` no existe |
+| B2c | ⚠️ Parcial | Bugs - Navegación | Botón “Nuevo Proyecto” va a `/projects/new` | Redirige mal, pero creación funciona |
+| B2d | ✅ Completado | Bugs - Navegación | Botón “Nuevo Cliente” va a `/clients/new` | Corregido navegación y creación |
+| B3a | ✅ Completado | Bugs - Branding | Logo/Favicon no se aplica | BrandingService funciona correctamente |
+| B3b | ✅ Completado | Bugs - Branding | Archivos de branding no se sirven públicamente | Sistema de branding implementado |
+| B4a | ✅ Completado | Bugs - Backup | `mongodump` no está en PATH | Instalado y configurado en PATH |
+| B5a | ✅ Completado | Bugs - Auditoría | UI mock / endpoint no `/api` | Datos normalizados y auditoría funcional |
+| B5b | ⚠️ Parcial | Bugs - Asignaciones | Endpoint `/assignments` no persiste | Endpoint verificado, error en persistencia |
+| B6a | ✅ Completado | Bugs - Export | URLs hardcodeadas a localhost | Reemplazado por environment.apiUrl |
+| B6b | ✅ Completado | Bugs - API | Clients usa API hardcodeada a localhost | Reemplazado por environment.apiUrl |
+| M1 | ❌ Pendiente | Mejoras | SMTP test falla (Outlook 535) | Falta guía |
+| M2 | ✅ Completado | Mejoras | Multi‑tenancy inconsistente | Unificado en módulo Projects |
+| M3 | ✅ Completado | Mejoras | Permisos de lectura por proyecto para clientes | Implementado visibleProjectIds |
+| M4 | ✅ Completado | Mejoras | Exceso de scripts / duplicidad | Scripts reorganizados y centralizados |
+| M5 | ❌ Pendiente | Mejoras | Gestión avanzada de notificaciones por correo | Configurar reglas y plantillas |
+| M6 | ❌ Pendiente | Mejoras | Métricas/estadísticas exportables para BI | Integración con Metabase/PowerBI |
 
 ---
 

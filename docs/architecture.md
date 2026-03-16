@@ -477,10 +477,53 @@ await this.auditService.log({
 
 ---
 
-## Próximos Pasos
+---
 
-1. Implementar transacciones MongoDB en cierre de proyecto
-2. Completar validación de extensiones de archivo
-3. Agregar tests unitarios para servicios críticos
-4. Documentar API completa en `docs/api.md`
-5. Crear migration script para FindingStatus (PENDING_RETEST → RETEST_REQUIRED)
+## 🛠️ Guía de Desarrollo
+
+### Agregar un Nuevo Módulo en el Backend
+
+1. **Crear carpeta** en `backend/src/modules/nombre-modulo/`.
+2. **Generar archivos base**:
+   - `nombre-modulo.module.ts`: Definición del módulo.
+   - `nombre-modulo.service.ts`: Lógica de negocio.
+   - `nombre-modulo.controller.ts`: Endpoints de la API.
+   - `schemas/`: Para modelos de Mongoose (si aplica).
+   - `dto/`: Para validación de datos (usando `class-validator`).
+
+3. **Registrar en AppModule**: Importar el nuevo módulo en `backend/src/app.module.ts`.
+
+### Crear un Nuevo Componente en el Frontend
+
+1. **Usar Standalone Components**: Todos los componentes nuevos deben ser `standalone: true`.
+2. **Estado con Signals**: Utilizar `signal()`, `computed()` y `effect()` para la gestión de estado.
+3. **Servicios**: Inyectar servicios mediante el constructor o `inject()`.
+
+```typescript
+// Ejemplo de componente con Signals
+@Component({
+  standalone: true,
+  imports: [CommonModule, MatCardModule],
+  template: `<div>{{ count() }}</div>`
+})
+export class MiComponente {
+  count = signal(0);
+}
+```
+
+---
+
+## 🔐 Seguridad y Cumplimiento
+
+### Autenticación y Autorización
+- **JWT**: Firma de tokens con 8h de expiración.
+- **RBAC**: Guardias de seguridad (`RolesGuard`) aplicados a nivel de controlador o método.
+- **MFA**: Implementado con `speakeasy` y códigos QR para el login inicial del Owner.
+
+### Protección de Datos
+- **Aislamiento Multi-Tenant**: Cada consulta a la base de datos debe incluir el filtro por `tenantId` o `clientId`.
+- **Evidencias**: Almacenamiento fuera de la raíz pública (`/uploads`) y descarga protegida por token.
+
+---
+
+📖 Para volver al inicio, consulta el **[README.md](../README.md)**.

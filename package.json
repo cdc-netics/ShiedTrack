@@ -1,4 +1,12 @@
 {
+  "name": "shieldtrack",
+  "version": "1.0.0",
+  "description": "ShieldTrack - Cybersecurity Findings Management",
+  "scripts": {
+    "start": "powershell -ExecutionPolicy Bypass -File ./start-shieldtrack.ps1",
+    "start:linux": "bash ./start-shieldtrack.sh",
+    "install:all": "cd backend && npm install && cd ../frontend && npm install"
+  },
   "dependencies": {
     "pdfmake": "^0.3.2"
   }
