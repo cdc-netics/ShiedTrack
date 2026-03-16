@@ -27,26 +27,26 @@ import { UserAssignmentDialogComponent } from './user-assignment-dialog.componen
  * - Cambio rápido de rol
  */
 @Component({
-    selector: 'app-user-list-improved',
-    imports: [
-        CommonModule,
-        FormsModule,
-        MatTableModule,
-        MatButtonModule,
-        MatIconModule,
-        MatChipsModule,
-        MatFormFieldModule,
-        MatInputModule,
-        MatSelectModule,
-        MatCardModule,
-        MatTooltipModule,
-        MatMenuModule,
-        MatBadgeModule,
-        MatDividerModule,
-        MatDialogModule,
-        MatSnackBarModule
-    ],
-    template: `
+  selector: 'app-user-list-improved',
+  imports: [
+    CommonModule,
+    FormsModule,
+    MatTableModule,
+    MatButtonModule,
+    MatIconModule,
+    MatChipsModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatSelectModule,
+    MatCardModule,
+    MatTooltipModule,
+    MatMenuModule,
+    MatBadgeModule,
+    MatDividerModule,
+    MatDialogModule,
+    MatSnackBarModule
+  ],
+  template: `
     <mat-card class="users-container">
       <mat-card-header>
         <mat-card-title>
@@ -60,7 +60,7 @@ import { UserAssignmentDialogComponent } from './user-assignment-dialog.componen
         <div class="filters">
           <mat-form-field appearance="outline">
             <mat-label>Buscar</mat-label>
-            <input matInput [ngModel]="searchTerm()" 
+            <input matInput [ngModel]="searchTerm()"
                    (ngModelChange)="searchTerm.set($event)"
                    placeholder="Nombre, email...">
             <mat-icon matSuffix>search</mat-icon>
@@ -95,7 +95,7 @@ import { UserAssignmentDialogComponent } from './user-assignment-dialog.componen
 
         <!-- Tabla de usuarios -->
         <table mat-table [dataSource]="filteredUsers()" class="users-table">
-          
+
           <!-- Nombre -->
           <ng-container matColumnDef="name">
             <th mat-header-cell *matHeaderCellDef>Nombre</th>
@@ -111,7 +111,7 @@ import { UserAssignmentDialogComponent } from './user-assignment-dialog.componen
           <ng-container matColumnDef="role">
             <th mat-header-cell *matHeaderCellDef>Rol</th>
             <td mat-cell *matCellDef="let user">
-              <mat-chip [class]="'role-' + user.role.toLowerCase()">
+              <mat-chip [class]="'role-' + (user.role || '').toLowerCase()">
                 <mat-icon>{{ getRoleIcon(user.role) }}</mat-icon>
                 {{ getRoleName(user.role) }}
               </mat-chip>
@@ -154,7 +154,7 @@ import { UserAssignmentDialogComponent } from './user-assignment-dialog.componen
             <td mat-cell *matCellDef="let user">
               <div class="actions">
                 <!-- Botón Asignar -->
-                <button mat-icon-button (click)="openAssignmentDialog(user)" 
+                <button mat-icon-button (click)="openAssignmentDialog(user)"
                         matTooltip="Asignar a clientes/proyectos/áreas"
                         color="primary">
                   <mat-icon>assignment</mat-icon>
@@ -162,13 +162,13 @@ import { UserAssignmentDialogComponent } from './user-assignment-dialog.componen
 
                 <!-- Botón Quick-Block -->
                 @if (!user.isDeleted) {
-                  <button mat-icon-button (click)="quickBlock(user)" 
+                  <button mat-icon-button (click)="quickBlock(user)"
                           matTooltip="Bloquear usuario"
                           color="warn">
                     <mat-icon>block</mat-icon>
                   </button>
                 } @else {
-                  <button mat-icon-button (click)="quickUnblock(user)" 
+                  <button mat-icon-button (click)="quickUnblock(user)"
                           matTooltip="Desbloquear usuario"
                           color="primary">
                     <mat-icon>unblock</mat-icon>
@@ -184,7 +184,7 @@ import { UserAssignmentDialogComponent } from './user-assignment-dialog.componen
                     <mat-icon>edit</mat-icon>
                     <span>Editar</span>
                   </button>
-                  <button mat-menu-item (click)="changRole(user)">
+                  <button mat-menu-item (click)="changeRole(user)">
                     <mat-icon>admin_panel_settings</mat-icon>
                     <span>Cambiar Rol</span>
                   </button>
@@ -216,10 +216,8 @@ import { UserAssignmentDialogComponent } from './user-assignment-dialog.componen
       </mat-card-content>
     </mat-card>
   `,
-    styles: [`
-    .users-container {
-      margin: 20px;
-    }
+  styles: [`
+    .users-container { margin: 20px; }
 
     .filters {
       display: flex;
@@ -233,9 +231,7 @@ import { UserAssignmentDialogComponent } from './user-assignment-dialog.componen
       min-width: 200px;
     }
 
-    .users-table {
-      width: 100%;
-    }
+    .users-table { width: 100%; }
 
     .user-name {
       display: flex;
@@ -248,10 +244,7 @@ import { UserAssignmentDialogComponent } from './user-assignment-dialog.componen
       font-size: 12px;
     }
 
-    .actions {
-      display: flex;
-      gap: 4px;
-    }
+    .actions { display: flex; gap: 4px; }
 
     .role-owner { background: #d32f2f; color: white; }
     .role-platform_admin { background: #ff6f00; color: white; }
@@ -335,8 +328,11 @@ export class UserListImprovedComponent implements OnInit {
   }
 
   quickBlock(user: User): void {
+    const userId = this.getUserId(user);
+    if (!userId) return;
+
     if (confirm(`¿Bloquear usuario ${user.email}?`)) {
-      this.http.delete(`${environment.apiUrl}/auth/users/${user._id}/soft`).subscribe({
+      this.http.delete(`${environment.apiUrl}/auth/users/${userId}/soft`).subscribe({
         next: () => {
           this.snackBar.open('Usuario bloqueado', 'Cerrar', { duration: 2000 });
           this.loadUsers();
@@ -350,7 +346,10 @@ export class UserListImprovedComponent implements OnInit {
   }
 
   quickUnblock(user: User): void {
-    this.http.post(`${environment.apiUrl}/auth/users/${user._id}/reactivate`, {}).subscribe({
+    const userId = this.getUserId(user);
+    if (!userId) return;
+
+    this.http.post(`${environment.apiUrl}/auth/users/${userId}/reactivate`, {}).subscribe({
       next: () => {
         this.snackBar.open('Usuario desbloqueado', 'Cerrar', { duration: 2000 });
         this.loadUsers();
@@ -362,12 +361,31 @@ export class UserListImprovedComponent implements OnInit {
     });
   }
 
+  /**
+   * ✅ Obtiene el ID del usuario de forma segura.
+   * En algunos modelos viene como `_id`, en otros como `id`.
+   */
+  private getUserId(user: any): string | null {
+    const id = user?._id || user?.id || null;
+    if (!id) {
+      this.snackBar.open('No se pudo obtener el ID del usuario', 'Cerrar', { duration: 3500 });
+      console.error('User sin id/_id:', user);
+      return null;
+    }
+    return String(id);
+  }
+
   openAssignmentDialog(user: User): void {
+    const userId = this.getUserId(user);
+    if (!userId) return;
+
+    const userName = `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim() || user.email || 'Usuario';
+
     this.dialog.open(UserAssignmentDialogComponent, {
       width: '800px',
       data: {
-        userId: user._id,
-        userName: `${user.firstName} ${user.lastName}`
+        userId,
+        userName
       }
     }).afterClosed().subscribe(result => {
       if (result) {
@@ -381,14 +399,17 @@ export class UserListImprovedComponent implements OnInit {
     // TODO: Implementar dialog de edición
   }
 
-  changRole(user: User): void {
+  changeRole(user: User): void {
     console.log('Cambiar rol:', user);
     // TODO: Implementar dialog para cambiar rol
   }
 
   resetPassword(user: User): void {
+    const userId = this.getUserId(user);
+    if (!userId) return;
+
     if (confirm(`¿Resetear contraseña de ${user.email}?`)) {
-      this.http.post(`${environment.apiUrl}/auth/users/${user._id}/reset-password`, {}).subscribe({
+      this.http.post(`${environment.apiUrl}/auth/users/${userId}/reset-password`, {}).subscribe({
         next: () => {
           this.snackBar.open('Contraseña reseteada (se envió por email)', 'Cerrar', { duration: 3000 });
         },

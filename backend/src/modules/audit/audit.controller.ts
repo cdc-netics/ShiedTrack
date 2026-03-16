@@ -11,7 +11,7 @@ import { runWithTenant } from '../../common/utils/tenant-context';
 /**
  * Controlador de Auditoría
  * Solo accesible por OWNER y PLATFORM_ADMIN (roles globales, no tenant-scoped)
- * 
+ *
  * ⚠️ IMPORTANTE: Auditoría debe ser visible a nivel global
  * La tenant context NO debe aplicarse aquí
  */
@@ -38,14 +38,15 @@ export class AuditController {
     @Query('limit') limit?: number,
     @Req() req?: Request,
   ) {
-    // Ejecutar sin contexto de tenant (undefined permite que el plugin NO aplique filtro)
+    // req se deja por si más adelante quieres loggear user/ip, etc.
+    // Ejecutar sin contexto de tenant (undefined => no se aplica filtro por tenant)
     return runWithTenant(undefined, () =>
       this.auditService.findLogs({
         entityType,
         entityId,
         action,
         severity,
-        limit: limit ? parseInt(limit.toString()) : 100,
+        limit: limit ? parseInt(limit.toString(), 10) : 100,
       }),
     );
   }

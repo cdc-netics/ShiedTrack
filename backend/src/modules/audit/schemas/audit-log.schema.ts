@@ -7,41 +7,52 @@ import { Document, Types } from 'mongoose';
  */
 @Schema({ timestamps: true })
 export class AuditLog extends Document {
-  @Prop({ required: true })
-  action: string; // Ej: USER_ROLE_CHANGE, PROJECT_CLOSED, HARD_DELETE_CLIENT
+  @Prop({ required: true, trim: true })
+  action!: string; // Ej: POST /api/auth/login, USER_ROLE_CHANGE, PROJECT_CLOSED
 
-  @Prop({ required: true })
-  entityType: string; // User, Client, Project, Finding, etc.
+  @Prop({ required: true, trim: true })
+  entityType!: string; // HTTP, EXPORT, User, Client, Project, Finding, etc.
 
-  @Prop({ required: true })
-  entityId: string; // ID de la entidad afectada
+  @Prop({ required: true, trim: true })
+  entityId!: string; // ID de la entidad afectada o 'N/A'
 
-  @Prop({ type: Types.ObjectId, ref: 'Client' })
-  clientId?: Types.ObjectId; // Contexto de tenant
+  @Prop({ type: Types.ObjectId, ref: 'Client', required: false })
+  clientId?: Types.ObjectId;
 
-  @Prop({ type: Types.ObjectId, ref: 'Area' })
-  areaId?: Types.ObjectId; // Contexto de área
+  @Prop({ type: Types.ObjectId, ref: 'Area', required: false })
+  areaId?: Types.ObjectId;
 
-  @Prop({ type: Types.ObjectId, ref: 'User', required: true })
-  performedBy: Types.ObjectId; // Usuario que ejecutó la acción
+  /**
+   * Usuario que ejecutó la acción (FK a User)
+   * Puede ser null cuando es "anonymous" o sistema.
+   */
+  @Prop({ type: Types.ObjectId, ref: 'User', required: false, default: null })
+  performedBy?: Types.ObjectId | null;
 
-  @Prop({ type: Object })
-  metadata?: Record<string, any>; // Datos adicionales (ej: valor anterior, nuevo)
+  /**
+   * Etiqueta alternativa cuando no hay usuario (ej: "anonymous", "system")
+   */
+  @Prop({ type: String, required: false, default: null, trim: true })
+  performedByLabel?: string | null;
 
-  @Prop()
-  ip?: string; // IP del usuario
+  @Prop({ type: Object, required: false, default: {} })
+  metadata?: Record<string, any>;
 
-  @Prop()
-  userAgent?: string; // User agent del navegador
+  @Prop({ type: String, required: false, trim: true })
+  ip?: string;
 
-  @Prop({ required: true })
-  severity: string; // INFO, WARNING, CRITICAL
+  @Prop({ type: String, required: false })
+  userAgent?: string;
 
-  // Timestamp de creación (inmutable)
-  readonly createdAt: Date;
+  @Prop({ required: true, trim: true, default: 'INFO' })
+  severity!: string; // INFO, WARNING, CRITICAL
+
+  // timestamps (por Schema timestamps: true)
+  createdAt!: Date;
+  updatedAt!: Date;
 
   // Multi-tenant: referencia al tenant
-  @Prop({ type: Types.ObjectId, ref: 'Tenant' })
+  @Prop({ type: Types.ObjectId, ref: 'Tenant', required: false })
   tenantId?: Types.ObjectId;
 }
 

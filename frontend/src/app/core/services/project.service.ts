@@ -2,6 +2,7 @@ import { Injectable, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { tap } from 'rxjs/operators';
 import { Project } from '../../shared/models';
+import { environment } from '../../../environments/environment';
 
 /**
  * Servicio de gestión de Proyectos con Signals
@@ -10,7 +11,7 @@ import { Project } from '../../shared/models';
   providedIn: 'root'
 })
 export class ProjectService {
-  private readonly API_URL = 'http://localhost:3000/api/projects';
+  private readonly API_URL = `${environment.apiUrl}/projects`;
   
   // Estado local cacheado para evitar recargas innecesarias
   private projectsSignal = signal<Project[]>([]);
