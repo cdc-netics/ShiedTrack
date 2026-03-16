@@ -1,10 +1,11 @@
 # Script para instalar MongoDB como servicio de Windows
 # Se auto-eleva a ADMINISTRADOR si es necesario
 
+$rootPath = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $mongoPath = "C:\Program Files\MongoDB\Server\8.2\bin\mongod.exe"
-$dataPath = "C:\Users\despinoza\OneDrive - synet spa\Hola\Proyectos\ShieldTrack\data\db"
-$logPath = "C:\Users\despinoza\OneDrive - synet spa\Hola\Proyectos\ShieldTrack\data\logs"
-$configPath = "C:\Users\despinoza\OneDrive - synet spa\Hola\Proyectos\ShieldTrack\mongod.cfg"
+$dataPath = Join-Path $rootPath "data\db"
+$logPath = Join-Path $rootPath "data\logs"
+$configPath = Join-Path $rootPath "mongod.cfg"
 
 # Verificar admin y AUTO-ELEVARSE si es necesario
 $currentPrincipal = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())

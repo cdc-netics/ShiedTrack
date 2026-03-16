@@ -10,10 +10,11 @@ if (-not $currentPrincipal.IsInRole([Security.Principal.WindowsBuiltInRole]::Adm
     exit 0
 }
 
+$rootPath = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $mongoPath = "C:\Program Files\MongoDB\Server\8.2\bin\mongod.exe"
-$dataPath = "C:\Users\despinoza\OneDrive - synet spa\Hola\Proyectos\ShieldTrack\data\db"
-$logPath = "C:\Users\despinoza\OneDrive - synet spa\Hola\Proyectos\ShieldTrack\data\logs"
-$configPath = "C:\Users\despinoza\OneDrive - synet spa\Hola\Proyectos\ShieldTrack\mongod.cfg"
+$dataPath = Join-Path $rootPath "data\db"
+$logPath = Join-Path $rootPath "data\logs"
+$configPath = Join-Path $rootPath "mongod.cfg"
 
 Write-Host "🧹 Limpieza completa del servicio MongoDB..." -ForegroundColor Cyan
 
