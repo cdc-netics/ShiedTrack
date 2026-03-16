@@ -1,91 +1,80 @@
 # 🔧 Configuración Inicial - ShieldTrack
 
-> **Nota:** Esta es una guía simplificada. Para documentación completa, ver [DOCUMENTATION.md](DOCUMENTATION.md)
+Esta guía proporciona instrucciones detalladas para poner en marcha ShieldTrack en entornos de desarrollo.
 
-## ⚡ Inicio en 2 Minutos
+## 📋 Pre-requisitos
 
-```bash
-# Terminal 1: Backend
-cd backend && npm install && npm run build && npm start
+Antes de comenzar, asegúrate de tener instalado:
 
-# Terminal 2: Frontend
-cd frontend && npm install && npm start
+- **Node.js**: v24.x o superior (LTS recomendado).
+- **npm**: v10.x o superior.
+- **MongoDB**: v6.x o v7.x (Local o Atlas).
+- **Git**: Para control de versiones.
 
-# Acceder: http://localhost:4200
+---
+
+## ⚡ Inicio Rápido
+
+### Opción 1: Windows (Recomendado)
+Usa el script maestro para levantar todo (MongoDB, Backend, Frontend) automáticamente:
+
+```powershell
+npm start
 ```
 
-## 🔐 Datos de prueba (modo desarrollo)
+### Opción 2: Manual (Cualquier SO)
 
-Primero carga los datos de prueba en la BD:
+**1. Backend (NestJS)**
+```bash
+cd backend
+npm install
+cp .env.example .env
+npm run build
+npm start
+```
 
+**2. Frontend (Angular)**
+```bash
+cd frontend
+npm install
+npm start
+```
+
+---
+
+## 🔐 Configuración de Variables (.env)
+
+El archivo `backend/.env` es crítico. Asegúrate de configurar:
+- `MONGODB_URI`: Dirección de tu instancia de MongoDB.
+- `JWT_SECRET`: Una cadena larga y segura.
+
+---
+
+## 🧪 Datos de Prueba
+
+Para cargar datos iniciales y roles de prueba:
 ```bash
 cd backend
 npm run seed:test
 ```
 
-**Credenciales de login de prueba:**
-- `admin@shieldtrack.com` / `Admin123!` (Owner Dev)
-- `owner@shieldtrack.com` / `Password123!`
-- `platformadmin@shieldtrack.com` / `Password123!`
-- `clientadmin@acmecorp.com` / `Password123!`
-- `areaadmin@acmecorp.com` / `Password123!`
-- `analyst@shieldtrack.com` / `Password123!`
-- `viewer@shieldtrack.com` / `Password123!`
+---
 
-## 📋 Pre-requisitos
+## 🆘 Solución de Problemas Comunes
 
-- Node.js 18.x o superior
-- npm 9.x o superior
-- MongoDB 6.x o superior
-- Git
+### Error: "Cannot find module evidence.module"
+Ejecuta `npm install` nuevamente en la carpeta `backend`.
 
-## 🔧 Instalación Detallada
-
-### Backend
-
-```bash
-cd backend
-npm install
-
-# Crear archivo .env
-cp .env.example .env
-
-# Editar .env (cambiar JWT_SECRET, MONGODB_URI, SMTP_*)
-# Luego:
-npm run build
-npm start
-# Backend en http://localhost:3000
-```
-
-### Frontend
-
-```bash
-cd frontend
-npm install
-npm start
-# Frontend en http://localhost:4200
-```
-
-## 🆘 Solución de Problemas
-
-**Puerto en uso:**
+### Puerto en uso (3000 o 4200)
 ```powershell
-# Encontrar proceso
+# Windows: encontrar y matar proceso
 netstat -ano | findstr :3000
+taskkill /F /PID <PID>
 ```
 
-**MongoDB no conecta:**
-```powershell
-# Iniciar servicio
-net start MongoDB
-```
-
-**Módulos faltantes:**
-```bash
-rm -rf node_modules package-lock.json
-npm install
-```
+### MongoDB no conecta
+Asegúrate de que el servicio esté corriendo (`net start MongoDB`) o usa `npm start` para que el script intente iniciarlo por ti.
 
 ---
 
-📖 Para documentación completa, variables de entorno detalladas, arquitectura y más, ver: **[DOCUMENTATION.md](DOCUMENTATION.md)**
+📖 Para detalles técnicos, consulta **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**.
