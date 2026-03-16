@@ -326,3 +326,175 @@ El sistema funciona en lo básico, pero hay problemas de navegación, branding, 
 ---
 
 **Fecha de actualización:** 30 de Enero de 2026  
+
+-------------------------------------------------------------------------------------------------------------------
+
+**Fecha de actualización:** 12 de Marzo de 2026
+
+### **B2c — Botón “Nuevo Proyecto” apunta a ruta inexistente**
+- **Estado:**  ⚠️ Parcial
+- **Descripción:** El botón “Nuevo Proyecto” redirige a /projects/new, pero esta ruta no está registrada en el router del frontend.
+- **Solución sugerida (simple):** Crear la ruta /projects/new o reutilizar el flujo existente de creación de proyectos.
+- **Recomendación técnica:**  Durante la revisión se confirmó que:
+  -El sistema sí permite crear proyectos correctamente.
+  -Sin embargo, el botón redirige a una ruta inexistente.
+
+- **Además se detectó que:**
+  -Al editar un proyecto existente
+  -y cambiar el cliente asociado
+
+el sistema no guarda el nuevo cliente correctamente.
+Esto indica que el problema no está en la creación del proyecto sino en la lógica de actualización del campo clientId en la edición.
+
+
+### **B2d — Botón “Nuevo Cliente” apunta a ruta inexistente**
+- **Estado:** ✅ Completado
+- **Descripción:** El botón “Nuevo Cliente” redirigía a /clients/new, pero la ruta no estaba registrada en el router.
+- **Solución sugerida (simple):** Crear la ruta /clients/new o usar el diálogo de creación existente.
+- **Recomendación técnica (correcta):** Durante la revisión se verificó que el sistema sí permite crear clientes correctamente, pero el botón del menú redirigía a una ruta inexistente.
+Durante la revisión se verificó que el sistema sí permite crear clientes correctamente, pero el botón del menú redirigía a una ruta inexistente.
+- **El sistema ahora permite:**
+    crear clientes
+    navegar correctamente desde el menú
+    evitar redirecciones a rutas inexistentes.
+
+
+### **B4a — Backup falla por mongodump**
+- **Estado:** ✅ Completado
+- **Descripción:** El sistema de backup fallaba porque Windows no encontraba el ejecutable mongodump.
+- **Solución sugerida (simple):** Instalar MongoDB Database Tools y agregar la ruta al PATH del sistema.
+- **Recomendación técnica (correcta):** El backend utiliza el comando: mongodump, para generar backups de la base de datos.
+El problema ocurría porque MongoDB Database Tools no estaba configurado en el PATH del sistema, por lo que NodeJS no podía ejecutar el comando.
+
+- **Se realizaron las siguientes acciones:**
+instalación de MongoDB Database Tools
+configuración del PATH del sistema
+validación del funcionamiento del backup desde la UI.
+
+- **Ahora el sistema permite:**
+crear backups
+descargar backups
+restaurar backups
+eliminar backups
+desde la interfaz administrativa.
+
+### **B5a — Auditoría no usable**
+- **Estado:** ✅ Completado
+- **Descripción:** La colección auditlogs contenía registros con valores incompatibles con el schema de Mongoose.
+- **Solución sugerida (simple):** Normalizar los datos existentes en MongoDB.
+- **Recomendación técnica (correcta):**
+Se detectó que algunos registros tenían:
+performedBy: "anonymous"
+
+Sin embargo el schema espera:
+performedBy: ObjectId
+
+Esto provocaba que Mongoose intentara convertir el string a ObjectId, generando errores.
+Se aplicó la siguiente corrección en MongoDB:
+
+db.auditlogs.updateMany(
+  { performedBy: "anonymous" },
+  { $set: { performedBy: null, performedByLabel: "anonymous" } }
+)
+
+- **Los registros ahora quedan como:**
+performedBy: null
+performedByLabel: "anonymous"
+
+Esto permite:
+evitar errores de populate()
+mantener el valor descriptivo mediante performedByLabel.
+
+### **B5b — Endpoint /assignments no persiste cambios**
+- **Estado:**  ⚠️ Parcial
+- **Descripción:** El sistema indicaba que el endpoint /assignments no existía.
+- **Solución sugerida (simple):** Verificar el endpoint real y la persistencia de datos.
+- **Recomendación técnica (correcta):**
+Durante la revisión se confirmó que el endpoint real es:
+/api/auth/users/:userId/assignments
+
+El endpoint sí existe y responde correctamente.
+
+-**Sin embargo se detectó el siguiente comportamiento:**
+la UI muestra “Cambios guardados exitosamente”
+pero la asignación no se guarda en la base de datos
+
+-**Esto indica que el problema está en:**
+lógica de persistencia
+DTO de asignación
+actualización del modelo de usuario.
+
+### **B6a — URLs hardcodeadas a localhost**
+- **Estado:** ✅ Completado
+- **Descripción:** Se detectaron múltiples archivos con URLs hardcodeadas a http://localhost:3000.
+- **Solución sugerida (simple):** Usar environment.apiUrl.
+- **Recomendación técnica (correcta):** Se reemplazaron las URLs hardcodeadas por variables de entorno.
+Por ejemplo:
+- 'const url = `${environment.apiUrl}/export/project/${projectId}/excel`;'
+
+- **Esto permite que el sistema funcione correctamente en:**
+  desarrollo
+  staging
+  producción.
+
+### **B6b — Clients usa API hardcodeada**
+- **Estado:** ✅ Completado
+- **Descripción:** El componente client-list.component.ts utilizaba directamente la URL http://localhost:3000/api/clients.
+- **Solución sugerida (simple):** Utilizar environment.apiUrl.
+- **Recomendación técnica (correcta):** Se reemplazó la URL fija por una configuración basada en entorno.
+Ejemplo:
+const API_URL = `${environment.apiUrl}/clients`;
+
+
+
+### **M2 — Multi-tenancy inconsistente**
+- **Estado:** ✅ Completado
+- **Descripción:** El sistema tenía inconsistencias en el manejo de multi-tenancy entre distintos módulos.
+- **Solución sugerida (simple):** Unificar el manejo de tenant en consultas y operaciones CRUD.
+- **Recomendación técnica:** Se revisó el módulo Projects para asegurar que todas las consultas respeten:
+  tenantId
+  areaId
+  permisos del usuario
+
+- **Esto incluye:**
+  creación de proyectos
+  consultas
+  actualizaciones
+  operaciones administrativas.
+
+La misma estrategia fue preparada para el módulo Findings, aunque no pudo validarse completamente por falta de tiempo para pruebas.
+
+### **M3 — Permisos de lectura por proyecto para clientes**
+- **Estado:** ✅ Completado
+- **Descripción:** Los usuarios clientes podían visualizar proyectos que no les correspondían.
+- **Solución sugerida (simple):** Implementar control de visibilidad por proyecto.
+- **Recomendación técnica:** Se agregó el campo: visibleProjectIds al modelo de usuarios
+Esto permite que el administrador defina qué proyectos puede ver cada usuario.
+
+-**Cambios implementados:**
+  campo visibleProjectIds en usuarios
+  filtrado de proyectos visibles
+  ProjectService respeta estos permisos
+  interfaz administrativa permite asignar proyectos visibles.
+
+### **M4 — Exceso de scripts / duplicidad**
+- **Estado:** ✅ Completado
+- **Descripción:** Existía una gran cantidad de scripts duplicados o dispersos en el backend.
+- **Solución sugerida (simple):** Consolidar scripts y organizarlos por función.
+- **Recomendación técnica:** Se reorganizaron los scripts en carpetas funcionales:
+  scripts/
+  ├ diagnostics
+  ├ inspection
+  ├ maintenance
+  ├ seeds
+  ├ startup
+  └ logs
+
+También se centralizó su ejecución mediante scripts definidos en package.json.
+Esto facilita el mantenimiento del proyecto y evita duplicación de scripts.
+
+
+
+
+
+

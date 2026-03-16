@@ -10,32 +10,32 @@ import { multiTenantPlugin } from '../../../common/plugins/multi-tenant.plugin';
 @Schema({ timestamps: true })
 export class Finding extends Document {
   @Prop({ required: true, unique: true })
-  code: string; // ID operativo humano (ej: FIND-2024-001)
+  code!: string; // ID operativo humano (ej: FIND-2024-001)
 
   @Prop({ required: true })
-  internal_code: string; // Código interno de categorización (ej: CAT-WEB-001)
+  internal_code!: string; // Código interno de categorización (ej: CAT-WEB-001)
 
   @Prop({ required: true })
-  title: string;
+  title!: string;
 
   @Prop({ required: true })
-  description: string; // Soporta HTML/Markdown seguro
+  description!: string; // Soporta HTML/Markdown seguro
 
   @Prop({ required: true, enum: FindingSeverity })
-  severity: FindingSeverity;
+  severity!: FindingSeverity;
 
   @Prop({ required: true, enum: FindingStatus, default: FindingStatus.OPEN })
-  status: FindingStatus;
+  status!: FindingStatus;
 
   @Prop({ type: Types.ObjectId, ref: 'Project', required: true })
-  projectId: Types.ObjectId;
+  projectId!: Types.ObjectId;
 
   /**
    * Define si este hallazgo debe incluirse en el retest del proyecto
    * El retest se configura a nivel proyecto, pero cada hallazgo puede opt-in/opt-out
    */
   @Prop({ default: true })
-  retestIncluded: boolean;
+  retestIncluded!: boolean;
 
   @Prop({ enum: CloseReason })
   closeReason?: CloseReason;
@@ -51,7 +51,7 @@ export class Finding extends Document {
   affectedAsset?: string; // DEPRECATED: Usar affectedAssets
 
   @Prop({ type: [String], default: [] })
-  affectedAssets: string[]; // Activos afectados (IPs, URLs, Hostnames)
+  affectedAssets!: string[]; // Activos afectados (IPs, URLs, Hostnames)
 
   @Prop({ enum: FindingSeverity })
   businessRisk?: FindingSeverity; // Nivel de riesgo de negocio
@@ -86,25 +86,25 @@ export class Finding extends Document {
   implications?: string; // Implicancias del hallazgo
 
   @Prop({ type: [String], default: [] })
-  controls: string[]; // Controles CIS, NIST, OWASP, etc.
+  controls!: string[]; // Controles CIS, NIST, OWASP, etc.
 
   @Prop({ type: [String], default: [] })
-  references: string[];
+  references!: string[];
 
   @Prop({ type: [String], default: [] })
-  tags: string[];
+  tags!: string[];
 
   // Referencias
   @Prop({ type: Types.ObjectId, ref: 'User' })
   assignedTo?: Types.ObjectId;
 
   @Prop({ type: Types.ObjectId, ref: 'User', required: true })
-  createdBy: Types.ObjectId;
+  createdBy!: Types.ObjectId;
 
   // Timestamps automáticos: createdAt, updatedAt
 
   // Multi-tenant: referencia al tenant
-  @Prop({ type: Types.ObjectId, ref: 'Tenant' })
+  @Prop({ type: Types.ObjectId, ref: 'Tenant'})
   tenantId?: Types.ObjectId;
 }
 
