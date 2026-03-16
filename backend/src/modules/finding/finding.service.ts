@@ -1,9 +1,19 @@
-import { Injectable, NotFoundException, Logger, BadRequestException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  Logger,
+  BadRequestException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { Finding } from './schemas/finding.schema';
 import { FindingUpdate } from './schemas/finding-update.schema';
-import { CreateFindingDto, UpdateFindingDto, CloseFindingDto } from './dto/finding.dto';
+import {
+  CreateFindingDto,
+  UpdateFindingDto,
+  CloseFindingDto,
+} from './dto/finding.dto';
 import { CreateFindingUpdateDto } from './dto/finding-update.dto';
 import { FindingStatus, FindingUpdateType } from '../../common/enums';
 import { Project } from '../project/schemas/project.schema';
@@ -24,61 +34,320 @@ export class FindingService {
     @InjectModel(Finding.name) private findingModel: Model<Finding>,
     @InjectModel(FindingUpdate.name) private updateModel: Model<FindingUpdate>,
     @InjectModel(Project.name) private projectModel: Model<Project>,
-    @InjectModel(SystemConfig.name) private systemConfigModel: Model<SystemConfig>,
+    @InjectModel(SystemConfig.name)
+    private systemConfigModel: Model<SystemConfig>,
     @InjectModel(Area.name) private areaModel: Model<Area>,
     @InjectModel(User.name) private userModel: Model<User>,
     private emailService: EmailService,
   ) {}
 
+  private toObjectId(id?: string): Types.ObjectId | undefined {
+    if (!id) return undefined;
+    return new Types.ObjectId(id);
+  }
+
+  private getCurrentTenantId(currentUser?: any): string | undefined {
+    return (
+      currentUser?.tenantId?.toString?.() ??
+      currentUser?.activeTenantId?.toString?.() ??
+      currentUser?.clientId?.toString?.()
+    );
+  }
+
+  private isRestrictedByArea(currentUser?: any): boolean {
+    return ['AREA_ADMIN', 'ANALYST', 'VIEWER'].includes(currentUser?.role);
+  }
+
+  private getUserAreaIds(currentUser?: any): string[] {
+    return currentUser?.areaIds?.map((id: any) => id.toString()) || [];
+  }
+
+  private resolveProjectTenantId(project: any): string | undefined {
+    return (
+      project?.tenantId?.toString?.() ??
+      project?.clientId?._id?.toString?.() ??
+      project?.clientId?.toString?.()
+    );
+  }
+
+  private resolveFindingTenantId(finding: any): string | undefined {
+    return (
+      finding?.tenantId?.toString?.() ??
+      finding?.projectId?.tenantId?.toString?.() ??
+      finding?.projectId?.clientId?._id?.toString?.() ??
+      finding?.projectId?.clientId?.toString?.()
+    );
+  }
+
+  private getUserFullName(user: any): string {
+    const fullName = `${user?.firstName || ''} ${user?.lastName || ''}`.trim();
+    return fullName || user?.email || 'Usuario';
+  }
+
+  private getProjectName(project: any): string {
+    return project?.name || project?.projectName || 'Proyecto sin nombre';
+  }
+
+  private areObjectIdsEqual(a: any, b: any): boolean {
+    if (!a || !b) return false;
+    return a.toString() === b.toString();
+  }
+
+  private async sendFindingCreatedNotification(
+    finding: any,
+    project: any,
+    createdByUserId: string,
+  ): Promise<void> {
+    try {
+      const creator = await this.userModel.findById(createdByUserId).lean();
+
+      if (!creator || !creator.email) {
+        return;
+      }
+
+      await this.emailService.notifyFindingCreated(
+        creator.email,
+        this.getUserFullName(creator),
+        finding.title,
+        finding.code || finding._id.toString(),
+        finding.severity,
+        this.getProjectName(project),
+        finding.description,
+      );
+
+      this.logger.log(`Email de hallazgo creado enviado a ${creator.email}`);
+    } catch (emailError: any) {
+      this.logger.warn(
+        `No se pudo enviar email de hallazgo creado: ${emailError?.message}`,
+      );
+    }
+  }
+
+  private async sendFindingAssignedNotification(
+    assignedUserId: any,
+    finding: any,
+    project?: any,
+  ): Promise<void> {
+    try {
+      if (!assignedUserId) return;
+
+      const assignedUser = await this.userModel.findById(assignedUserId).lean();
+
+      if (!assignedUser || !assignedUser.email) {
+        return;
+      }
+
+      await this.emailService.notifyFindingAssigned(
+        assignedUser.email,
+        this.getUserFullName(assignedUser),
+        finding.title,
+        finding.code || finding._id.toString(),
+        finding.severity,
+        this.getProjectName(project),
+      );
+
+      this.logger.log(`Email de hallazgo asignado enviado a ${assignedUser.email}`);
+    } catch (emailError: any) {
+      this.logger.warn(
+        `No se pudo enviar email de hallazgo asignado: ${emailError?.message}`,
+      );
+    }
+  }
+
+  private async sendFindingClosedNotifications(
+    finding: any,
+    closeReason: string,
+  ): Promise<void> {
+    try {
+      const recipients = new Map<string, { email: string; name: string }>();
+
+      if (finding.assignedTo) {
+        const assignedUser = await this.userModel.findById(finding.assignedTo).lean();
+        if (assignedUser?.email) {
+          recipients.set(assignedUser.email, {
+            email: assignedUser.email,
+            name: this.getUserFullName(assignedUser),
+          });
+        }
+      }
+
+      if (finding.createdBy) {
+        const createdByUser = await this.userModel.findById(finding.createdBy).lean();
+        if (createdByUser?.email) {
+          recipients.set(createdByUser.email, {
+            email: createdByUser.email,
+            name: this.getUserFullName(createdByUser),
+          });
+        }
+      }
+
+      const projectName =
+        (finding.projectId as any)?.name ||
+        (finding.projectId as any)?.projectName ||
+        'Proyecto sin nombre';
+
+      for (const recipient of recipients.values()) {
+        await this.emailService.notifyFindingClosed(
+          recipient.email,
+          recipient.name,
+          finding.title,
+          finding.code || finding._id.toString(),
+          closeReason,
+          projectName,
+        );
+
+        this.logger.log(`Email de cierre enviado a ${recipient.email}`);
+      }
+    } catch (emailError: any) {
+      this.logger.warn(
+        `No se pudo enviar email de cierre: ${emailError?.message}`,
+      );
+    }
+  }
+
+  private validateProjectAreaAccess(project: any, currentUser?: any): void {
+    if (!currentUser || !this.isRestrictedByArea(currentUser)) {
+      return;
+    }
+
+    const allowedAreas = this.getUserAreaIds(currentUser);
+    const projectAreas =
+      project?.areaIds?.map((a: any) => a?._id?.toString?.() || a.toString()) ||
+      [];
+    const legacyArea =
+      project?.areaId?._id?.toString?.() || project?.areaId?.toString?.();
+
+    const hasAccess = allowedAreas.some(
+      (area: string) => projectAreas.includes(area) || legacyArea === area,
+    );
+
+    if (!allowedAreas.length || !hasAccess) {
+      throw new ForbiddenException(
+        'No tiene permisos para acceder a este recurso',
+      );
+    }
+  }
+
+  private async findProjectOrFailWithAccess(
+    projectId: string,
+    currentUser?: any,
+  ): Promise<Project> {
+    const project = await this.projectModel
+      .findById(projectId)
+      .populate('clientId')
+      .populate('areaId')
+      .populate('areaIds');
+
+    if (!project) {
+      throw new NotFoundException(
+        `Proyecto con ID ${projectId} no encontrado`,
+      );
+    }
+
+    const currentTenantId = this.getCurrentTenantId(currentUser);
+    const projectTenantId = this.resolveProjectTenantId(project);
+
+    if (
+      currentUser &&
+      !['OWNER', 'PLATFORM_ADMIN'].includes(currentUser.role) &&
+      currentTenantId &&
+      projectTenantId &&
+      currentTenantId !== projectTenantId
+    ) {
+      throw new ForbiddenException(
+        'No tiene permisos para acceder a este proyecto',
+      );
+    }
+
+    this.validateProjectAreaAccess(project, currentUser);
+
+    return project;
+  }
+
+  private async findFindingOrFailWithAccess(
+    id: string,
+    currentUser?: any,
+  ): Promise<Finding> {
+    const finding = await this.findingModel
+      .findById(id)
+      .populate({
+        path: 'projectId',
+        populate: [
+          { path: 'clientId' },
+          { path: 'areaId' },
+          { path: 'areaIds' },
+        ],
+      })
+      .populate('assignedTo', 'firstName lastName email')
+      .populate('createdBy', 'firstName lastName email')
+      .populate('closedBy', 'firstName lastName email');
+
+    if (!finding) {
+      throw new NotFoundException(`Hallazgo con ID ${id} no encontrado`);
+    }
+
+    const currentTenantId = this.getCurrentTenantId(currentUser);
+    const findingTenantId = this.resolveFindingTenantId(finding);
+
+    if (
+      currentUser &&
+      !['OWNER', 'PLATFORM_ADMIN'].includes(currentUser.role) &&
+      currentTenantId &&
+      findingTenantId &&
+      currentTenantId !== findingTenantId
+    ) {
+      throw new ForbiddenException(
+        'No tiene permisos para acceder a este hallazgo',
+      );
+    }
+
+    const project = finding.projectId as any;
+    this.validateProjectAreaAccess(project, currentUser);
+
+    return finding;
+  }
+
   /**
    * Crea un nuevo hallazgo
    * Genera código automático basado en configuración (Area > Global)
+   * MULTI-TENANT: fuerza tenantId según proyecto/usuario autenticado
    */
-  async create(dto: CreateFindingDto, createdBy: string, currentUser?: any): Promise<Finding> {
-    // SECURITY FIX C3: Validar que el proyecto pertenece al cliente del usuario
-    const project = await this.projectModel.findById(dto.projectId)
-      .populate('clientId')
-      .populate('areaId')
-      .populate('areaIds'); // Populate Area to check prefix
+  async create(
+    dto: CreateFindingDto,
+    createdBy: string,
+    currentUser?: any,
+  ): Promise<Finding> {
+    const project = await this.findProjectOrFailWithAccess(
+      dto.projectId,
+      currentUser,
+    );
 
-    if (!project) {
-      throw new NotFoundException(`Proyecto con ID ${dto.projectId} no encontrado`);
+    const currentTenantId =
+      this.getCurrentTenantId(currentUser) || this.resolveProjectTenantId(project);
+
+    if (!currentTenantId) {
+      throw new BadRequestException(
+        'No se pudo determinar el tenant del hallazgo',
+      );
     }
 
-    if (currentUser) {
-      // Solo OWNER y PLATFORM_ADMIN pueden crear en cualquier proyecto
-      const globalRoles = ['OWNER', 'PLATFORM_ADMIN'];
-      if (!globalRoles.includes(currentUser.role)) {
-        const userTenant = (currentUser.activeTenantId || currentUser.clientId)?.toString();
-        const projectTenant = (project.tenantId as any)?.toString() || (project.clientId as any)?._id?.toString();
-        if (!userTenant || !projectTenant || projectTenant !== userTenant) {
-          throw new ForbiddenException('No tiene permisos para crear hallazgos en este proyecto');
-        }
-      }
-    }
+    let prefix = 'VULN';
 
-    // GENERACIÓN DE CÓDIGO DINÁMICO
-    let prefix = 'VULN'; // Default global
-    
-    // 1. Intentar obtener prefijo del Área del proyecto
     if (project.areaIds && project.areaIds.length > 0) {
       const firstArea = project.areaIds[0] as any;
       if (firstArea.findingCodePrefix) prefix = firstArea.findingCodePrefix;
     } else if (project.areaId && (project.areaId as any).findingCodePrefix) {
       prefix = (project.areaId as any).findingCodePrefix;
     } else {
-      // 2. Intentar obtener prefijo de Configuración Global
-      const sysConfig = await this.systemConfigModel.findOne({ configKey: 'smtp_config' }); // TODO: Split config keys?
-      // Nota: Asumimos que la config general esta en el mismo doc o buscamos por otro key
-      // Por simplicidad, usaremos 'VULN' si no hay area prefix, o implementaremos lectura de config general
-      // si se separara la config de smtp.
+      await this.systemConfigModel.findOne({ configKey: 'smtp_config' });
     }
 
-    // Buscamos el último hallazgo con este prefijo para incrementar
-    // Regex: Empieza con PREFIX- y le siguen numeros
     const regex = new RegExp(`^${prefix}-\\d+$`);
     const lastFinding = await this.findingModel
-      .findOne({ code: { $regex: regex } })
+      .findOne({
+        tenantId: this.toObjectId(currentTenantId),
+        code: { $regex: regex },
+      })
       .sort({ createdAt: -1 })
       .select('code');
 
@@ -95,32 +364,23 @@ export class FindingService {
 
     const finding = new this.findingModel({
       ...dto,
-      code: generatedCode, // Sobrescribimos el código del DTO con el generado oficialmente
+      code: generatedCode,
       createdBy,
       status: FindingStatus.OPEN,
+      tenantId: this.toObjectId(currentTenantId),
+      projectId: this.toObjectId(dto.projectId),
     });
 
     await finding.save();
-    
-    this.logger.log(`Hallazgo creado: ${finding.code} - ${finding.title} (ID: ${finding._id})`);
 
-    // 📧 Enviar notificación al usuario asignado
+    this.logger.log(
+      `Hallazgo creado: ${finding.code} - ${finding.title} (ID: ${finding._id})`,
+    );
+
+    await this.sendFindingCreatedNotification(finding, project, createdBy);
+
     if (finding.assignedTo) {
-      try {
-        const assignedUser = await this.userModel.findById(finding.assignedTo);
-        if (assignedUser && assignedUser.email) {
-          await this.emailService.notifyFindingAssigned(
-            assignedUser.email,
-            `${assignedUser.firstName} ${assignedUser.lastName}`,
-            finding.title,
-            finding.code || finding._id.toString(),
-            finding.severity
-          );
-          this.logger.log(`Email de nuevo hallazgo enviado a ${assignedUser.email}`);
-        }
-      } catch (emailError) {
-        this.logger.warn(`No se pudo enviar email de hallazgo: ${emailError.message}`);
-      }
+      await this.sendFindingAssignedNotification(finding.assignedTo, finding, project);
     }
 
     return finding;
@@ -129,68 +389,69 @@ export class FindingService {
   /**
    * Obtiene hallazgos con filtros
    * Por defecto, solo muestra hallazgos activos (no cerrados)
-   * SECURITY FIX C3: Validación multi-tenant
+   * MULTI-TENANT: filtra por tenant y por área cuando corresponde
    */
-  async findAll(filters: {
-    projectId?: string;
-    status?: FindingStatus;
-    severity?: string;
-    assignedTo?: string;
-    includeClosed?: boolean;
-  }, currentUser?: any): Promise<Finding[]> {
+  async findAll(
+    filters: {
+      projectId?: string;
+      status?: FindingStatus;
+      severity?: string;
+      assignedTo?: string;
+      includeClosed?: boolean;
+    },
+    currentUser?: any,
+  ): Promise<Finding[]> {
     const query: any = {};
-    const restrictedByArea = ['AREA_ADMIN', 'ANALYST', 'VIEWER'].includes(currentUser?.role);
-    const allowedAreas = currentUser?.areaIds?.map((id: any) => id.toString()) || [];
+    const currentTenantId = this.getCurrentTenantId(currentUser);
+    const restrictedByArea = this.isRestrictedByArea(currentUser);
+    const allowedAreas = this.getUserAreaIds(currentUser);
 
-    if (filters.projectId) query.projectId = filters.projectId;
+    if (currentTenantId) {
+      query.tenantId = this.toObjectId(currentTenantId);
+    }
+
     if (filters.status) query.status = filters.status;
     if (filters.severity) query.severity = filters.severity;
     if (filters.assignedTo) query.assignedTo = filters.assignedTo;
 
-    // Por defecto, excluir cerrados en vista operativa
     if (!filters.includeClosed && !filters.status) {
       query.status = { $ne: FindingStatus.CLOSED };
     }
 
-    // SECURITY FIX C3: Filtrado multi-tenant
-    if (currentUser) {
-      const restrictedRoles = ['CLIENT_ADMIN', 'AREA_ADMIN', 'ANALYST', 'VIEWER'];
-      if (restrictedRoles.includes(currentUser.role) && currentUser.clientId) {
-        // Obtener proyectos del cliente
-        const projects = await this.projectModel.find({ clientId: currentUser.clientId }).select('_id');
-        const projectIds = projects.map((p: any) => p._id);
-        query.projectId = { $in: projectIds };
+    if (filters.projectId) {
+      await this.findProjectOrFailWithAccess(filters.projectId, currentUser);
+      query.projectId = this.toObjectId(filters.projectId);
+    } else if (restrictedByArea) {
+      if (!allowedAreas.length) {
+        return [];
       }
 
-      // Aislamiento por áreas
-      if (restrictedByArea) {
-        if (!allowedAreas.length) {
-          return []; // Sin áreas asignadas
-        }
+      const areaObjectIds = allowedAreas
+        .map((id) => this.toObjectId(id))
+        .filter(Boolean);
 
-        const projectsByArea = await this.projectModel.find({
+      const accessibleProjects = await this.projectModel
+        .find({
+          ...(currentTenantId ? { tenantId: this.toObjectId(currentTenantId) } : {}),
           $or: [
-             { areaIds: { $in: allowedAreas } },
-             { areaId: { $in: allowedAreas } }
+            { areaIds: { $in: areaObjectIds } },
+            { areaId: { $in: areaObjectIds } },
           ],
-          ...(currentUser.clientId ? { clientId: currentUser.clientId } : {}),
-        }).select('_id');
+        })
+        .select('_id');
 
-        const projectIds = projectsByArea.map((p: any) => p._id.toString());
-        if (query.projectId) {
-          // Intersecar si ya hay filtro por proyecto
-          const existingIds = Array.isArray((query.projectId as any).$in)
-            ? (query.projectId as any).$in.map((id: any) => id.toString())
-            : [query.projectId.toString()];
-          query.projectId = { $in: existingIds.filter((id: string) => projectIds.includes(id)) };
-        } else {
-          query.projectId = { $in: projectIds };
-        }
+      const projectIds = accessibleProjects.map((p: any) => p._id);
+
+      if (!projectIds.length) {
+        return [];
       }
+
+      query.projectId = { $in: projectIds };
     }
 
-    return this.findingModel.find(query)
-      .populate('projectId', 'name code')
+    return this.findingModel
+      .find(query)
+      .populate('projectId', 'name code clientId tenantId areaId areaIds')
       .populate('assignedTo', 'firstName lastName email')
       .populate('createdBy', 'firstName lastName email')
       .sort({ createdAt: -1 });
@@ -198,110 +459,76 @@ export class FindingService {
 
   /**
    * Busca hallazgo por ID
-   * SECURITY FIX C3: Validación de tenant ownership
+   * MULTI-TENANT: valida acceso por tenant y área
    */
   async findById(id: string, currentUser?: any): Promise<Finding> {
-    const finding = await this.findingModel.findById(id)
-      .populate('projectId', 'name code clientId areaId areaIds')
-      .populate('assignedTo', 'firstName lastName email')
-      .populate('createdBy', 'firstName lastName email')
-      .populate('closedBy', 'firstName lastName email');
-    
-    if (!finding) {
-      throw new NotFoundException(`Hallazgo con ID ${id} no encontrado`);
-    }
-
-    // SECURITY FIX C3: Validar acceso multi-tenant
-    if (currentUser) {
-      const restrictedRoles = ['CLIENT_ADMIN', 'AREA_ADMIN', 'ANALYST', 'VIEWER'];
-      if (restrictedRoles.includes(currentUser.role) && currentUser.clientId) {
-        const project = finding.projectId as any;
-        if (project.clientId.toString() !== currentUser.clientId.toString()) {
-          throw new ForbiddenException('No tiene permisos para acceder a este hallazgo');
-        }
-      }
-
-      // Aislamiento por áreas para roles restringidos
-      if (['AREA_ADMIN', 'ANALYST', 'VIEWER'].includes(currentUser.role)) {
-        const allowedAreas = currentUser.areaIds?.map((id: any) => id.toString()) || [];
-        const project = finding.projectId as any;
-        
-        const projectAreas = project.areaIds?.map((a: any) => a.toString()) || [];
-        const legacyArea = project.areaId?.toString();
-        
-        const hasAccess = allowedAreas.some((area: string) => 
-            projectAreas.includes(area) || legacyArea === area
-        );
-
-        if (!allowedAreas.length || !hasAccess) {
-          throw new ForbiddenException('No tiene permisos para acceder a este hallazgo');
-        }
-      }
-    }
-
-    return finding;
+    return this.findFindingOrFailWithAccess(id, currentUser);
   }
 
   /**
    * Actualiza un hallazgo
    * Si cambia el status, crea automáticamente una entrada en el timeline
+   * MULTI-TENANT: valida acceso antes de modificar
    */
-  async update(id: string, dto: UpdateFindingDto, userId: string, currentUser?: any): Promise<Finding> {
-    const finding = await this.findingModel.findById(id).populate('projectId');
-    
-    if (!finding) {
-      throw new NotFoundException(`Hallazgo con ID ${id} no encontrado`);
-    }
+  async update(
+    id: string,
+    dto: UpdateFindingDto,
+    userId: string,
+    currentUser?: any,
+  ): Promise<Finding> {
+    const finding = await this.findFindingOrFailWithAccess(id, currentUser);
+    const currentTenantId =
+      this.getCurrentTenantId(currentUser) || this.resolveFindingTenantId(finding);
 
-    // SECURITY FIX C3: Validar ownership antes de actualizar
-    if (currentUser) {
-      const restrictedRoles = ['CLIENT_ADMIN', 'AREA_ADMIN', 'ANALYST', 'VIEWER'];
-      if (restrictedRoles.includes(currentUser.role) && currentUser.clientId) {
-        const project = finding.projectId as any;
-        if (project.clientId?.toString() !== currentUser.clientId.toString()) {
-          throw new ForbiddenException('No tiene permisos para actualizar este hallazgo');
-        }
-      }
+    const previousAssignedTo = finding.assignedTo
+      ? (finding.assignedTo as any)?._id?.toString?.() || finding.assignedTo.toString()
+      : undefined;
 
-      // Aislamiento por áreas para roles restringidos en update
-      if (['AREA_ADMIN', 'ANALYST', 'VIEWER'].includes(currentUser.role)) {
-        const allowedAreas = currentUser.areaIds?.map((id: any) => id.toString()) || [];
-        const project = finding.projectId as any;
-        
-        const projectAreas = project.areaIds?.map((a: any) => a.toString()) || [];
-        const legacyArea = project.areaId?.toString();
-        
-        const hasAccess = allowedAreas.some((area: string) => 
-            projectAreas.includes(area) || legacyArea === area
-        );
-
-        if (!allowedAreas.length || !hasAccess) {
-             throw new ForbiddenException('No tiene permisos para actualizar este hallazgo');
-        }
-      }
-    }
-
-    // Detectar cambio de status
-    const statusChanged = dto.status && dto.status !== finding.status;
     const previousStatus = finding.status;
 
-    // Manejo automático de fechas de cierre
+    if ((dto as any).tenantId !== undefined) {
+      delete (dto as any).tenantId;
+    }
+
+    if ((dto as any).projectId !== undefined) {
+      const targetProject = await this.findProjectOrFailWithAccess(
+        dto.projectId as any,
+        currentUser,
+      );
+
+      const targetProjectTenantId = this.resolveProjectTenantId(targetProject);
+      if (
+        currentTenantId &&
+        targetProjectTenantId &&
+        currentTenantId !== targetProjectTenantId
+      ) {
+        throw new ForbiddenException(
+          'No puede mover el hallazgo a un proyecto de otro tenant',
+        );
+      }
+
+      (dto as any).projectId = this.toObjectId(dto.projectId as any);
+      (dto as any).tenantId = this.toObjectId(targetProjectTenantId);
+    }
+
+    const statusChanged = dto.status && dto.status !== finding.status;
+    const assignedChanged =
+      dto.assignedTo !== undefined &&
+      !this.areObjectIdsEqual(dto.assignedTo, previousAssignedTo);
+
     if (statusChanged) {
       if (dto.status === FindingStatus.CLOSED) {
         finding.closedAt = new Date();
         finding.closedBy = userId as any;
       } else if (previousStatus === FindingStatus.CLOSED) {
-        // Si se reabre, limpiar fecha de cierre
         finding.closedAt = undefined;
         finding.closedBy = undefined;
       }
     }
 
-    // Actualizar hallazgo
     Object.assign(finding, dto);
     await finding.save();
 
-    // Si cambió el status, registrar en timeline
     if (statusChanged && dto.status) {
       await this.createStatusChangeUpdate(
         id,
@@ -311,8 +538,18 @@ export class FindingService {
         `Estado actualizado de ${previousStatus} a ${dto.status}`,
       );
 
-      // Log status change (specific email notifications only for assignment/closure)
-      this.logger.log(`Estado del hallazgo ${finding.code} cambiado de ${previousStatus} a ${dto.status}`);
+      this.logger.log(
+        `Estado del hallazgo ${finding.code} cambiado de ${previousStatus} a ${dto.status}`,
+      );
+    }
+
+    if (assignedChanged && finding.assignedTo) {
+      const project = (finding.projectId as any) || undefined;
+      await this.sendFindingAssignedNotification(finding.assignedTo, finding, project);
+    }
+
+    if (statusChanged && dto.status === FindingStatus.CLOSED) {
+      await this.sendFindingClosedNotifications(finding, finding.closeReason || 'Cierre de hallazgo');
     }
 
     this.logger.log(`Hallazgo actualizado: ${finding.code} (ID: ${id})`);
@@ -320,36 +557,56 @@ export class FindingService {
   }
 
   /**
-   * Cierra masivamente hallazgos
+   * Cierra masivamente hallazgos accesibles para el usuario
    */
-  async bulkClose(ids: string[], userId: string, closeReason: string = 'Bulk Close'): Promise<number> {
+  async bulkClose(
+    ids: string[],
+    userId: string,
+    currentUser?: any,
+    closeReason: string = 'Bulk Close',
+  ): Promise<number> {
     if (!ids || ids.length === 0) return 0;
 
+    const allowedIds: string[] = [];
+
+    for (const id of ids) {
+      const finding = await this.findFindingOrFailWithAccess(id, currentUser);
+      if (finding && finding.status !== FindingStatus.CLOSED) {
+        allowedIds.push(id);
+      }
+    }
+
+    if (!allowedIds.length) return 0;
+
     const result = await this.findingModel.updateMany(
-      { _id: { $in: ids }, status: { $ne: FindingStatus.CLOSED } },
-      { 
-        $set: { 
-          status: FindingStatus.CLOSED, 
+      { _id: { $in: allowedIds } },
+      {
+        $set: {
+          status: FindingStatus.CLOSED,
           closeReason: closeReason,
           closedAt: new Date(),
-          closedBy: userId 
-        } 
-      }
+          closedBy: userId,
+        },
+      },
     );
-    
-    this.logger.log(`${result.modifiedCount} hallazgos cerrados masivamente por usuario ${userId}`);
+
+    this.logger.log(
+      `${result.modifiedCount} hallazgos cerrados masivamente por usuario ${userId}`,
+    );
     return result.modifiedCount;
   }
 
   /**
    * Cierra un hallazgo con motivo específico
+   * MULTI-TENANT: valida acceso antes de cerrar
    */
-  async close(id: string, dto: CloseFindingDto, userId: string): Promise<Finding> {
-    const finding = await this.findingModel.findById(id);
-    
-    if (!finding) {
-      throw new NotFoundException(`Hallazgo con ID ${id} no encontrado`);
-    }
+  async close(
+    id: string,
+    dto: CloseFindingDto,
+    userId: string,
+    currentUser?: any,
+  ): Promise<Finding> {
+    const finding = await this.findFindingOrFailWithAccess(id, currentUser);
 
     if (finding.status === FindingStatus.CLOSED) {
       throw new BadRequestException('El hallazgo ya está cerrado');
@@ -357,14 +614,12 @@ export class FindingService {
 
     const previousStatus = finding.status;
 
-    // Actualizar hallazgo
     finding.status = FindingStatus.CLOSED;
     finding.closeReason = dto.closeReason;
     finding.closedAt = new Date();
     finding.closedBy = userId as any;
     await finding.save();
 
-    // Registrar en timeline
     await this.createStatusChangeUpdate(
       id,
       previousStatus,
@@ -373,61 +628,51 @@ export class FindingService {
       dto.comment || `Hallazgo cerrado: ${dto.closeReason}`,
     );
 
-    this.logger.log(`Hallazgo cerrado: ${finding.code} - Motivo: ${dto.closeReason}`);
+    this.logger.log(
+      `Hallazgo cerrado: ${finding.code} - Motivo: ${dto.closeReason}`,
+    );
 
-    // 📧 Enviar notificación de cierre
-    if (finding.assignedTo) {
-      try {
-        const assignedUser = await this.userModel.findById(finding.assignedTo);
-        if (assignedUser && assignedUser.email) {
-          await this.emailService.notifyFindingClosed(
-            assignedUser.email,
-            `${assignedUser.firstName} ${assignedUser.lastName}`,
-            finding.title,
-            finding.code || finding._id.toString(),
-            dto.closeReason
-          );
-          this.logger.log(`Email de cierre enviado a ${assignedUser.email}`);
-        }
-      } catch (emailError) {
-        this.logger.warn(`No se pudo enviar email de cierre: ${emailError.message}`);
-      }
-    }
+    await this.sendFindingClosedNotifications(finding, dto.closeReason);
 
     return finding;
   }
 
   /**
    * Obtiene hallazgos de un proyecto que deben incluirse en retest
+   * MULTI-TENANT: valida acceso al proyecto
    */
-  async findForRetest(projectId: string): Promise<Finding[]> {
-    return this.findingModel.find({
-      projectId,
+  async findForRetest(
+    projectId: string,
+    currentUser?: any,
+  ): Promise<Finding[]> {
+    await this.findProjectOrFailWithAccess(projectId, currentUser);
+
+    const query: any = {
+      projectId: this.toObjectId(projectId),
       retestIncluded: true,
       status: { $ne: FindingStatus.CLOSED },
-    }).select('code title severity status');
+    };
+
+    const currentTenantId = this.getCurrentTenantId(currentUser);
+    if (currentTenantId) {
+      query.tenantId = this.toObjectId(currentTenantId);
+    }
+
+    return this.findingModel
+      .find(query)
+      .select('code title severity status');
   }
 
   /**
    * TIMELINE - Crea una actualización de hallazgo
-   * SECURITY FIX M1: Validar ownership del hallazgo
+   * MULTI-TENANT: valida acceso por tenant y área
    */
-  async createUpdate(dto: CreateFindingUpdateDto, createdBy: string, currentUser?: any): Promise<FindingUpdate> {
-    // SECURITY FIX M1: Validar que el hallazgo pertenece al tenant del usuario
-    if (currentUser) {
-      const finding = await this.findingModel.findById(dto.findingId).populate('projectId');
-      if (!finding) {
-        throw new NotFoundException(`Hallazgo con ID ${dto.findingId} no encontrado`);
-      }
-
-      const restrictedRoles = ['CLIENT_ADMIN', 'AREA_ADMIN', 'ANALYST', 'VIEWER'];
-      if (restrictedRoles.includes(currentUser.role) && currentUser.clientId) {
-        const project = finding.projectId as any;
-        if (project.clientId.toString() !== currentUser.clientId.toString()) {
-          throw new ForbiddenException('No tiene permisos para actualizar este hallazgo');
-        }
-      }
-    }
+  async createUpdate(
+    dto: CreateFindingUpdateDto,
+    createdBy: string,
+    currentUser?: any,
+  ): Promise<FindingUpdate> {
+    await this.findFindingOrFailWithAccess(dto.findingId, currentUser);
 
     const update = new this.updateModel({
       ...dto,
@@ -435,16 +680,25 @@ export class FindingService {
     });
 
     await update.save();
-    
-    this.logger.log(`Update creado para hallazgo ${dto.findingId}: Tipo ${dto.type}`);
+
+    this.logger.log(
+      `Update creado para hallazgo ${dto.findingId}: Tipo ${dto.type}`,
+    );
     return update;
   }
 
   /**
    * TIMELINE - Obtiene el historial de un hallazgo
+   * MULTI-TENANT: valida acceso antes de leer timeline
    */
-  async getTimeline(findingId: string): Promise<FindingUpdate[]> {
-    return this.updateModel.find({ findingId })
+  async getTimeline(
+    findingId: string,
+    currentUser?: any,
+  ): Promise<FindingUpdate[]> {
+    await this.findFindingOrFailWithAccess(findingId, currentUser);
+
+    return this.updateModel
+      .find({ findingId })
       .populate('createdBy', 'firstName lastName email')
       .populate('evidenceIds', 'filename mimeType size')
       .sort({ createdAt: -1 });
@@ -474,17 +728,21 @@ export class FindingService {
 
   /**
    * Hard delete - Solo OWNER
+   * MULTI-TENANT: valida acceso antes de eliminar
    */
-  async hardDelete(id: string): Promise<void> {
-    // Eliminar también todas las actualizaciones asociadas
+  async hardDelete(id: string, currentUser?: any): Promise<void> {
+    await this.findFindingOrFailWithAccess(id, currentUser);
+
     await this.updateModel.deleteMany({ findingId: id });
 
     const result = await this.findingModel.findByIdAndDelete(id);
-    
+
     if (!result) {
       throw new NotFoundException(`Hallazgo con ID ${id} no encontrado`);
     }
 
-    this.logger.warn(`Hallazgo ELIMINADO permanentemente: ${result.code} (ID: ${id})`);
+    this.logger.warn(
+      `Hallazgo ELIMINADO permanentemente: ${result.code} (ID: ${id})`,
+    );
   }
 }

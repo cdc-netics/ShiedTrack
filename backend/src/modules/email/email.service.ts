@@ -32,15 +32,14 @@ export class EmailService {
   private async initializeTransporter(): Promise<void> {
     try {
       const config = await this.systemConfigModel.findOne().lean();
-      
+
       if (!config || !config.smtp_host) {
         this.logger.warn('Configuración SMTP no encontrada - Email deshabilitado');
         return;
       }
 
-      // Usar el método de desencriptación del schema
       const { decryptText } = await import('../system-config/schemas/system-config.schema');
-      
+
       this.transporter = nodemailer.createTransport({
         host: config.smtp_host,
         port: config.smtp_port || 587,
@@ -52,7 +51,7 @@ export class EmailService {
       });
 
       this.logger.log('Transporter SMTP inicializado correctamente');
-    } catch (error) {
+    } catch (error: any) {
       this.logger.error(`Error inicializando transporter SMTP: ${error.message}`);
     }
   }
@@ -88,20 +87,96 @@ export class EmailService {
 
       this.logger.log(`Email enviado exitosamente a: ${options.to}`);
       return true;
-    } catch (error) {
+    } catch (error: any) {
       this.logger.error(`Error enviando email: ${error.message}`, error.stack);
       return false;
     }
   }
 
   /**
+   * Utilidad para normalizar nombre visible
+   */
+  private getDisplayName(userName?: string): string {
+    return userName?.trim() || 'usuario';
+  }
+
+  /**
+   * Utilidad para color por severidad
+   */
+  private getSeverityColor(severity?: string): string {
+    const severityColors: Record<string, string> = {
+      CRITICAL: '#d32f2f',
+      HIGH: '#f57c00',
+      MEDIUM: '#fbc02d',
+      LOW: '#388e3c',
+      INFO: '#1976d2',
+    };
+
+    return severityColors[severity || ''] || '#1976d2';
+  }
+
+  /**
+   * Notificación: Hallazgo creado
+   */
+  async notifyFindingCreated(
+    userEmail: string,
+    userName: string,
+    findingTitle: string,
+    findingCode: string,
+    severity: string,
+    projectName: string,
+    description?: string,
+  ): Promise<void> {
+    const severityColor = this.getSeverityColor(severity);
+
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #1976d2;">Nuevo Hallazgo Registrado</h2>
+        <p>Hola <strong>${this.getDisplayName(userName)}</strong>,</p>
+        <p>Se ha registrado correctamente un nuevo hallazgo en ShieldTrack:</p>
+
+        <div style="background: #f5f5f5; padding: 15px; border-left: 4px solid ${severityColor}; margin: 20px 0;">
+          <strong>${findingTitle}</strong><br>
+          <small>Código: ${findingCode}</small><br>
+          <small>Proyecto: ${projectName}</small><br>
+          <span style="display: inline-block; margin-top: 10px; padding: 4px 8px; background: ${severityColor}; color: white; border-radius: 4px; font-size: 12px;">
+            ${severity}
+          </span>
+        </div>
+
+        ${
+          description
+            ? `<p><strong>Descripción:</strong><br>${description}</p>`
+            : ''
+        }
+
+        <p>Puedes revisar el detalle directamente en ShieldTrack.</p>
+        <p style="margin-top: 30px; color: #666; font-size: 12px;">
+          Este es un mensaje automático de ShieldTrack. Por favor no responder.
+        </p>
+      </div>
+    `;
+
+    await this.sendEmail({
+      to: userEmail,
+      subject: `Nuevo hallazgo registrado: ${findingTitle}`,
+      html,
+    });
+  }
+
+  /**
    * Notificación: Usuario asignado a proyecto
    */
-  async notifyUserAssignedToProject(userEmail: string, userName: string, projectName: string, projectCode: string): Promise<void> {
+  async notifyUserAssignedToProject(
+    userEmail: string,
+    userName: string,
+    projectName: string,
+    projectCode: string,
+  ): Promise<void> {
     const html = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #1976d2;">Asignación a Proyecto</h2>
-        <p>Hola <strong>${userName}</strong>,</p>
+        <p>Hola <strong>${this.getDisplayName(userName)}</strong>,</p>
         <p>Has sido asignado al proyecto:</p>
         <div style="background: #f5f5f5; padding: 15px; border-left: 4px solid #1976d2; margin: 20px 0;">
           <strong>${projectName}</strong><br>
@@ -124,24 +199,26 @@ export class EmailService {
   /**
    * Notificación: Hallazgo asignado
    */
-  async notifyFindingAssigned(userEmail: string, userName: string, findingTitle: string, findingCode: string, severity: string): Promise<void> {
-    const severityColors: any = {
-      CRITICAL: '#d32f2f',
-      HIGH: '#f57c00',
-      MEDIUM: '#fbc02d',
-      LOW: '#388e3c',
-      INFO: '#1976d2',
-    };
+  async notifyFindingAssigned(
+    userEmail: string,
+    userName: string,
+    findingTitle: string,
+    findingCode: string,
+    severity: string,
+    projectName?: string,
+  ): Promise<void> {
+    const severityColor = this.getSeverityColor(severity);
 
     const html = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #1976d2;">Nuevo Hallazgo Asignado</h2>
-        <p>Hola <strong>${userName}</strong>,</p>
+        <p>Hola <strong>${this.getDisplayName(userName)}</strong>,</p>
         <p>Se te ha asignado un nuevo hallazgo:</p>
-        <div style="background: #f5f5f5; padding: 15px; border-left: 4px solid ${severityColors[severity] || '#1976d2'}; margin: 20px 0;">
+        <div style="background: #f5f5f5; padding: 15px; border-left: 4px solid ${severityColor}; margin: 20px 0;">
           <strong>${findingTitle}</strong><br>
           <small>Código: ${findingCode}</small><br>
-          <span style="display: inline-block; margin-top: 10px; padding: 4px 8px; background: ${severityColors[severity] || '#1976d2'}; color: white; border-radius: 4px; font-size: 12px;">
+          ${projectName ? `<small>Proyecto: ${projectName}</small><br>` : ''}
+          <span style="display: inline-block; margin-top: 10px; padding: 4px 8px; background: ${severityColor}; color: white; border-radius: 4px; font-size: 12px;">
             ${severity}
           </span>
         </div>
@@ -162,18 +239,26 @@ export class EmailService {
   /**
    * Notificación: Retest programado próximo
    */
-  async notifyRetestUpcoming(userEmail: string, userName: string, findings: Array<{ title: string; code: string; retestDate: Date }>): Promise<void> {
-    const findingsList = findings.map(f => `
+  async notifyRetestUpcoming(
+    userEmail: string,
+    userName: string,
+    findings: Array<{ title: string; code: string; retestDate: Date }>,
+  ): Promise<void> {
+    const findingsList = findings
+      .map(
+        (f) => `
       <li style="margin: 10px 0;">
         <strong>${f.title}</strong> (${f.code})<br>
         <small>Fecha retest: ${f.retestDate.toLocaleDateString('es-ES')}</small>
       </li>
-    `).join('');
+    `,
+      )
+      .join('');
 
     const html = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #f57c00;">⚠️ Retests Próximos</h2>
-        <p>Hola <strong>${userName}</strong>,</p>
+        <p>Hola <strong>${this.getDisplayName(userName)}</strong>,</p>
         <p>Tienes <strong>${findings.length}</strong> hallazgo(s) con retest programado en los próximos días:</p>
         <ul style="background: #fff3e0; padding: 20px; border-left: 4px solid #f57c00; margin: 20px 0;">
           ${findingsList}
@@ -195,11 +280,16 @@ export class EmailService {
   /**
    * Notificación: Usuario creado
    */
-  async notifyUserCreated(userEmail: string, userName: string, role: string, tempPassword: string): Promise<void> {
+  async notifyUserCreated(
+    userEmail: string,
+    userName: string,
+    role: string,
+    tempPassword: string,
+  ): Promise<void> {
     const html = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #4caf50;">¡Bienvenido a ShieldTrack!</h2>
-        <p>Hola <strong>${userName}</strong>,</p>
+        <p>Hola <strong>${this.getDisplayName(userName)}</strong>,</p>
         <p>Tu cuenta ha sido creada exitosamente con el rol de <strong>${role}</strong>.</p>
         <div style="background: #e8f5e9; padding: 15px; border-left: 4px solid #4caf50; margin: 20px 0;">
           <p><strong>Credenciales de acceso:</strong></p>
@@ -223,11 +313,15 @@ export class EmailService {
   /**
    * Notificación: Asignación a área
    */
-  async notifyUserAssignedToArea(userEmail: string, userName: string, areaName: string): Promise<void> {
+  async notifyUserAssignedToArea(
+    userEmail: string,
+    userName: string,
+    areaName: string,
+  ): Promise<void> {
     const html = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #1976d2;">Asignación a Área</h2>
-        <p>Hola <strong>${userName}</strong>,</p>
+        <p>Hola <strong>${this.getDisplayName(userName)}</strong>,</p>
         <p>Has sido asignado al área:</p>
         <div style="background: #e3f2fd; padding: 15px; border-left: 4px solid #1976d2; margin: 20px 0;">
           <strong>${areaName}</strong>
@@ -249,17 +343,26 @@ export class EmailService {
   /**
    * Notificación: Hallazgo cerrado
    */
-  async notifyFindingClosed(userEmail: string, userName: string, findingTitle: string, findingCode: string, closeReason: string): Promise<void> {
+  async notifyFindingClosed(
+    userEmail: string,
+    userName: string,
+    findingTitle: string,
+    findingCode: string,
+    closeReason: string,
+    projectName?: string,
+  ): Promise<void> {
     const html = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #4caf50;">Hallazgo Cerrado</h2>
-        <p>Hola <strong>${userName}</strong>,</p>
+        <p>Hola <strong>${this.getDisplayName(userName)}</strong>,</p>
         <p>El hallazgo ha sido cerrado:</p>
         <div style="background: #e8f5e9; padding: 15px; border-left: 4px solid #4caf50; margin: 20px 0;">
           <strong>${findingTitle}</strong><br>
           <small>Código: ${findingCode}</small><br>
+          ${projectName ? `<small>Proyecto: ${projectName}</small><br>` : ''}
           <p style="margin-top: 10px;"><strong>Razón:</strong> ${closeReason}</p>
         </div>
+        <p>Puedes revisar el estado final en ShieldTrack.</p>
         <p style="margin-top: 30px; color: #666; font-size: 12px;">
           Este es un mensaje automático de ShieldTrack. Por favor no responder.
         </p>
