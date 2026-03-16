@@ -226,6 +226,7 @@ export class AuditLogComponent implements OnInit {
 
   loadLogs(): void {
     this.loading.set(true);
+    this.currentPage = 0;
     const params: any = {
       limit: 100,
     };
@@ -244,8 +245,12 @@ export class AuditLogComponent implements OnInit {
             );
           }
           
-          this.auditLogs.set(filtered);
           this.totalRecords.set(filtered.length);
+          // aplicar paginación real
+          const start = this.currentPage * this.pageSize;
+          const end = start + this.pageSize;
+          this.auditLogs.set(filtered.slice(start, end));
+
           this.loading.set(false);
         },
         error: (err: any) => {
@@ -259,5 +264,6 @@ export class AuditLogComponent implements OnInit {
   onPageChange(event: PageEvent) {
     this.currentPage = event.pageIndex;
     this.pageSize = event.pageSize;
+    this.loadLogs();
   }
 }

@@ -669,7 +669,7 @@ export class SystemConfigComponent implements OnInit {
   }
 
   loadProjects(): void {
-    this.http.get<any[]>('http://localhost:3000/api/projects').subscribe({
+    this.http.get<any[]>(`${environment.apiUrl}/projects`).subscribe({
       next: (projects) => {
         this.projects.set(projects.map(p => ({ id: p._id, name: p.name })));
       },
@@ -678,7 +678,7 @@ export class SystemConfigComponent implements OnInit {
   }
 
   loadSmtpConfig(): void {
-    this.http.get<any>('http://localhost:3000/api/system-config/smtp').subscribe({
+    this.http.get<any>(`${environment.apiUrl}/system-config/smtp`).subscribe({
       next: (config) => {
         this.smtpConfig.set({
           host: config.smtp_host || '',
@@ -713,8 +713,7 @@ export class SystemConfigComponent implements OnInit {
     }
 
     console.log('📤 Guardando SMTP:', data);
-    this.http.put('http://localhost:3000/api/system-config/smtp', data).subscribe({
-      next: () => {
+    this.http.put(`${environment.apiUrl}/system-config/smtp`, data).subscribe({next: () => {
         alert('✅ Configuración SMTP guardada exitosamente');
       },
       error: (error) => {
@@ -725,8 +724,7 @@ export class SystemConfigComponent implements OnInit {
   }
 
   testSmtp(): void {
-    this.http.post('http://localhost:3000/api/system-config/smtp/test', {}).subscribe({
-      next: (res: any) => {
+  this.http.post(`${environment.apiUrl}/system-config/smtp/test`, {}).subscribe({next: (res: any) => {
         if (res.success) {
           alert('✅ ' + res.message);
         } else {
@@ -804,9 +802,9 @@ export class SystemConfigComponent implements OnInit {
     if (confirm(confirmMessage)) {
       console.log('Fusionando proyectos:', this.mergeConfig());
       
-      this.http.post('http://localhost:3000/api/projects/merge', {
-        sourceProjectId: config.sourceProject,
-        targetProjectId: config.targetProject
+    this.http.post(`${environment.apiUrl}/projects/merge`, { 
+      sourceProjectId: config.sourceProject,
+      targetProjectId: config.targetProject
       }).subscribe({
         next: (response: any) => {
           console.log('✅ Fusión exitosa:', response);
@@ -831,7 +829,7 @@ export class SystemConfigComponent implements OnInit {
   saveConfig(): void {
     // Guarda configuracion general en backend
     console.log('📤 Guardando configuración:', this.config());
-    this.http.put('/api/system-config', this.config()).subscribe({
+    this.http.put(`${environment.apiUrl}/system-config`, this.config()).subscribe({
       next: () => {
         console.log('✅ Configuración guardada');
         alert('✅ Configuración guardada exitosamente');
@@ -846,7 +844,7 @@ export class SystemConfigComponent implements OnInit {
   saveAreaConfig(): void {
     // Guarda configuracion de areas en backend
     console.log('📤 Guardando configuración de áreas:', this.areaConfig());
-    this.http.put('/api/system-config/areas', this.areaConfig()).subscribe({
+    this.http.put(`${environment.apiUrl}/system-config/areas`, this.areaConfig()).subscribe({
       next: () => {
         console.log('✅ Configuración de áreas guardada');
         alert('✅ Configuración de áreas guardada exitosamente');
@@ -914,7 +912,7 @@ export class SystemConfigComponent implements OnInit {
       formData.append('logo', logo);
     }
 
-    this.http.post('/api/clients/me/branding', formData).subscribe({
+    this.http.post(`${environment.apiUrl}/clients/me/branding`, formData).subscribe({
       next: (response: any) => {
         console.log('✅ Configuración de tenant guardada:', response);
         alert('✅ Configuración de tenant guardada exitosamente');

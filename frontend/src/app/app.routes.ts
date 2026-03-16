@@ -1,5 +1,7 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/guards/auth.guard';
+import { ProjectCreateComponent } from './features/projects/project-create/project-create.component';
+
 
 /**
  * Definición de rutas de la aplicación
@@ -31,6 +33,10 @@ export const routes: Routes = [
       {
         path: 'projects',
         loadComponent: () => import('./features/projects/project-list/project-list.component').then(m => m.ProjectListComponent)
+      },
+      {
+        path: 'projects/new',
+        loadComponent: () => import('./features/projects/project-detail/project-detail.component').then(m => m.ProjectDetailComponent)
       },
       {
         path: 'projects/:id',

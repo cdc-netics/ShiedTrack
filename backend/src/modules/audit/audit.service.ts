@@ -20,7 +20,8 @@ export class AuditService {
     action: string;
     entityType: string;
     entityId: string;
-    performedBy: string;
+    performedBy?: string | null;
+    performedByLabel?: string | null;
     clientId?: string;
     areaId?: string;
     metadata?: Record<string, any>;
@@ -76,7 +77,7 @@ export class AuditService {
 
     return this.auditModel
       .find(query)
-      .populate('performedBy', 'email firstName lastName')
+      //.populate('performedBy', 'email firstName lastName')
       .sort({ createdAt: -1 })
       .limit(filters.limit || 100);
   }
