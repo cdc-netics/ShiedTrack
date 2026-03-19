@@ -4,6 +4,7 @@ import { Model, Connection } from 'mongoose';
 import { SystemConfig, encryptText, decryptText } from './schemas/system-config.schema';
 import { SystemBranding } from './schemas/system-branding.schema';
 import * as nodemailer from 'nodemailer';
+import { resolveSmtpHostToIpv4 } from '../../common/utils/smtp-network';
 
 /**
  * Servicio de Configuración del Sistema
@@ -166,14 +167,27 @@ export class SystemConfigService {
   async testSmtpConnection(): Promise<{ success: boolean; message: string }> {
     try {
       const config = await this.getSmtpConfig();
-      
+      const resolvedHost = await resolveSmtpHostToIpv4(config.host);
+
+      if (resolvedHost.resolvedToIpv4) {
+        this.logger.log(
+          `SMTP host ${config.host} resuelto a IPv4 ${resolvedHost.connectionHost} para prueba de conexión`,
+        );
+      }
+
       // Usar nodemailer para probar conexión
-      const nodemailer = require('nodemailer');
       const transporter = nodemailer.createTransport({
-        host: config.host,
+        host: resolvedHost.connectionHost,
         port: config.port,
         secure: config.secure,
-        auth: config.auth
+        auth: config.auth,
+        ...(resolvedHost.tlsServername
+          ? {
+              tls: {
+                servername: resolvedHost.tlsServername,
+              },
+            }
+          : {}),
       });
 
       await transporter.verify();

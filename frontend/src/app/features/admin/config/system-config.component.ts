@@ -289,6 +289,17 @@ import { environment } from '../../../../environments/environment';
               Las credenciales se guardan encriptadas en la base de datos.
             </p>
 
+            <div class="smtp-help-box">
+              <p><strong>Guia rapida para Outlook / Microsoft 365</strong></p>
+              <ul>
+                <li>Host recomendado: <code>smtp.office365.com</code></li>
+                <li>STARTTLS: puerto <strong>587</strong> con <strong>SSL/TLS desactivado</strong></li>
+                <li>SSL/TLS directo: puerto <strong>465</strong> con <strong>SSL/TLS activado</strong></li>
+                <li>Si tienes MFA, usa <strong>App Password</strong> (no la clave normal)</li>
+                <li>Si SMTP AUTH basico esta bloqueado, habilitalo por buzon o usa OAuth</li>
+              </ul>
+            </div>
+
             <!-- Host & Port Row -->
             <div class="form-row">
               <mat-form-field appearance="outline">
@@ -336,6 +347,16 @@ import { environment } from '../../../../environments/environment';
                 Usar SSL/TLS
               </mat-slide-toggle>
             </div>
+
+            <p class="hint-text">
+              Validacion requerida: secure=false con puerto 587, secure=true con puerto 465.
+            </p>
+
+            @if (isSmtpSecurityPortMismatch()) {
+              <p class="warning-text">
+                {{ getSmtpSecurityPortMismatchMessage() }}
+              </p>
+            }
             
             <div class="actions">
                 <button mat-stroked-button color="accent" (click)="testSmtp()">
@@ -486,6 +507,28 @@ import { environment } from '../../../../environments/environment';
       display: flex;
       flex-direction: column;
       gap: 16px;
+    }
+
+    .smtp-help-box {
+      background: #fff8e1;
+      border-left: 4px solid #ffb300;
+      border-radius: 4px;
+      padding: 12px;
+      font-size: 13px;
+      color: #5d4037;
+    }
+
+    .smtp-help-box p {
+      margin: 0 0 8px 0;
+    }
+
+    .smtp-help-box ul {
+      margin: 0;
+      padding-left: 18px;
+    }
+
+    .smtp-help-box li {
+      margin-bottom: 4px;
     }
 
     .form-row {
@@ -693,8 +736,11 @@ export class SystemConfigComponent implements OnInit {
       error: (err) => console.error('Error loading SMTP config:', err)
     });
   }
-
   saveSmtpConfig(): void {
+    if (!this.validateSmtpConfig()) {
+      return;
+    }
+
     const data = {
       smtp_host: this.smtpConfig().host,
       smtp_port: this.smtpConfig().port,
@@ -705,36 +751,106 @@ export class SystemConfigComponent implements OnInit {
       smtp_from_name: this.smtpConfig().fromName
     };
 
-    // Validar si es una contraseña mascara
+    // Si viene enmascarada, el backend debe ignorar la actualizacion de clave
     if (data.smtp_pass && data.smtp_pass.includes('***')) {
         // TODO: Handle password update logic (send only if changed)
         // For now, API handles encryption, but we should not re-encrypt masked password
         // Backend should check if pass == '*******' then ignore update
     }
 
-    console.log('📤 Guardando SMTP:', data);
+    console.log('Guardando SMTP:', data);
     this.http.put(`${environment.apiUrl}/system-config/smtp`, data).subscribe({next: () => {
-        alert('✅ Configuración SMTP guardada exitosamente');
+        alert('Configuracion SMTP guardada exitosamente');
       },
       error: (error) => {
-        console.error('❌ Error saving SMTP:', error);
-        alert(`❌ Error: ${error?.error?.message || 'Error al guardar'}`);
+        console.error('Error saving SMTP:', error);
+        alert(`Error: ${error?.error?.message || 'Error al guardar'}`);
       }
     });
   }
 
   testSmtp(): void {
-  this.http.post(`${environment.apiUrl}/system-config/smtp/test`, {}).subscribe({next: (res: any) => {
+    if (!this.validateSmtpConfig()) {
+      return;
+    }
+
+    this.http.post(`${environment.apiUrl}/system-config/smtp/test`, {}).subscribe({next: (res: any) => {
         if (res.success) {
-          alert('✅ ' + res.message);
+          alert('OK: ' + res.message);
         } else {
-          alert('❌ ' + res.message);
+          alert(`ERROR: ${this.getSmtpTestErrorHelp(res.message)}`);
         }
       },
       error: (error) => {
-        alert(`❌ Error de conexión: ${error?.error?.message || error.message}`);
+        const rawMessage = error?.error?.message || error.message;
+        alert(`ERROR de conexion: ${this.getSmtpTestErrorHelp(rawMessage)}`);
       }
     });
+  }
+
+  isSmtpSecurityPortMismatch(): boolean {
+    const port = Number(this.smtpConfig().port);
+    const secure = this.smtpConfig().secure;
+
+    if (!Number.isFinite(port)) {
+      return false;
+    }
+
+    return (secure && port !== 465) || (!secure && port !== 587);
+  }
+
+  getSmtpSecurityPortMismatchMessage(): string {
+    const secure = this.smtpConfig().secure;
+    const expectedPort = secure ? 465 : 587;
+
+    return `La combinacion actual no es valida. Si SSL/TLS esta ${secure ? 'activado' : 'desactivado'}, el puerto esperado es ${expectedPort}.`;
+  }
+
+  private validateSmtpConfig(): boolean {
+    const smtp = this.smtpConfig();
+    const host = (smtp.host || '').trim();
+    const user = (smtp.user || '').trim();
+    const pass = (smtp.pass || '').trim();
+    const fromEmail = (smtp.fromEmail || '').trim();
+    const port = Number(smtp.port);
+
+    if (!host || !user || !pass || !fromEmail) {
+      alert('Completa SMTP Host, Usuario, Contrasena y Email Remitente antes de guardar o probar.');
+      return false;
+    }
+
+    if (!Number.isFinite(port)) {
+      alert('El puerto SMTP debe ser numerico.');
+      return false;
+    }
+
+    if (![465, 587].includes(port)) {
+      alert('Puerto SMTP invalido. Usa 587 (STARTTLS) o 465 (SSL/TLS).');
+      return false;
+    }
+
+    if (smtp.secure && port !== 465) {
+      alert('Configuracion invalida: con SSL/TLS activado, el puerto debe ser 465.');
+      return false;
+    }
+
+    if (!smtp.secure && port !== 587) {
+      alert('Configuracion invalida: con SSL/TLS desactivado, el puerto debe ser 587.');
+      return false;
+    }
+
+    return true;
+  }
+
+  private getSmtpTestErrorHelp(rawMessage: string): string {
+    const message = rawMessage || 'Error SMTP desconocido';
+    const normalizedMessage = message.toLowerCase();
+
+    if (normalizedMessage.includes('535')) {
+      return `${message}\n\nOutlook/Microsoft 365 suele devolver 535 cuando la autenticacion es rechazada.\nVerifica App Password (si MFA activo), SMTP AUTH habilitado en el buzon y la combinacion secure/puerto.`;
+    }
+
+    return message;
   }
 
   isOwner(): boolean {
