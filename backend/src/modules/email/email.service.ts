@@ -3,6 +3,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import * as nodemailer from 'nodemailer';
 import { SystemConfig } from '../system-config/schemas/system-config.schema';
+import { resolveSmtpHostToIpv4 } from '../../common/utils/smtp-network';
 
 export interface EmailOptions {
   to: string | string[];
@@ -39,15 +40,29 @@ export class EmailService {
       }
 
       const { decryptText } = await import('../system-config/schemas/system-config.schema');
+      const resolvedHost = await resolveSmtpHostToIpv4(config.smtp_host);
+
+      if (resolvedHost.resolvedToIpv4) {
+        this.logger.log(
+          `SMTP host ${config.smtp_host} resuelto a IPv4 ${resolvedHost.connectionHost} para envíos`,
+        );
+      }
 
       this.transporter = nodemailer.createTransport({
-        host: config.smtp_host,
+        host: resolvedHost.connectionHost,
         port: config.smtp_port || 587,
         secure: config.smtp_secure || false,
         auth: {
           user: decryptText(config.smtp_user_encrypted),
           pass: decryptText(config.smtp_pass_encrypted),
         },
+        ...(resolvedHost.tlsServername
+          ? {
+              tls: {
+                servername: resolvedHost.tlsServername,
+              },
+            }
+          : {}),
       });
 
       this.logger.log('Transporter SMTP inicializado correctamente');

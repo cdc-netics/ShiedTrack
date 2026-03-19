@@ -6,6 +6,7 @@ import { Project } from '../project/schemas/project.schema';
 import { Finding } from '../finding/schemas/finding.schema';
 import { SystemConfigService } from '../system-config/system-config.service';
 import * as nodemailer from 'nodemailer';
+import { resolveSmtpHostToIpv4 } from '../../common/utils/smtp-network';
 
 /**
  * Servicio de programación de Retests
@@ -31,30 +32,70 @@ export class RetestSchedulerService {
   private async initializeTransporter(): Promise<void> {
     try {
       const config = await this.systemConfigService.getSmtpConfig();
-      
+
+      const smtpHost = config.host || config.smtp_host || process.env.SMTP_HOST || 'localhost';
+      const smtpPort = config.port || config.smtp_port || parseInt(process.env.SMTP_PORT || '587', 10);
+      const smtpSecure =
+        typeof config.secure === 'boolean'
+          ? config.secure
+          : typeof config.smtp_secure === 'boolean'
+            ? config.smtp_secure
+            : process.env.SMTP_SECURE === 'true';
+      const smtpUser = config.auth?.user || config.smtp_user || process.env.SMTP_USER;
+      const smtpPass = config.auth?.pass || config.smtp_pass || process.env.SMTP_PASS;
+
+      const resolvedHost = await resolveSmtpHostToIpv4(smtpHost);
+      if (resolvedHost.resolvedToIpv4) {
+        this.logger.log(
+          `SMTP host ${smtpHost} resuelto a IPv4 ${resolvedHost.connectionHost} para scheduler`,
+        );
+      }
+
       this.transporter = nodemailer.createTransport({
-        host: config.smtp_host || process.env.SMTP_HOST || 'localhost',
-        port: config.smtp_port || parseInt(process.env.SMTP_PORT || '587', 10),
-        secure: config.smtp_secure || process.env.SMTP_SECURE === 'true',
+        host: resolvedHost.connectionHost,
+        port: smtpPort,
+        secure: smtpSecure,
         auth: {
-          user: config.smtp_user || process.env.SMTP_USER,
-          pass: config.smtp_pass || process.env.SMTP_PASS,
+          user: smtpUser,
+          pass: smtpPass,
         },
+        ...(resolvedHost.tlsServername
+          ? {
+              tls: {
+                servername: resolvedHost.tlsServername,
+              },
+            }
+          : {}),
       });
 
       this.logger.log('Transportador SMTP inicializado correctamente');
     } catch (error) {
       this.logger.warn(`No se pudo cargar config SMTP de SystemConfig, usando variables de entorno: ${error.message}`);
-      
+
+      const fallbackHost = process.env.SMTP_HOST || 'localhost';
+      const resolvedFallbackHost = await resolveSmtpHostToIpv4(fallbackHost);
+      if (resolvedFallbackHost.resolvedToIpv4) {
+        this.logger.log(
+          `SMTP host ${fallbackHost} resuelto a IPv4 ${resolvedFallbackHost.connectionHost} para scheduler`,
+        );
+      }
+
       // Fallback a variables de entorno
       this.transporter = nodemailer.createTransport({
-        host: process.env.SMTP_HOST || 'localhost',
+        host: resolvedFallbackHost.connectionHost,
         port: parseInt(process.env.SMTP_PORT || '587', 10),
         secure: process.env.SMTP_SECURE === 'true',
         auth: {
           user: process.env.SMTP_USER,
           pass: process.env.SMTP_PASS,
         },
+        ...(resolvedFallbackHost.tlsServername
+          ? {
+              tls: {
+                servername: resolvedFallbackHost.tlsServername,
+              },
+            }
+          : {}),
       });
     }
   }
