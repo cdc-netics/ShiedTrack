@@ -140,7 +140,7 @@ import { environment } from '../../../../environments/environment'; // Standardi
                         matTooltip="Editar cliente">
                   <mat-icon>edit</mat-icon>
                 </button>
-                <button mat-icon-button [routerLink]="['/clients', client._id]" 
+                <button mat-icon-button [routerLink]="['/findings']" [queryParams]="{ clientId: client._id }"
                         matTooltip="Ver detalles">
                   <mat-icon>visibility</mat-icon>
                 </button>

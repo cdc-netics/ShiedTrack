@@ -1,6 +1,6 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { MatTableModule } from '@angular/material/table';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -554,6 +554,7 @@ export class FindingListComponent implements OnInit {
   findingService = inject(FindingService);
   projectService = inject(ProjectService);
   http = inject(HttpClient);
+  route = inject(ActivatedRoute);
   
   // Columnas visibles de la tabla
   displayedColumns = ['select', 'code', 'title', 'severity', 'cvss', 'status', 'project', 'date', 'actions'];
@@ -610,6 +611,12 @@ export class FindingListComponent implements OnInit {
     // Carga inicial del listado
     this.loadFindings();
     this.loadClients();
+
+    // Soporte para filtros por cliente vía query param (ej. /findings?clientId=...)
+    const clientIdFromQuery = this.route.snapshot.queryParamMap.get('clientId');
+    if (clientIdFromQuery) {
+      this.onClientChange(clientIdFromQuery);
+    }
   }
 
   loadClients() {
