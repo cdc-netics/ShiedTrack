@@ -105,3 +105,6 @@ ProjectSchema.index({ areaId: 1 });
 ProjectSchema.index({ areaIds: 1 });
 ProjectSchema.index({ code: 1 });
 ProjectSchema.index({ 'retestPolicy.enabled': 1, 'retestPolicy.nextRetestAt': 1 }); // Para el scheduler
+
+// Índice compuesto para consultas de métricas/BI
+ProjectSchema.index({ tenantId: 1, projectStatus: 1, createdAt: 1 });

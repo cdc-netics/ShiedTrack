@@ -123,3 +123,6 @@ FindingSchema.index({ retestIncluded: 1, projectId: 1 }); // Para el scheduler d
 FindingSchema.index({ tags: 1 });
 FindingSchema.index({ cve_id: 1 }); // Búsqueda por CVE
 FindingSchema.index({ tenantId: 1 });
+
+// Índice compuesto para consultas de métricas/BI
+FindingSchema.index({ tenantId: 1, projectId: 1, severity: 1, status: 1, createdAt: 1 });

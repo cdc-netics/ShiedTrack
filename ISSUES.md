@@ -30,8 +30,8 @@ El sistema funciona en lo básico, pero hay problemas de navegación, branding, 
 | B1a | ✅ Completado | Bugs - Evidencias | Evidencias no se ven / previews fallan | Sistema de evidencias funciona |
 | B1b | ✅ Completado | Bugs - Evidencias | Wizard no sube archivos | Wizard maneja archivos correctamente |
 | B2a | ✅ Completado | Bugs - Navegación | Proyectos no llevan a hallazgos | Hay columna y navegación |
-| B2b | ⚠️ Parcial | Bugs - Navegación | Clientes redirige a dashboard | Ruta `/clients/:id` no existe, pendiente de VALIDACION | 
-| B2c | ⚠️ Parcial | Bugs - Navegación | Botón “Nuevo Proyecto” va a `/projects/new` | Redirige mal, pero creación funciona |
+| B2b | ✅ Completado | Bugs - Navegación | Clientes redirige a dashboard | Ruta `/clients/:id` no existe| 
+| B2c | ✅ Completado | Bugs - Navegación | Botón “Nuevo Proyecto” va a `/projects/new` | Redirige mal, pero creación funciona |
 | B2d | ✅ Completado | Bugs - Navegación | Botón “Nuevo Cliente” va a `/clients/new` | Corregido navegación y creación |
 | B3a | ✅ Completado | Bugs - Branding | Logo/Favicon no se aplica | BrandingService funciona correctamente |
 | B3b | ✅ Completado | Bugs - Branding | Archivos de branding no se sirven públicamente | Sistema de branding implementado |
@@ -40,7 +40,7 @@ El sistema funciona en lo básico, pero hay problemas de navegación, branding, 
 | B5b |  Parcial | Bugs - Asignaciones | Endpoint `/assignments` no persiste | Endpoint verificado, error en persistencia |
 | B6a | ✅ Completado | Bugs - Export | URLs hardcodeadas a localhost | Reemplazado por environment.apiUrl |
 | B6b | ✅ Completado | Bugs - API | Clients usa API hardcodeada a localhost | Reemplazado por environment.apiUrl |
-| M1 | ⚠️ Parcial | Mejoras | SMTP test falla (Outlook 535) | Fix realizado, falta validar |
+| M1 | ✅ Completado | Mejoras | SMTP test falla (Outlook 535) | Fix realizado, falta validar |
 | M2 | ✅ Completado | Mejoras | Multi‑tenancy inconsistente | Unificado en módulo Projects |
 | M3 | ✅ Completado | Mejoras | Permisos de lectura por proyecto para clientes | Implementado visibleProjectIds |
 | M4 | ✅ Completado | Mejoras | Exceso de scripts / duplicidad | Scripts reorganizados y centralizados |

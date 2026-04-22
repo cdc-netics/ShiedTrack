@@ -10,6 +10,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule } from '@angular/material/select';
 import { MatDividerModule } from '@angular/material/divider';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
 import { environment } from '../../../../environments/environment';
 
@@ -341,10 +342,28 @@ import { environment } from '../../../../environments/environment';
               </mat-form-field>
             </div>
 
+            <div class="form-row">
+              <mat-form-field appearance="outline">
+                <mat-label>Reply-To</mat-label>
+                <input matInput [(ngModel)]="smtpConfig().replyTo" placeholder="security@shieldtrack.com">
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>Timeout (ms)</mat-label>
+                <input matInput type="number" [(ngModel)]="smtpConfig().timeoutMs" placeholder="10000">
+              </mat-form-field>
+            </div>
+
             <!-- Security Toggle -->
              <div class="form-field">
               <mat-slide-toggle [(ngModel)]="smtpConfig().secure">
                 Usar SSL/TLS
+              </mat-slide-toggle>
+            </div>
+
+            <div class="form-field">
+              <mat-slide-toggle [(ngModel)]="smtpConfig().tlsRejectUnauthorized">
+                Validar certificado TLS del servidor
               </mat-slide-toggle>
             </div>
 
@@ -379,15 +398,16 @@ import { environment } from '../../../../environments/environment';
             </mat-panel-description>
           </mat-expansion-panel-header>
 
-          <div class="form-field">
-            <mat-slide-toggle [(ngModel)]="config().emailNotifications">
-              Notificaciones por email
-            </mat-slide-toggle>
-          </div>
-          <p class="hint-text">Configure las credenciales en el panel "Servidor SMTP" arriba.</p>
-          
+          <p class="info-text">
+            <mat-icon class="info-icon">info</mat-icon>
+            Las reglas y plantillas ahora se administran desde un modulo dedicado.
+          </p>
+          <p class="hint-text">
+            Desde ahi puedes activar eventos, seleccionar destinatarios por rol, usuario o email, y asignar plantillas por tenant o proyecto.
+          </p>
+
           <mat-action-row>
-            <button mat-button color="primary" (click)="saveConfig()">Guardar</button>
+            <button mat-raised-button color="primary" (click)="openNotificationCenter()">Abrir Centro de Notificaciones</button>
           </mat-action-row>
         </mat-expansion-panel>
 
@@ -638,6 +658,7 @@ import { environment } from '../../../../environments/environment';
 export class SystemConfigComponent implements OnInit {
   // Servicio HTTP y estado de permisos
   private http = inject(HttpClient);
+  private router = inject(Router);
   authService = inject(AuthService);
 
   // Estado UI
@@ -651,7 +672,10 @@ export class SystemConfigComponent implements OnInit {
     pass: '',
     secure: false,
     fromEmail: 'noreply@shieldtrack.com',
-    fromName: 'ShieldTrack Security'
+    fromName: 'ShieldTrack Security',
+    replyTo: '',
+    timeoutMs: 10000,
+    tlsRejectUnauthorized: true
   });
 
   // Configuracion general del sistema (mock/placeholder)
@@ -730,7 +754,10 @@ export class SystemConfigComponent implements OnInit {
           pass: config.smtp_pass || '', // Masked *******
           secure: config.smtp_secure || false,
           fromEmail: config.smtp_from_email || '',
-          fromName: config.smtp_from_name || ''
+          fromName: config.smtp_from_name || '',
+          replyTo: config.smtp_reply_to || '',
+          timeoutMs: config.smtp_timeout_ms || 10000,
+          tlsRejectUnauthorized: config.smtp_tls_reject_unauthorized !== false
         });
       },
       error: (err) => console.error('Error loading SMTP config:', err)
@@ -748,7 +775,10 @@ export class SystemConfigComponent implements OnInit {
       smtp_user: this.smtpConfig().user,
       smtp_pass: this.smtpConfig().pass,
       smtp_from_email: this.smtpConfig().fromEmail,
-      smtp_from_name: this.smtpConfig().fromName
+      smtp_from_name: this.smtpConfig().fromName,
+      smtp_reply_to: this.smtpConfig().replyTo,
+      smtp_timeout_ms: this.smtpConfig().timeoutMs,
+      smtp_tls_reject_unauthorized: this.smtpConfig().tlsRejectUnauthorized
     };
 
     // Si viene enmascarada, el backend debe ignorar la actualizacion de clave
@@ -761,6 +791,7 @@ export class SystemConfigComponent implements OnInit {
     console.log('Guardando SMTP:', data);
     this.http.put(`${environment.apiUrl}/system-config/smtp`, data).subscribe({next: () => {
         alert('Configuracion SMTP guardada exitosamente');
+        this.loadSmtpConfig();
       },
       error: (error) => {
         console.error('Error saving SMTP:', error);
@@ -839,6 +870,11 @@ export class SystemConfigComponent implements OnInit {
       return false;
     }
 
+    if (!Number.isFinite(Number(smtp.timeoutMs)) || Number(smtp.timeoutMs) < 0) {
+      alert('El timeout SMTP debe ser un numero mayor o igual a 0.');
+      return false;
+    }
+
     return true;
   }
 
@@ -856,6 +892,10 @@ export class SystemConfigComponent implements OnInit {
   isOwner(): boolean {
     // Permiso para configuracion global
     return this.authService.currentUser()?.role === 'OWNER';
+  }
+
+  openNotificationCenter(): void {
+    this.router.navigate(['/admin/notifications']);
   }
 
   generateCodePreview(): string {

@@ -23,6 +23,42 @@ export enum UserRole {
 }
 
 /**
+ * Eventos configurables del sistema de notificaciones
+ */
+export enum NotificationEvent {
+  USER_CREATED = 'USER_CREATED',
+  USER_ASSIGNED_AREA = 'USER_ASSIGNED_AREA',
+  FINDING_ASSIGNED = 'FINDING_ASSIGNED',
+  FINDING_CLOSED = 'FINDING_CLOSED',
+  RETEST_UPCOMING = 'RETEST_UPCOMING',
+}
+
+/**
+ * Alcance de una regla o plantilla de notificación
+ */
+export enum NotificationScope {
+  GLOBAL = 'GLOBAL',
+  TENANT = 'TENANT',
+  PROJECT = 'PROJECT',
+}
+
+/**
+ * Canales soportados por el motor de notificaciones
+ */
+export enum NotificationChannel {
+  EMAIL = 'EMAIL',
+}
+
+/**
+ * Tipos de destinatarios configurables en reglas
+ */
+export enum NotificationRecipientType {
+  ROLE = 'ROLE',
+  USER = 'USER',
+  EMAIL = 'EMAIL',
+}
+
+/**
  * Arquitectura de servicio de un proyecto
  */
 export enum ServiceArchitecture {

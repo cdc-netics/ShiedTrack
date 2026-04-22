@@ -50,10 +50,16 @@ export class SystemConfigController {
       smtp_pass: string;
       smtp_from_email: string;
       smtp_from_name: string;
+      smtp_reply_to?: string;
+      smtp_timeout_ms?: number;
+      smtp_tls_reject_unauthorized?: boolean;
     },
     @Request() req: any
   ) {
-    return this.systemConfigService.updateSmtpConfig(data, req.user.id);
+    return this.systemConfigService.updateSmtpConfig(
+      data,
+      req.user.userId?.toString?.() || req.user.id,
+    );
   }
 
   @Post('smtp/test')
@@ -88,7 +94,10 @@ export class SystemConfigController {
     },
     @Request() req: any
   ) {
-    return this.systemConfigService.updateBrandingConfig(data, req.user.id);
+    return this.systemConfigService.updateBrandingConfig(
+      data,
+      req.user.userId?.toString?.() || req.user.id,
+    );
   }
 
   @Post('branding/favicon')
