@@ -93,7 +93,12 @@ export class AuthService {
         savedUser.email,
         `${savedUser.firstName} ${savedUser.lastName}`,
         savedUser.role,
-        dto.password
+        dto.password,
+        {
+          tenantId:
+            savedUser.activeTenantId?.toString?.() ||
+            savedUser.clientId?.toString?.(),
+        },
       );
       this.logger.log(`Email de bienvenida enviado a ${savedUser.email}`);
     } catch (emailError) {

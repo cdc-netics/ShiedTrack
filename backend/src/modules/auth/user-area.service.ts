@@ -74,7 +74,10 @@ export class UserAreaService {
         await this.emailService.notifyUserAssignedToArea(
           user.email,
           `${user.firstName} ${user.lastName}`,
-          area.name
+          area.name,
+          {
+            tenantId: area.tenantId?.toString?.(),
+          },
         );
         this.logger.log(`Email de asignación de área enviado a ${user.email}`);
       }

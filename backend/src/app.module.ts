@@ -17,8 +17,10 @@ import { ExportModule } from './modules/export/export.module';
 import { TemplateModule } from './modules/template/template.module';
 import { BackupModule } from './modules/backup/backup.module';
 import { EmailModule } from './modules/email/email.module';
+import { NotificationModule } from './modules/notification/notification.module';
 import { CustomRoleModule } from './modules/custom-role/custom-role.module';
 import { TenantModule } from './modules/tenant/tenant.module';
+import { MetricsModule } from './modules/metrics/metrics.module';
 import { TenantContextGuard } from './common/guards/tenant-context.guard';
 import { TenantContextInterceptor } from './common/interceptors/tenant-context.interceptor';
 import { TenantContextMiddleware } from './common/middleware/tenant-context.middleware';
@@ -77,8 +79,10 @@ import { RootController } from './root.controller';
     TemplateModule,
     BackupModule,
     EmailModule,
+    NotificationModule,
     CustomRoleModule,
     TenantModule,
+    MetricsModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: TenantContextGuard },

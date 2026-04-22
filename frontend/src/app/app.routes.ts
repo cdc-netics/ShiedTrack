@@ -71,6 +71,10 @@ export const routes: Routes = [
         loadComponent: () => import('./features/admin/templates/template-list.component').then(m => m.TemplateListComponent)
       },
       {
+        path: 'admin/notifications',
+        loadComponent: () => import('./features/admin/notifications/notification-management.component').then(m => m.NotificationManagementComponent)
+      },
+      {
         path: 'admin/audit',
         loadComponent: () => import('./features/admin/audit/audit-log.component').then(m => m.AuditLogComponent)
       },

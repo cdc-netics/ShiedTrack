@@ -144,6 +144,17 @@ export class FindingService {
         finding.code || finding._id.toString(),
         finding.severity,
         this.getProjectName(project),
+        {
+          tenantId:
+            this.resolveFindingTenantId({
+              ...finding,
+              projectId: project || finding.projectId,
+            }) || project?.tenantId?.toString?.(),
+          projectId:
+            project?._id?.toString?.() ||
+            finding.projectId?._id?.toString?.() ||
+            finding.projectId?.toString?.(),
+        },
       );
 
       this.logger.log(`Email de hallazgo asignado enviado a ${assignedUser.email}`);
@@ -186,17 +197,29 @@ export class FindingService {
         (finding.projectId as any)?.projectName ||
         'Proyecto sin nombre';
 
-      for (const recipient of recipients.values()) {
-        await this.emailService.notifyFindingClosed(
-          recipient.email,
-          recipient.name,
-          finding.title,
-          finding.code || finding._id.toString(),
-          closeReason,
-          projectName,
-        );
+      if (recipients.size === 0) {
+        return;
+      }
 
-        this.logger.log(`Email de cierre enviado a ${recipient.email}`);
+      await this.emailService.notifyFindingClosed(
+        Array.from(recipients.values()).map((recipient) => ({
+          email: recipient.email,
+          name: recipient.name,
+        })),
+        finding.title,
+        finding.code || finding._id.toString(),
+        closeReason,
+        projectName,
+        {
+          tenantId: this.resolveFindingTenantId(finding),
+          projectId:
+            (finding.projectId as any)?._id?.toString?.() ||
+            finding.projectId?.toString?.(),
+        },
+      );
+
+      for (const recipient of recipients.values()) {
+        this.logger.log(`Email de cierre procesado para ${recipient.email}`);
       }
     } catch (emailError: any) {
       this.logger.warn(

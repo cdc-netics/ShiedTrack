@@ -34,6 +34,15 @@ export class SystemConfig extends Document {
   @Prop()
   smtp_from_name: string; // Nombre remitente (ej: ShieldTrack Notificaciones)
 
+  @Prop()
+  smtp_reply_to?: string;
+
+  @Prop({ default: 10000 })
+  smtp_timeout_ms?: number;
+
+  @Prop({ default: true })
+  smtp_tls_reject_unauthorized?: boolean;
+
   @Prop({ type: Types.ObjectId, ref: 'User' })
   lastModifiedBy?: Types.ObjectId; // Usuario que modificó por última vez
 
@@ -111,7 +120,20 @@ SystemConfigSchema.methods.getDecryptedCredentials = function() {
     from: {
       email: this.smtp_from_email,
       name: this.smtp_from_name
-    }
+    },
+    replyTo: this.smtp_reply_to,
+    timeoutMs: this.smtp_timeout_ms,
+    tlsRejectUnauthorized: this.smtp_tls_reject_unauthorized,
+    smtp_host: this.smtp_host,
+    smtp_port: this.smtp_port,
+    smtp_secure: this.smtp_secure,
+    smtp_user: decryptText(this.smtp_user_encrypted),
+    smtp_pass: decryptText(this.smtp_pass_encrypted),
+    smtp_from_email: this.smtp_from_email,
+    smtp_from_name: this.smtp_from_name,
+    smtp_reply_to: this.smtp_reply_to,
+    smtp_timeout_ms: this.smtp_timeout_ms,
+    smtp_tls_reject_unauthorized: this.smtp_tls_reject_unauthorized,
   };
 };
 
