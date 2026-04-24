@@ -45,7 +45,7 @@ El sistema funciona en lo básico, pero hay problemas de navegación, branding, 
 | M3 | ✅ Completado | Mejoras | Permisos de lectura por proyecto para clientes | Implementado visibleProjectIds |
 | M4 | ✅ Completado | Mejoras | Exceso de scripts / duplicidad | Scripts reorganizados y centralizados |
 | M5 | ❌ Pendiente | Mejoras | Gestión avanzada de notificaciones por correo | Configurar reglas y plantillas |
-| M6 | ❌ Pendiente | Mejoras | Métricas/estadísticas exportables para BI | Integración con Metabase/PowerBI |
+| M6 | ⚠️ Revisar | Mejoras | Métricas/estadísticas exportables para BI | Integración con Metabase/PowerBI |
 
 ---
 
