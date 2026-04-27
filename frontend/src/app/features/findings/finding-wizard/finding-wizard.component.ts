@@ -100,6 +100,7 @@ interface Template {
                     <input matInput 
                            formControlName="clientName"
                            [matAutocomplete]="clientAuto"
+                           (focus)="onClientInputFocus()"
                            placeholder="Escribe o selecciona"
                            required>
                     <mat-icon matSuffix>business</mat-icon>
@@ -124,6 +125,7 @@ interface Template {
                     <input matInput 
                            formControlName="projectName"
                            [matAutocomplete]="projectAuto"
+                           (focus)="onProjectInputFocus()"
                            placeholder="Escribe o selecciona"
                            required>
                     <mat-icon matSuffix>folder</mat-icon>
@@ -566,10 +568,31 @@ export class FindingWizardComponent implements OnInit {
   }
 
   setupProjectFilter(): void {
-    // Filtra proyectos en base al texto ingresado
+    // Filtra proyectos según clientId y búsqueda por nombre
     this.basicForm.get('projectName')?.valueChanges.subscribe(value => {
+      const clientId = this.basicForm.value.clientId;
+      
+      // Si no hay cliente seleccionado, no mostrar proyectos
+      if (!clientId || clientId === 'new') {
+        this.filteredProjects.set([]);
+        this.showCreateProject.set(false);
+        return;
+      }
+
+      // Si el valor es un objeto (proyecto seleccionado), mostrar lista completa del cliente
+      if (typeof value === 'object' && value !== null) {
+        const allProjects = this.projectService.projects();
+        const clientProjects = allProjects.filter(p => p.clientId === clientId);
+        this.filteredProjects.set(clientProjects);
+        this.showCreateProject.set(false);
+        return;
+      }
+
+      // Aplicar filtro de búsqueda solo en proyectos del cliente seleccionado
       const filter = typeof value === 'string' ? value.toLowerCase() : '';
-      const filtered = this.projectService.projects().filter(p => 
+      const allProjects = this.projectService.projects();
+      const clientProjects = allProjects.filter(p => p.clientId === clientId);
+      const filtered = clientProjects.filter(p => 
         p.name.toLowerCase().includes(filter)
       );
       this.filteredProjects.set(filtered);
@@ -623,6 +646,13 @@ export class FindingWizardComponent implements OnInit {
   setupClientFilter(): void {
     // Filtra clientes en base al texto ingresado
     this.basicForm.get('clientName')?.valueChanges.subscribe(value => {
+      // Si el valor es un objeto (cliente seleccionado), mostrar lista completa
+      if (typeof value === 'object' && value !== null) {
+        this.filteredClients.set(this.clients());
+        this.showCreateClient.set(false);
+        return;
+      }
+      
       const filter = typeof value === 'string' ? value.toLowerCase() : '';
       const filtered = this.clients().filter(c => 
         c.name.toLowerCase().includes(filter)
@@ -630,6 +660,25 @@ export class FindingWizardComponent implements OnInit {
       this.filteredClients.set(filtered);
       this.showCreateClient.set(filter.length > 0 && filtered.length === 0);
     });
+  }
+
+  onClientInputFocus(): void {
+    // Cuando el usuario hace click en el input, mostrar todos los clientes
+    // Permite cambiar de cliente incluso después de haber seleccionado uno
+    this.filteredClients.set(this.clients());
+    this.showCreateClient.set(false);
+  }
+
+  onProjectInputFocus(): void {
+    // Cuando el usuario hace click en el input de proyecto, mostrar todos los proyectos del cliente
+    // Permite cambiar de proyecto incluso después de haber seleccionado uno
+    const clientId = this.basicForm.value.clientId;
+    if (clientId && clientId !== 'new') {
+      const allProjects = this.projectService.projects();
+      const clientProjects = allProjects.filter(p => p.clientId === clientId);
+      this.filteredProjects.set(clientProjects);
+      this.showCreateProject.set(false);
+    }
   }
 
   selectClient(client: any): void {
