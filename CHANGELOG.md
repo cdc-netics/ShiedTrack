@@ -8,6 +8,13 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 ## [Unreleased]
 
 
+## [2.1.1] - 2026-04-2
+### 🎯 Resumen de Cambios
+
+- FIX en api de authenticacion
+- Actualizacion de ISSUES/BUG
+
+
 ## [2.1.0] - 2026-04-24
 ### 🎯 Resumen de Cambios
 

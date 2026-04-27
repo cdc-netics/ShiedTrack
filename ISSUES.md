@@ -243,6 +243,20 @@ El sistema funciona en lo básico, pero hay problemas de navegación, branding, 
   const API_URL = `${environment.apiUrl}/clients`;
   ```
 
+#### **B7a — Nuevo Hallazgo - Wizard Profesional**
+- **Estado:** Pendiente  
+- **Descripción:** Al seleccionar cliente, si me equivoco en seleccionar, comboBox `Cliente**` no me permite seleccionar otro, por ende debo salir y crear nuevamente.  
+- **Solución sugerida (simple):** Mostrar en todo momento la lista total de Clientes.  
+- **Recomendación técnica (correcta):**    PENDIENTE
+
+#### **B7b — Nuevo Hallazgo - Wizard Profesional  proyecto**
+- **Estado:** Pendiente  
+- **Descripción:** Al seleccionar cliente, en el cuadro `Proyecto **` no se pobla con la infomracion, si escribo algo, elimino, recien en ese momento me pobla con la informacion ya existente, existe un lag
+- **Solución sugerida (simple):** Mostrar en todo momento la lista total de proyectos
+- **Recomendación técnica (correcta):**   PENDIENTE
+
+  
+
 ---
 
 ### Sección C — Mejoras y Deuda Técnica (Mejoras)
