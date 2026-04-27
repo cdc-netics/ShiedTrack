@@ -73,6 +73,14 @@ export class MongoDBConnectionService {
    * Diagnostica y repara problemas comunes de MongoDB
    */
   private async diagnoseAndRepair(): Promise<void> {
+    const mongoUri = this.configService.get<string>('MONGODB_URI', '');
+    const isExternalMongo = mongoUri && !mongoUri.includes('localhost') && !mongoUri.includes('127.0.0.1');
+
+    if (isExternalMongo) {
+      this.logger.log('🌐 Detectada conexión a MongoDB externa. Saltando diagnóstico e inicio local.');
+      return;
+    }
+
     this.logger.log('🔍 DIAGNOSTICANDO problemas de MongoDB...');
 
     // 1. Verificar si el puerto 27017 está ocupado

@@ -187,8 +187,8 @@ export class UserDialogComponent {
 
   userForm: FormGroup;
   private API_URL = `${environment.apiUrl}/auth`;
-  private CLIENTS_URL = `/api/clients`;
-  private AREAS_URL = `/api/areas`;
+  private CLIENTS_URL = `${environment.apiUrl}/clients`;
+  private AREAS_URL = `${environment.apiUrl}/areas`;
 
   constructor(@Inject(MAT_DIALOG_DATA) public data: any) {
     console.log('[UserDialog] Constructor - Datos recibidos:', this.data);

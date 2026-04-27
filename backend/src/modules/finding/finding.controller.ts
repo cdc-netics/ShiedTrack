@@ -33,7 +33,7 @@ import {
 } from '../../common/enums';
 
 @ApiTags('Findings')
-@Controller('api/findings')
+@Controller('findings')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @ApiBearerAuth('JWT-auth')
 export class FindingController {

@@ -9,6 +9,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { HttpClient } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
+import { environment } from '../../../../environments/environment';
 
 interface Area {
   _id: string;
@@ -220,7 +221,7 @@ export class AssignAreasDialogComponent implements OnInit {
       const clientId = this.data.user.clientId;
       
       // Construir URL dependiendo de si hay cliente o no
-      let url = '/api/areas';
+      let url = `${environment.apiUrl}/areas`;
       if (clientId) {
         url += `?clientId=${clientId}`;
       }
@@ -231,7 +232,7 @@ export class AssignAreasDialogComponent implements OnInit {
 
       // Cargar áreas ya asignadas al usuario
       const assignments = await this.http.get<UserAreaAssignment[]>(
-        `/api/auth/users/${this.data.user._id}/areas`
+        `${environment.apiUrl}/auth/users/${this.data.user._id}/areas`
       ).toPromise();
       this.currentAssignments.set(assignments || []);
 
@@ -259,7 +260,7 @@ export class AssignAreasDialogComponent implements OnInit {
     try {
       // Enviar todas las áreas seleccionadas (reemplaza las anteriores)
       await this.http.post(
-        `/api/auth/users/${this.data.user._id}/areas/bulk`,
+        `${environment.apiUrl}/auth/users/${this.data.user._id}/areas/bulk`,
         { areaIds: this.selectedAreaIds }
       ).toPromise();
 

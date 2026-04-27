@@ -14,7 +14,7 @@ import { UserRole } from '../../common/enums';
  * 3 niveles: Proyecto (Excel/CSV/JSON), Tenant (ZIP), Sistema (JSON backup)
  */
 @ApiTags('Export')
-@Controller('api/export')
+@Controller('export')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @ApiBearerAuth('JWT-auth')
 export class ExportController {

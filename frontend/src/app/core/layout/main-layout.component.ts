@@ -14,6 +14,7 @@ import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { AuthService } from '../services/auth.service';
 import { ThemeService } from '../services/theme.service';
+import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-main-layout',
@@ -196,7 +197,7 @@ export class MainLayoutComponent implements OnInit, AfterViewInit {
 
     try {
       this.currentTenant = await firstValueFrom(
-        this.http.get(`/api/clients/${clientId}`),
+        this.http.get(`${environment.apiUrl}/clients/${clientId}`),
       );
     } catch (error) {
       console.error('Error al cargar tenant actual:', error);

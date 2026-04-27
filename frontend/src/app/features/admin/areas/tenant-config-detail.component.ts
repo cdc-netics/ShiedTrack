@@ -390,7 +390,7 @@ export class TenantConfigDetailComponent implements OnInit {
     const id = this.tenantId();
     if (!id) return;
 
-    this.http.get<TenantConfig>(`${environment.apiUrl}/api/areas/${id}`).subscribe({
+    this.http.get<TenantConfig>(`${environment.apiUrl}/areas/${id}`).subscribe({
       next: (data) => {
         this.config.set(data);
       },
@@ -436,7 +436,7 @@ export class TenantConfigDetailComponent implements OnInit {
     console.log('Guardando configuración del tenant:', this.config());
     
     // En una implementación real, se enviaría al backend
-    this.http.put(`${environment.apiUrl}/api/areas/${id}`, this.config()).subscribe({
+    this.http.put(`${environment.apiUrl}/areas/${id}`, this.config()).subscribe({
       next: () => {
         this.snackBar.open('✅ Configuración guardada correctamente', 'Cerrar', { duration: 3000 });
       },

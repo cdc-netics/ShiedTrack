@@ -27,7 +27,7 @@ import { UserRole } from '../../common/enums';
  * Maneja upload y download seguro de archivos con validación JWT
  */
 @ApiTags('Evidence')
-@Controller('api/evidence')
+@Controller('evidence')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @ApiBearerAuth('JWT-auth')
 export class EvidenceController {

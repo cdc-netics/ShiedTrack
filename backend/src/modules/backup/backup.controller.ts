@@ -14,7 +14,7 @@ import { Throttle } from '@nestjs/throttler';
  * SOLO accesible por rol OWNER
  */
 @ApiTags('Backup')
-@Controller('api/backup')
+@Controller('backup')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @ApiBearerAuth('JWT-auth')
 @Roles(UserRole.OWNER)

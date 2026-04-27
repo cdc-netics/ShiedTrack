@@ -7,6 +7,17 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 ## [Unreleased]
 
+
+## [2.1.0] - 2026-04-24
+### 🎯 Resumen de Cambios
+
+- Finalizacion de ISSUES
+- Generacion de Docker Files
+- Generacion de Compose
+- Actualizacion de CHANGELOG y Readme
+
+
+
 ## [2.0.0] - 2026-02-05
 
 ### 🎯 Resumen de Cambios

@@ -13,7 +13,7 @@ import { UserRole } from '../../common/enums';
  * Base de conocimiento para acelerar la carga de hallazgos repetitivos
  */
 @ApiTags('Templates')
-@Controller('api/templates')
+@Controller('templates')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @ApiBearerAuth('JWT-auth')
 export class TemplateController {

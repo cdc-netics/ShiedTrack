@@ -46,6 +46,18 @@ npm start
 npm run start:linux
 ```
 
+
+
+## 🚀 Inicio con docket compose
+
+```bash
+# Iniciar todo el sistema con docker
+docker-compose up --build -d
+
+```
+
+
+
 ---
 
 ## 🏗️ Arquitectura de Referencia
