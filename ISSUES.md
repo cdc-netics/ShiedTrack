@@ -40,6 +40,8 @@ El sistema funciona en lo básico, pero hay problemas de navegación, branding, 
 | B5b |  Parcial | Bugs - Asignaciones | Endpoint `/assignments` no persiste | Endpoint verificado, error en persistencia |
 | B6a | ✅ Completado | Bugs - Export | URLs hardcodeadas a localhost | Reemplazado por environment.apiUrl |
 | B6b | ✅ Completado | Bugs - API | Clients usa API hardcodeada a localhost | Reemplazado por environment.apiUrl |
+| B7a | ✅ Completado | Bugs - Frontend | Nuevo Hallazgo - Wizard Profesional, seleccion de cliente no permite corregir | Agregado evento focus para mostrar lista completa |
+| B7b | ✅ Completado | Bugs - Frontend | Wizard Profesional campo proyecto no carga de forma inmediata toda la informacion | Mejorado setupProjectFilter y agregado onProjectInputFocus |
 | M1 | ✅ Completado | Mejoras | SMTP test falla (Outlook 535) | Fix realizado, falta validar |
 | M2 | ✅ Completado | Mejoras | Multi‑tenancy inconsistente | Unificado en módulo Projects |
 | M3 | ✅ Completado | Mejoras | Permisos de lectura por proyecto para clientes | Implementado visibleProjectIds |
@@ -244,16 +246,72 @@ El sistema funciona en lo básico, pero hay problemas de navegación, branding, 
   ```
 
 #### **B7a — Nuevo Hallazgo - Wizard Profesional**
-- **Estado:** Pendiente  
-- **Descripción:** Al seleccionar cliente, si me equivoco en seleccionar, comboBox `Cliente**` no me permite seleccionar otro, por ende debo salir y crear nuevamente.  
-- **Solución sugerida (simple):** Mostrar en todo momento la lista total de Clientes.  
-- **Recomendación técnica (correcta):**    PENDIENTE
+- **Estado:** ✅ Completado
+- **Descripción:** Al seleccionar cliente, si me equivoco en seleccionar, comboBox `Cliente` no permite seleccionar otro, por ende debo salir y crear nuevamente.
+- **Solución sugerida (simple):** Mostrar en todo momento la lista total de Clientes.
+- **Recomendación técnica (correcta):**    
+  **Problema raíz:** Cuando el usuario selecciona un cliente, el campo `clientName` se actualiza con el nombre del cliente seleccionado. Esto dispara `valueChanges`, lo que aplica un filtro que solo muestra el cliente seleccionado.
+  
+  **Solución implementada:**
+  - Agregado evento `(focus)="onClientInputFocus()"` al input del cliente en el template
+  - Método `onClientInputFocus()` resetea `filteredClients` a la lista completa de clientes
+  - Cuando el usuario hace click en el input, siempre ve la lista completa, permitiendo cambiar de cliente
+  
+  **Cambios en código:**
+  ```ts
+  onClientInputFocus(): void {
+    // Mostrar todos los clientes cuando el usuario hace focus
+    this.filteredClients.set(this.clients());
+    this.showCreateClient.set(false);
+  }
+  ```
 
-#### **B7b — Nuevo Hallazgo - Wizard Profesional  proyecto**
-- **Estado:** Pendiente  
-- **Descripción:** Al seleccionar cliente, en el cuadro `Proyecto **` no se pobla con la infomracion, si escribo algo, elimino, recien en ese momento me pobla con la informacion ya existente, existe un lag
-- **Solución sugerida (simple):** Mostrar en todo momento la lista total de proyectos
-- **Recomendación técnica (correcta):**   PENDIENTE
+#### **B7b — Nuevo Hallazgo - Wizard Profesional - campo Proyecto**
+- **Estado:** ✅ Completado
+- **Descripción:** Al seleccionar cliente, en el cuadro `Proyecto` no se pobla con la información. Si escribo algo, elimino, recién en ese momento se puebla con la información ya existente. Existe un lag.
+- **Solución sugerida (simple):** Mostrar en todo momento la lista total de proyectos del cliente
+- **Recomendación técnica (correcta):**
+  **Problema raíz:** El filtrado de proyectos no consideraba el `clientId` seleccionado, mostraba todos los proyectos del sistema. Además, no había evento `focus` para resetear la lista completa.
+  
+  **Solución implementada:**
+  - Mejorado `setupProjectFilter()` para filtrar solo proyectos del cliente seleccionado
+  - Agregado evento `(focus)="onProjectInputFocus()"` al input de proyecto
+  - Método `onProjectInputFocus()` muestra todos los proyectos del cliente seleccionado
+  - Ahora carga inmediata sin lag
+  
+  **Cambios en código:**
+  ```ts
+  setupProjectFilter(): void {
+    this.basicForm.get('projectName')?.valueChanges.subscribe(value => {
+      const clientId = this.basicForm.value.clientId;
+      
+      if (!clientId || clientId === 'new') {
+        this.filteredProjects.set([]);
+        return;
+      }
+      
+      // Filtrar proyectos solo del cliente seleccionado
+      const filter = typeof value === 'string' ? value.toLowerCase() : '';
+      const allProjects = this.projectService.projects();
+      const clientProjects = allProjects.filter(p => p.clientId === clientId);
+      const filtered = clientProjects.filter(p => 
+        p.name.toLowerCase().includes(filter)
+      );
+      this.filteredProjects.set(filtered);
+    });
+  }
+
+  onProjectInputFocus(): void {
+    // Mostrar todos los proyectos del cliente cuando hace focus
+    const clientId = this.basicForm.value.clientId;
+    if (clientId && clientId !== 'new') {
+      const allProjects = this.projectService.projects();
+      const clientProjects = allProjects.filter(p => p.clientId === clientId);
+      this.filteredProjects.set(clientProjects);
+      this.showCreateProject.set(false);
+    }
+  }
+  ```
 
   
 
