@@ -14,7 +14,7 @@ import { UserRole } from '../../common/enums';
  * Controller de autenticación y gestión de usuarios
  */
 @ApiTags('Auth')
-@Controller('api/auth')
+@Controller('auth')
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
@@ -39,6 +39,7 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'Login exitoso' })
   @ApiResponse({ status: 401, description: 'Credenciales inválidas' })
   async login(@Body() dto: LoginDto) {
+    console.log('🔐 Intento de login recibido:', { email: dto.email, hasPassword: !!dto.password });
     return this.authService.login(dto);
   }
 

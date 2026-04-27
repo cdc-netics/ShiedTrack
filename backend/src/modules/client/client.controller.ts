@@ -12,7 +12,7 @@ import { UserRole } from '../../common/enums';
  * Controller de gestión de Clientes (Tenants)
  */
 @ApiTags('Clients')
-@Controller('api/clients')
+@Controller('clients')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @ApiBearerAuth('JWT-auth')
 export class ClientController {

@@ -14,7 +14,7 @@ import { extname } from 'path';
  * SOLO accesible por rol OWNER
  */
 @ApiTags('System Config')
-@Controller('api/system-config')
+@Controller('system-config')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @ApiBearerAuth('JWT-auth')
 export class SystemConfigController {

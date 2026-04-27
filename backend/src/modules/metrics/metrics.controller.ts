@@ -34,7 +34,7 @@ import { UserRole } from '../../common/enums';
  *  - Aceptan filtros opcionales de rango de fechas y scoping por tenant/cliente/proyecto.
  */
 @ApiTags('Metrics')
-@Controller('api/metrics')
+@Controller('metrics')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @ApiBearerAuth('JWT-auth')
 @Roles(UserRole.OWNER, UserRole.PLATFORM_ADMIN)

@@ -46,6 +46,10 @@ async function bootstrap() {
 
   console.log('✅ MAIN.TS CARGADO - ShieldTrack backend arrancando...');
 
+  // Configuración de prefijo global para la API
+  app.setGlobalPrefix('api', {
+    exclude: ['/', 'favicon.ico'],
+  });
 
   // Registrar plugin global de Mongoose para filtro por tenant
   mongoose.plugin(tenantPlugin);
@@ -74,10 +78,12 @@ async function bootstrap() {
     fileSize: 50 * 1024 * 1024, // 50MB en bytes
   };
 
-  // Configuración CORS para permitir frontend en desarrollo
+  // Configuración CORS robusta
   app.enableCors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:4200',
+    origin: true, // Permitir cualquier origen en desarrollo para debugging
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
+    allowedHeaders: 'Content-Type, Accept, Authorization, X-Requested-With, X-Tenant-Id',
   });
 
   // Configuración de Swagger para documentación de API

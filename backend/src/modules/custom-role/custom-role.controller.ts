@@ -6,7 +6,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole } from '../../common/enums';
 
-@Controller('api/custom-roles')
+@Controller('custom-roles')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class CustomRoleController {
   constructor(private readonly customRoleService: CustomRoleService) {}

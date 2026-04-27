@@ -17,7 +17,7 @@ import { runWithTenant } from '../../common/utils/tenant-context';
  */
 @ApiTags('audit')
 @ApiBearerAuth()
-@Controller('api/audit')
+@Controller('audit')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class AuditController {
   constructor(private readonly auditService: AuditService) {}

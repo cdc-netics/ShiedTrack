@@ -171,9 +171,19 @@ export class AuthService {
     
     await user.save();
 
-    // Generar JWT
-    const payload = { sub: user._id, email: user.email, role: user.role };
+    // Generar JWT con información de contexto
+    const payload = { 
+      sub: user._id, 
+      email: user.email, 
+      role: user.role,
+      tenantId: user.activeTenantId || user.clientId 
+    };
     const accessToken = this.jwtService.sign(payload);
+
+    // Actualizar último login de forma asíncrona para no bloquear la respuesta
+    this.userModel.updateOne({ _id: user._id }, { lastLogin: new Date() }).exec().catch(err => {
+      this.logger.error(`Error actualizando lastLogin para ${user.email}: ${err.message}`);
+    });
 
     this.logger.log(`Login exitoso: ${user.email}`);
 
@@ -187,7 +197,7 @@ export class AuthService {
         role: user.role,
         clientId: user.clientId,
         tenantIds: user.tenantIds,
-        activeTenantId: user.activeTenantId,
+        activeTenantId: user.activeTenantId || user.clientId,
         mfaEnabled: user.mfaEnabled,
       },
     };

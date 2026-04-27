@@ -31,7 +31,7 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { UserRole, ProjectStatus } from '../../common/enums';
 
 @ApiTags('Projects')
-@Controller('api/projects')
+@Controller('projects')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @ApiBearerAuth('JWT-auth')
 export class ProjectController {

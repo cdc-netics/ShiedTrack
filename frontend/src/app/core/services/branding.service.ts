@@ -3,6 +3,8 @@ import { HttpClient } from '@angular/common/http';
 import { Observable, BehaviorSubject } from 'rxjs';
 import { tap } from 'rxjs/operators';
 
+import { environment } from '../../../environments/environment';
+
 export interface SystemBranding {
   appName: string;
   faviconUrl?: string;
@@ -19,7 +21,7 @@ export interface SystemBranding {
   providedIn: 'root'
 })
 export class BrandingService {
-  private readonly apiUrl = '/api/system-config/branding';
+  private readonly apiUrl = `${environment.apiUrl}/system-config/branding`;
   private brandingSubject = new BehaviorSubject<SystemBranding>({
     appName: 'ShieldTrack'
   });

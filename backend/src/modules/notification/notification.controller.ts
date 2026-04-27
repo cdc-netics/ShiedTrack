@@ -26,7 +26,7 @@ import {
 import { NotificationService } from './notification.service';
 
 @ApiTags('Notifications')
-@Controller('api/notifications')
+@Controller('notifications')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @ApiBearerAuth('JWT-auth')
 export class NotificationController {
