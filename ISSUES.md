@@ -42,6 +42,7 @@ El sistema funciona en lo básico, pero hay problemas de navegación, branding, 
 | B6b | ✅ Completado | Bugs - API | Clients usa API hardcodeada a localhost | Reemplazado por environment.apiUrl |
 | B7a | ✅ Completado | Bugs - Frontend | Nuevo Hallazgo - Wizard Profesional, seleccion de cliente no permite corregir | Agregado evento focus para mostrar lista completa |
 | B7b | ✅ Completado | Bugs - Frontend | Wizard Profesional campo proyecto no carga de forma inmediata toda la informacion | Corregido filtrado reactivo para soportar objetos poblados y tenantId |
+| B7c | ✅ Completado | Bugs - Frontend | Duración del proyecto no actualiza contador | Implementado seguimiento reactivo de fechas con signals |
 | B8a | ✅ Completado | Bugs - Backend | Error E11000 duplicidad en códigos VULN-000001 | Implementado correlativo por año con ordenamiento DESC robusto |
 | M1 | ✅ Completado | Mejoras | SMTP test falla (Outlook 535) | Fix realizado, falta validar |
 | M2 | ✅ Completado | Mejoras | Multi‑tenancy inconsistente | Unificado en módulo Projects |

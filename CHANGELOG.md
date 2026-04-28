@@ -12,6 +12,7 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 - **FIX (Backend):** Corregido error de clave duplicada (`E11000`) en la creación de hallazgos. Se implementó una nueva lógica de generación de códigos que incluye el año actual (ej. `VULN-2026-000001`) y asegura el correlativo más alto mediante ordenamiento descendente.
 - **FIX (Frontend):** Corregido fallo en el Wizard de Hallazgos donde la lista de proyectos no se cargaba tras seleccionar un cliente debido a una discrepancia en los tipos de datos (objeto vs string) del `clientId`.
+- **FIX (Frontend):** Corregido el bug en el detalle del proyecto donde el contador de "Duración del proyecto" no se actualizaba al cambiar las fechas de inicio y fin. Se implementaron signals reactivos para el seguimiento de cambios en el formulario.
 - **MEJORA (Backend):** Actualizado el endpoint de listado de proyectos para soportar filtrado explícito por `clientId`, mejorando la integración con los buscadores reactivos del frontend.
 
 ## [2.1.1] - 2026-04-22
