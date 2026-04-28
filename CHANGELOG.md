@@ -7,8 +7,14 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 ## [Unreleased]
 
+## [2.1.2] - 2026-04-28
+### 🎯 Resumen de Cambios
 
-## [2.1.1] - 2026-04-2
+- **FIX (Backend):** Corregido error de clave duplicada (`E11000`) en la creación de hallazgos. Se implementó una nueva lógica de generación de códigos que incluye el año actual (ej. `VULN-2026-000001`) y asegura el correlativo más alto mediante ordenamiento descendente.
+- **FIX (Frontend):** Corregido fallo en el Wizard de Hallazgos donde la lista de proyectos no se cargaba tras seleccionar un cliente debido a una discrepancia en los tipos de datos (objeto vs string) del `clientId`.
+- **MEJORA (Backend):** Actualizado el endpoint de listado de proyectos para soportar filtrado explícito por `clientId`, mejorando la integración con los buscadores reactivos del frontend.
+
+## [2.1.1] - 2026-04-22
 ### 🎯 Resumen de Cambios
 
 - FIX en api de authenticacion
@@ -468,11 +474,6 @@ Creado nuevo archivo de referencia:
 - Actualizado estado del proyecto a **🚧 EN DESARROLLO**.
 - Reorganización de documentación: reportes antiguos movidos a `docs/archive/`.
 - Actualizado `README.md` con instrucciones de instalación consolidadas.
-
-### 🐛 Correcciones
-- Solucionado error 500 en asignación masiva de áreas.
-- Limpieza de datos de prueba y basura en base de datos.
-- Corregida visibilidad de áreas para usuarios sin cliente asignado.
 
 ## [1.0.0] - 2025-12-22
 

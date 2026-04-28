@@ -1,4 +1,4 @@
-import { Component, inject, signal, OnInit, ViewChild, ElementRef } from '@angular/core';
+import { Component, inject, signal, computed, OnInit, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
@@ -10,7 +10,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatChipsModule } from '@angular/material/chips';
-import { MatAutocompleteModule } from '@angular/material/autocomplete';
+import { MatAutocompleteModule, MatAutocompleteTrigger } from '@angular/material/autocomplete';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -64,7 +64,7 @@ interface Template {
             <mat-step [stepControl]="basicForm">
               <ng-template matStepLabel>Información Básica</ng-template>
               <form [formGroup]="basicForm" class="wizard-form">
-                
+
                 <!-- BUSCADOR DE PLANTILLAS -->
                 <div class="template-section">
                   <mat-form-field appearance="outline" class="full-width">
@@ -97,10 +97,11 @@ interface Template {
                 <div class="form-row">
                   <mat-form-field appearance="outline">
                     <mat-label>Cliente *</mat-label>
-                    <input matInput 
+                    <input matInput
                            formControlName="clientName"
                            [matAutocomplete]="clientAuto"
-                           (focus)="onClientInputFocus()"
+                           #clientTrigger="matAutocompleteTrigger"
+                           (focus)="onClientInputFocus(clientTrigger)"
                            placeholder="Escribe o selecciona"
                            required>
                     <mat-icon matSuffix>business</mat-icon>
@@ -125,7 +126,8 @@ interface Template {
                     <input matInput 
                            formControlName="projectName"
                            [matAutocomplete]="projectAuto"
-                           (focus)="onProjectInputFocus()"
+                           #projectTrigger="matAutocompleteTrigger"
+                           (focus)="onProjectInputFocus(projectTrigger)"
                            placeholder="Escribe o selecciona"
                            required>
                     <mat-icon matSuffix>folder</mat-icon>
@@ -502,12 +504,56 @@ export class FindingWizardComponent implements OnInit {
     { id: 5, name: 'Path Traversal', severity: 'HIGH', description: 'Acceso a archivos del sistema', cvssScore: 8.2, cweId: 'CWE-22' },
   ]);
   filteredTemplates = signal(this.templates());
+
   // Datos para autocompletados de cliente y proyecto
   clients = signal<any[]>([]);
-  filteredClients = signal<any[]>([]);
-  showCreateClient = signal(false);
-  filteredProjects = signal<any[]>([]);
-  showCreateProject = signal(false);
+  private clientSearchSignal = signal<string>('');
+  private clientIdSignal = signal<string | null>(null);
+  private projectSearchSignal = signal<string>('');
+
+  filteredClients = computed(() => {
+    const all = this.clients();
+    const search = this.clientSearchSignal().toLowerCase();
+    if (!search) return all;
+    return all.filter(c => c.name.toLowerCase().includes(search));
+  });
+
+  showCreateClient = computed(() => {
+    const search = this.clientSearchSignal();
+    const filtered = this.filteredClients();
+    return search.length > 0 && filtered.length === 0;
+  });
+
+  // Proyectos: reactivos a clientIdSignal y projectService.projects()
+  currentClientProjects = computed(() => {
+    const clientId = this.clientIdSignal();
+    const projects = this.projectService.projects();
+    if (!clientId || clientId === 'new') return [];
+    
+    return projects.filter(p => {
+      // Manejar clientId como string o como objeto poblado
+      const pClientId = typeof p.clientId === 'object' ? (p.clientId as any)?._id : p.clientId;
+      
+      // Intentar matchear por clientId o por tenantId (que suelen ser lo mismo en este contexto)
+      const pTenantId = (p as any).tenantId;
+      
+      return pClientId === clientId || pTenantId === clientId;
+    });
+  });
+
+  filteredProjects = computed(() => {
+    const projects = this.currentClientProjects();
+    const search = this.projectSearchSignal().toLowerCase();
+    if (!search) return projects;
+    return projects.filter(p => p.name.toLowerCase().includes(search));
+  });
+
+  showCreateProject = computed(() => {
+    const search = this.projectSearchSignal();
+    const filtered = this.filteredProjects();
+    return search.length > 0 && filtered.length === 0;
+  });
+
   // Archivos adjuntos y estado de envio
   selectedFiles = signal<File[]>([]);
   submitting = signal(false);
@@ -531,7 +577,7 @@ export class FindingWizardComponent implements OnInit {
     // Inicializa formularios y listas base del wizard
     this.initForms();
     this.loadClients();
-    this.projectService.loadProjects({});
+    this.projectService.loadProjects({}).subscribe();
     this.generateCode();
     this.setupClientFilter();
     this.setupProjectFilter();
@@ -568,35 +614,13 @@ export class FindingWizardComponent implements OnInit {
   }
 
   setupProjectFilter(): void {
-    // Filtra proyectos según clientId y búsqueda por nombre
+    // Sincroniza el valor del input con el signal de búsqueda
     this.basicForm.get('projectName')?.valueChanges.subscribe(value => {
-      const clientId = this.basicForm.value.clientId;
-      
-      // Si no hay cliente seleccionado, no mostrar proyectos
-      if (!clientId || clientId === 'new') {
-        this.filteredProjects.set([]);
-        this.showCreateProject.set(false);
-        return;
+      if (typeof value === 'string') {
+        this.projectSearchSignal.set(value);
+      } else {
+        this.projectSearchSignal.set('');
       }
-
-      // Si el valor es un objeto (proyecto seleccionado), mostrar lista completa del cliente
-      if (typeof value === 'object' && value !== null) {
-        const allProjects = this.projectService.projects();
-        const clientProjects = allProjects.filter(p => p.clientId === clientId);
-        this.filteredProjects.set(clientProjects);
-        this.showCreateProject.set(false);
-        return;
-      }
-
-      // Aplicar filtro de búsqueda solo en proyectos del cliente seleccionado
-      const filter = typeof value === 'string' ? value.toLowerCase() : '';
-      const allProjects = this.projectService.projects();
-      const clientProjects = allProjects.filter(p => p.clientId === clientId);
-      const filtered = clientProjects.filter(p => 
-        p.name.toLowerCase().includes(filter)
-      );
-      this.filteredProjects.set(filtered);
-      this.showCreateProject.set(filter.length > 0 && filtered.length === 0);
     });
   }
 
@@ -605,7 +629,6 @@ export class FindingWizardComponent implements OnInit {
     this.http.get<any[]>(`${environment.apiUrl}/clients`).subscribe({
       next: (clients) => {
         this.clients.set(clients);
-        this.filteredClients.set(clients);
       },
       error: (err) => console.error('Error loading clients:', err)
     });
@@ -644,41 +667,31 @@ export class FindingWizardComponent implements OnInit {
   }
 
   setupClientFilter(): void {
-    // Filtra clientes en base al texto ingresado
+    // Sincroniza el nombre del cliente con el signal de búsqueda
     this.basicForm.get('clientName')?.valueChanges.subscribe(value => {
-      // Si el valor es un objeto (cliente seleccionado), mostrar lista completa
-      if (typeof value === 'object' && value !== null) {
-        this.filteredClients.set(this.clients());
-        this.showCreateClient.set(false);
-        return;
+      if (typeof value === 'string') {
+        this.clientSearchSignal.set(value);
+      } else {
+        this.clientSearchSignal.set('');
       }
-      
-      const filter = typeof value === 'string' ? value.toLowerCase() : '';
-      const filtered = this.clients().filter(c => 
-        c.name.toLowerCase().includes(filter)
-      );
-      this.filteredClients.set(filtered);
-      this.showCreateClient.set(filter.length > 0 && filtered.length === 0);
+    });
+
+    // Sincroniza el clientId con el signal reactivo
+    this.basicForm.get('clientId')?.valueChanges.subscribe(clientId => {
+      this.clientIdSignal.set(clientId);
     });
   }
 
-  onClientInputFocus(): void {
-    // Cuando el usuario hace click en el input, mostrar todos los clientes
-    // Permite cambiar de cliente incluso después de haber seleccionado uno
-    this.filteredClients.set(this.clients());
-    this.showCreateClient.set(false);
+  onClientInputFocus(trigger: MatAutocompleteTrigger): void {
+    // Mostrar todos los clientes al hacer focus
+    this.clientSearchSignal.set('');
+    trigger.openPanel();
   }
 
-  onProjectInputFocus(): void {
-    // Cuando el usuario hace click en el input de proyecto, mostrar todos los proyectos del cliente
-    // Permite cambiar de proyecto incluso después de haber seleccionado uno
-    const clientId = this.basicForm.value.clientId;
-    if (clientId && clientId !== 'new') {
-      const allProjects = this.projectService.projects();
-      const clientProjects = allProjects.filter(p => p.clientId === clientId);
-      this.filteredProjects.set(clientProjects);
-      this.showCreateProject.set(false);
-    }
+  onProjectInputFocus(trigger: MatAutocompleteTrigger): void {
+    // Mostrar todos los proyectos del cliente al hacer focus
+    this.projectSearchSignal.set('');
+    trigger.openPanel();
   }
 
   selectClient(client: any): void {
@@ -694,7 +707,11 @@ export class FindingWizardComponent implements OnInit {
         clientName: client.name
       });
     }
+    // Al seleccionar o cambiar cliente, resetear proyecto
+    this.basicForm.get('projectName')?.reset('');
+    this.projectSearchSignal.set('');
   }
+
 
   generateCode(): void {
     // Genera un codigo de hallazgo simple basado en timestamp

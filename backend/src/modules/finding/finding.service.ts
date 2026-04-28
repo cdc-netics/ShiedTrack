@@ -361,17 +361,19 @@ export class FindingService {
       if (firstArea.findingCodePrefix) prefix = firstArea.findingCodePrefix;
     } else if (project.areaId && (project.areaId as any).findingCodePrefix) {
       prefix = (project.areaId as any).findingCodePrefix;
-    } else {
-      await this.systemConfigModel.findOne({ configKey: 'smtp_config' });
     }
 
-    const regex = new RegExp(`^${prefix}-\\d+$`);
+    const year = new Date().getFullYear();
+    const codePrefix = `${prefix}-${year}-`;
+    const regex = new RegExp(`^${codePrefix}\\d+$`);
+
+    // Buscar el último código usando el prefijo con año y ordenando por código DESC
     const lastFinding = await this.findingModel
       .findOne({
         tenantId: this.toObjectId(currentTenantId),
         code: { $regex: regex },
       })
-      .sort({ createdAt: -1 })
+      .sort({ code: -1 })
       .select('code');
 
     let nextNum = 1;
@@ -383,11 +385,11 @@ export class FindingService {
       }
     }
 
-    const generatedCode = `${prefix}-${String(nextNum).padStart(6, '0')}`;
+    const generatedCode = `${codePrefix}${String(nextNum).padStart(6, '0')}`;
 
     const finding = new this.findingModel({
       ...dto,
-      code: generatedCode,
+      code: dto.code || generatedCode,
       createdBy,
       status: FindingStatus.OPEN,
       tenantId: this.toObjectId(currentTenantId),

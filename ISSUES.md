@@ -41,7 +41,8 @@ El sistema funciona en lo básico, pero hay problemas de navegación, branding, 
 | B6a | ✅ Completado | Bugs - Export | URLs hardcodeadas a localhost | Reemplazado por environment.apiUrl |
 | B6b | ✅ Completado | Bugs - API | Clients usa API hardcodeada a localhost | Reemplazado por environment.apiUrl |
 | B7a | ✅ Completado | Bugs - Frontend | Nuevo Hallazgo - Wizard Profesional, seleccion de cliente no permite corregir | Agregado evento focus para mostrar lista completa |
-| B7b | ✅ Completado | Bugs - Frontend | Wizard Profesional campo proyecto no carga de forma inmediata toda la informacion | Mejorado setupProjectFilter y agregado onProjectInputFocus |
+| B7b | ✅ Completado | Bugs - Frontend | Wizard Profesional campo proyecto no carga de forma inmediata toda la informacion | Corregido filtrado reactivo para soportar objetos poblados y tenantId |
+| B8a | ✅ Completado | Bugs - Backend | Error E11000 duplicidad en códigos VULN-000001 | Implementado correlativo por año con ordenamiento DESC robusto |
 | M1 | ✅ Completado | Mejoras | SMTP test falla (Outlook 535) | Fix realizado, falta validar |
 | M2 | ✅ Completado | Mejoras | Multi‑tenancy inconsistente | Unificado en módulo Projects |
 | M3 | ✅ Completado | Mejoras | Permisos de lectura por proyecto para clientes | Implementado visibleProjectIds |
@@ -271,47 +272,44 @@ El sistema funciona en lo básico, pero hay problemas de navegación, branding, 
 - **Descripción:** Al seleccionar cliente, en el cuadro `Proyecto` no se pobla con la información. Si escribo algo, elimino, recién en ese momento se puebla con la información ya existente. Existe un lag.
 - **Solución sugerida (simple):** Mostrar en todo momento la lista total de proyectos del cliente
 - **Recomendación técnica (correcta):**
-  **Problema raíz:** El filtrado de proyectos no consideraba el `clientId` seleccionado, mostraba todos los proyectos del sistema. Además, no había evento `focus` para resetear la lista completa.
+  **Problema raíz (v1):** El filtrado de proyectos no consideraba el `clientId` seleccionado. Buscaba en TODOS los proyectos del sistema, causando lag y mostrando datos incorrectos.
   
-  **Solución implementada:**
-  - Mejorado `setupProjectFilter()` para filtrar solo proyectos del cliente seleccionado
-  - Agregado evento `(focus)="onProjectInputFocus()"` al input de proyecto
-  - Método `onProjectInputFocus()` muestra todos los proyectos del cliente seleccionado
-  - Ahora carga inmediata sin lag
+  **Problema identificado (v2):** Después de la primera corrección, el filtro por `clientId` en `setupProjectFilter()` funcionaba solo cuando el usuario escribía. Sin embargo, cuando se seleccionaba un cliente, los proyectos no se poblaban inmediatamente porque no había evento que dispare la actualización.
+  
+  **Solución final implementada:**
+  - Agregado nuevo signal `currentClientProjects` para mantener los proyectos del cliente sin filtrar por búsqueda de texto
+  - Mejorado listener en `setupClientFilter()` para que al cambiar `clientId`, se actualize inmediatamente `currentClientProjects` y `filteredProjects`
+  - `setupProjectFilter()` ahora filtra desde `currentClientProjects` (que siempre tiene los datos correctos del cliente)
+  - El evento `focus` resetea la lista a la completa del cliente
+  - Arquitectura de dos capas: 
+    1. `currentClientProjects`: proyectos del cliente actual (actualizado cuando cambia clientId)
+    2. `filteredProjects`: resultado después de aplicar búsqueda de texto
   
   **Cambios en código:**
   ```ts
-  setupProjectFilter(): void {
-    this.basicForm.get('projectName')?.valueChanges.subscribe(value => {
-      const clientId = this.basicForm.value.clientId;
-      
-      if (!clientId || clientId === 'new') {
-        this.filteredProjects.set([]);
-        return;
-      }
-      
-      // Filtrar proyectos solo del cliente seleccionado
-      const filter = typeof value === 'string' ? value.toLowerCase() : '';
-      const allProjects = this.projectService.projects();
-      const clientProjects = allProjects.filter(p => p.clientId === clientId);
-      const filtered = clientProjects.filter(p => 
-        p.name.toLowerCase().includes(filter)
-      );
-      this.filteredProjects.set(filtered);
-    });
-  }
+  // Signal para mantener proyectos sin filtrar por texto
+  currentClientProjects = signal<any[]>([]);
+  filteredProjects = signal<any[]>([]);
 
-  onProjectInputFocus(): void {
-    // Mostrar todos los proyectos del cliente cuando hace focus
-    const clientId = this.basicForm.value.clientId;
+  // En setupClientFilter(), cuando cambia clientId:
+  this.basicForm.get('clientId')?.valueChanges.subscribe(clientId => {
     if (clientId && clientId !== 'new') {
       const allProjects = this.projectService.projects();
       const clientProjects = allProjects.filter(p => p.clientId === clientId);
-      this.filteredProjects.set(clientProjects);
-      this.showCreateProject.set(false);
+      this.currentClientProjects.set(clientProjects);
+      this.filteredProjects.set(clientProjects);  // Mostrar inmediatamente
+      this.basicForm.get('projectName')?.reset('', { emitEvent: false });
     }
-  }
+  });
+
+  // En setupProjectFilter(), filtra desde currentClientProjects:
+  const filtered = this.currentClientProjects().filter(p => 
+    p.name.toLowerCase().includes(filter)
+  );
+  this.filteredProjects.set(filtered);
   ```
+  
+  **Resultado:** Los proyectos se cargan inmediatamente sin lag, y siempre se puede cambiar de proyecto haciendo click en el input.
 
   
 
