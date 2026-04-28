@@ -81,11 +81,13 @@ export class ProjectController {
   @Get()
   @ApiOperation({ summary: 'Listar proyectos con filtros opcionales' })
   @ApiQuery({ name: 'status', required: false, enum: ProjectStatus })
+  @ApiQuery({ name: 'clientId', required: false, type: String })
   async findAll(
     @Query('status') status?: ProjectStatus,
+    @Query('clientId') clientId?: string,
     @CurrentUser() user?: any,
   ) {
-    return this.projectService.findAll(status, user);
+    return this.projectService.findAll({ status, clientId }, user);
   }
 
   /**

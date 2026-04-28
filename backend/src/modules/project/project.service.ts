@@ -193,11 +193,13 @@ private getCurrentClientId(currentUser?: any): string | undefined {
     }
   /**
    * Obtiene proyectos con filtros opcionales
-   * MULTI-TENANT: filtra por tenant del usuario autenticado
+   * MULTI-TENANT: filtra por tenantId del usuario autenticado
    * SEGURIDAD: aplica restricciones por área y proyectos visibles
    */
-  async findAll(status?: ProjectStatus, currentUser?: any): Promise<Project[]> {
+  async findAll(filters: { status?: ProjectStatus, clientId?: string } = {}, currentUser?: any): Promise<Project[]> {
     const query: any = {};
+    const { status, clientId } = filters;
+
     const restrictedByArea = this.isRestrictedByArea(currentUser);
     const restrictedByVisibleProjects = this.isRestrictedByVisibleProjects(currentUser);
 
@@ -211,6 +213,13 @@ private getCurrentClientId(currentUser?: any): string | undefined {
 
     if (status) {
       query.projectStatus = status;
+    }
+
+    if (clientId) {
+      query.$or = [
+        { clientId: this.toObjectId(clientId) },
+        { tenantId: this.toObjectId(clientId) }
+      ];
     }
 
     const andConditions: any[] = [];
