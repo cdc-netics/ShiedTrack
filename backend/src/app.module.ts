@@ -92,10 +92,10 @@ import { RootController } from './root.controller';
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    // Aplicar el middleware de contexto de tenant globalmente EXCEPTO para auth y docs
+    // Aplicar el middleware de contexto de tenant globalmente EXCEPTO para docs
     consumer
       .apply(TenantContextMiddleware)
-      .exclude('auth/(.*)', 'api/docs', 'api/auth/(.*)')
+      .exclude('api/docs')
       .forRoutes('*');
   }
 }

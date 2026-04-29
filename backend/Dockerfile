@@ -1,7 +1,7 @@
 FROM node:20-alpine
 
-# Dependencias de compilación para bcrypt
-RUN apk add --no-cache python3 make g++ 
+# Dependencias de compilación para bcrypt y herramientas de MongoDB
+RUN apk add --no-cache python3 make g++ mongodb-tools
 
 WORKDIR /app
 

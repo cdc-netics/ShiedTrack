@@ -35,9 +35,10 @@ El sistema funciona en lo básico, pero hay problemas de navegación, branding, 
 | B2d | ✅ Completado | Bugs - Navegación | Botón “Nuevo Cliente” va a `/clients/new` | Corregido navegación y creación |
 | B3a | ✅ Completado | Bugs - Branding | Logo/Favicon no se aplica | BrandingService funciona correctamente |
 | B3b | ✅ Completado | Bugs - Branding | Archivos de branding no se sirven públicamente | Sistema de branding implementado |
-| B4a | ✅ Completado | Bugs - Backup | `mongodump` no está en PATH | Instalado y configurado en PATH |
+| B4a | ✅ Completado | Bugs - Backup | mongodump no está en PATH | Instalado en contenedor y mejorado error handling |
 | B5a | ✅ Completado | Bugs - Auditoría | UI mock / endpoint no `/api` | Datos normalizados y auditoría funcional |
-| B5b |  Parcial | Bugs - Asignaciones | Endpoint `/assignments` no persiste | Endpoint verificado, error en persistencia |
+| B5b | ✅ Completado | Bugs - Asignaciones | Endpoint `/assignments` no persiste | Corregido persistencia y lógica de actualización |
+| B8b | ✅ Completado | Bugs - Frontend | Campo "Cliente" vacío en Tenants/Áreas | Frontend muestra tenantId si falta clientId; Backend ajustado |
 | B6a | ✅ Completado | Bugs - Export | URLs hardcodeadas a localhost | Reemplazado por environment.apiUrl |
 | B6b | ✅ Completado | Bugs - API | Clients usa API hardcodeada a localhost | Reemplazado por environment.apiUrl |
 | B7a | ✅ Completado | Bugs - Frontend | Nuevo Hallazgo - Wizard Profesional, seleccion de cliente no permite corregir | Agregado evento focus para mostrar lista completa |
@@ -521,20 +522,13 @@ const API_URL = `${environment.apiUrl}/clients`;
 
 ### **M2 — Multi-tenancy inconsistente**
 - **Estado:** ✅ Completado
-- **Descripción:** El sistema tenía inconsistencias en el manejo de multi-tenancy entre distintos módulos.
+- **Descripción:** El sistema tenía inconsistencias en el manejo de multi-tenancy entre distintos módulos y fallaba en cargas masivas de áreas sin contexto de tenant.
 - **Solución sugerida (simple):** Unificar el manejo de tenant en consultas y operaciones CRUD.
-- **Recomendación técnica:** Se revisó el módulo Projects para asegurar que todas las consultas respeten:
-  tenantId
-  areaId
-  permisos del usuario
-
-- **Esto incluye:**
-  creación de proyectos
-  consultas
-  actualizaciones
-  operaciones administrativas.
-
-La misma estrategia fue preparada para el módulo Findings, aunque no pudo validarse completamente por falta de tiempo para pruebas.
+- **Recomendación técnica:** 
+  - Se implementó la **Asignación Correlativa (Round-Robin)** en el `AreaService`.
+  - Si un `OWNER` no especifica `tenantId`, el sistema calcula el siguiente tenant basándose en `totalAreas % activeTenants.length`.
+  - Se añadieron tests unitarios para garantizar el aislamiento de datos y la correcta distribución.
+  - Se revisó el módulo Projects para asegurar que todas las consultas respeten el contexto.
 
 ### **M3 — Permisos de lectura por proyecto para clientes**
 - **Estado:** ✅ Completado

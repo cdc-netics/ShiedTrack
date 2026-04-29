@@ -414,7 +414,8 @@ export class BackupService {
     if (
       normalized.includes('is not recognized') ||
       normalized.includes('not recognized as an internal or external command') ||
-      normalized.includes('enoent')
+      normalized.includes('enoent') ||
+      normalized.includes('not found')
     ) {
       return `No se pudo ejecutar ${toolName}. Verifica que MongoDB Database Tools esté instalado y disponible para el proceso del backend.`;
     }

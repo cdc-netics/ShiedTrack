@@ -16,26 +16,62 @@ export class AreaService {
   constructor(@InjectModel(Area.name) private areaModel: Model<Area>) {}
 
   /**
+   * Obtiene el siguiente TenantId de forma correlativa (Round-Robin)
+   * Útil para balancear la carga de datos entre tenants durante pruebas o migraciones.
+   */
+  private async getNextCorrelativeTenantId(): Promise<Types.ObjectId> {
+    try {
+      // Obtenemos el modelo de Tenant dinámicamente desde la conexión
+      const TenantModel = this.areaModel.db.model('Tenant');
+      const activeTenants = await TenantModel.find({ isActive: true }).sort({ _id: 1 });
+
+      if (activeTenants.length === 0) {
+        throw new BadRequestException('No existen tenants activos para asignación automática.');
+      }
+
+      // Contamos áreas totales para determinar el índice del tenant
+      const totalAreas = await this.areaModel.countDocuments();
+      const nextTenant = activeTenants[totalAreas % activeTenants.length];
+      
+      this.logger.debug(`Asignación correlativa: Tenant [${nextTenant.name}] seleccionado (Índice: ${totalAreas % activeTenants.length})`);
+      return nextTenant._id as Types.ObjectId;
+    } catch (error) {
+      this.logger.error(`Error en asignación correlativa: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
    * Crea una nueva área
    */
   async create(dto: CreateAreaDto): Promise<Area> {
     // DEBUG: Verificar contexto CLS
     const namespace = getNamespace('tenant-context');
-    const tenantId = namespace?.get('tenantId');
+    const contextTenantId = namespace?.get('tenantId');
     const isOwner = namespace?.get('isOwner');
     const userId = namespace?.get('userId');
-    this.logger.log(`[DEBUG] Contexto CLS - tenantId: ${tenantId}, isOwner: ${isOwner}, userId: ${userId}`);
+    
+    this.logger.log(`[DEBUG] Contexto CLS - tenantId: ${contextTenantId}, isOwner: ${isOwner}, userId: ${userId}`);
     this.logger.log(`Intentando crear área: ${JSON.stringify(dto)}`);
 
-    // Validar que tenemos tenantId
-    if (!tenantId && !isOwner) {
-      throw new BadRequestException('No se puede determinar el tenant del usuario. Asegúrate de estar autenticado correctamente.');
+    let finalTenantId = dto.tenantId || contextTenantId;
+
+    // Lógica Correlativa: Si no hay tenant y el usuario es OWNER, auto-poblar
+    if (!finalTenantId && isOwner) {
+      this.logger.log('TenantId no especificado y usuario es OWNER. Iniciando asignación correlativa...');
+      finalTenantId = await this.getNextCorrelativeTenantId();
+    }
+
+    // Validar que tenemos tenantId final
+    if (!finalTenantId) {
+      throw new BadRequestException('No se puede determinar el tenant del usuario. Asegúrate de estar autenticado correctamente o especificar un tenantId.');
     }
 
     try {
       // Generar código automáticamente: AREA-001, AREA-002, etc.
+      // El filtrado por tenant se aplica vía plugin/CLS para la búsqueda del último código
       const lastArea = await this.areaModel
-        .findOne({}) // Filtrado por tenant se aplica vía plugin/CLS
+        .findOne({}) 
         .sort({ createdAt: -1 })
         .exec();
       
@@ -52,7 +88,7 @@ export class AreaService {
       const area = new this.areaModel({
         ...dto,
         code,
-        tenantId: dto.tenantId || (tenantId ? new Types.ObjectId(tenantId) : undefined)
+        tenantId: new Types.ObjectId(finalTenantId)
       });
       await area.save();
       

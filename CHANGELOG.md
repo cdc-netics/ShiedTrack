@@ -7,6 +7,21 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 ## [Unreleased]
 
+## [2.1.4] - 2026-04-29
+### 🎯 Resumen de Cambios
+
+- **FIX (Backend):** Corregido error en la funcionalidad de Backup. El problema era la ausencia del paquete `mongodb-tools` en el contenedor Docker. Actualizado `backend/Dockerfile` para incluir las herramientas necesarias (`mongodump`, `mongorestore`).
+- **FIX (Backend):** Mejorado el manejo de errores en `BackupService`. Ahora se detecta explícitamente cuando las herramientas de MongoDB no están instaladas (error "not found") para ofrecer un mensaje descriptivo al usuario.
+- **FIX (Frontend):** Corregido campo "Cliente" vacío en el listado de Áreas (Tenants). Se actualizó el componente `AreaListComponent` para mostrar el nombre del `tenantId` en caso de que el `clientId` (legacy) no esté presente, manteniendo la consistencia visual en la nueva arquitectura multi-tenant.
+- **FIX (Backend):** Ajustado `AreaService.findByClient` para asegurar que el filtrado de áreas considere correctamente tanto el modelo nuevo (`tenantId`) como el legacy (`clientId`).
+
+## [2.1.3] - 2026-04-29
+### 🎯 Resumen de Cambios
+
+- **FEAT (Backend):** Implementada asignación correlativa de `tenantId` (Round-Robin) en la creación de Áreas. Ahora, cuando un usuario `OWNER` o `PLATFORM_ADMIN` crea un área sin especificar un `tenantId`, el sistema la asigna automáticamente al siguiente tenant activo basado en la carga actual de áreas.
+- **FIX (Backend):** Corregido error `400 Bad Request` que ocurría al intentar crear áreas desde herramientas externas (o carga masiva) sin enviar el header `X-Tenant-Id`.
+- **TEST (Backend):** Añadida suite de pruebas unitarias (`area.service.spec.ts`) para validar la lógica de asignación correlativa, la protección de roles y la prioridad del `tenantId` manual.
+
 ## [2.1.2] - 2026-04-28
 ### 🎯 Resumen de Cambios
 
