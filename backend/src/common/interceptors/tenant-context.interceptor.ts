@@ -1,6 +1,7 @@
 import { Injectable, NestInterceptor, ExecutionContext, CallHandler, BadRequestException } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { createNamespace, getNamespace } from 'cls-hooked';
+import { setTenant } from '../utils/tenant-context';
 
 /**
  * Interceptor global para establecer el contexto de tenant usando CLS.
@@ -28,6 +29,7 @@ export class TenantContextInterceptor implements NestInterceptor {
       // Owner puede especificar tenant via header, o ver todos si no lo envía
       if (headerTenant) {
         namespace.set('tenantId', headerTenant);
+        setTenant(headerTenant);
       }
       return next.handle();
     }
@@ -44,6 +46,8 @@ export class TenantContextInterceptor implements NestInterceptor {
     }
 
     namespace.set('tenantId', String(tenantId));
+    setTenant(String(tenantId));
+    
     return next.handle();
   }
 }

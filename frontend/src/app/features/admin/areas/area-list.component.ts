@@ -106,9 +106,9 @@ interface Area {
 
         @if (isOwner()) {
           <ng-container matColumnDef="client">
-            <th mat-header-cell *matHeaderCellDef>Cliente</th>
+            <th mat-header-cell *matHeaderCellDef>Cliente / Tenant</th>
             <td mat-cell *matCellDef="let area">
-              {{ area.clientId?.name || 'N/A' }}
+              {{ area.clientId?.name || area.tenantId?.name || 'N/A' }}
             </td>
           </ng-container>
         }

@@ -1,5 +1,6 @@
 import { CanActivate, ExecutionContext, Injectable, UnauthorizedException, BadRequestException } from '@nestjs/common';
 import { createNamespace, getNamespace } from 'cls-hooked';
+import { setTenant } from '../utils/tenant-context';
 
 /**
  * Guard para Multi-Tenancy
@@ -25,36 +26,36 @@ export class TenantContextGuard implements CanActivate {
     // Crear namespace CLS si no existe
     const namespace = getNamespace('tenant-context') || createNamespace('tenant-context');
 
-    namespace.run(() => {
-      // OWNER y PLATFORM_ADMIN pueden cruzar tenants
-      const isOwner = user.role === 'OWNER' || user.role === 'PLATFORM_ADMIN';
-      namespace.set('isOwner', isOwner);
-      namespace.set('userId', user.userId || user._id);
+    // OWNER y PLATFORM_ADMIN pueden cruzar tenants
+    const isOwner = user.role === 'OWNER' || user.role === 'PLATFORM_ADMIN';
+    namespace.set('isOwner', isOwner);
+    namespace.set('userId', user.userId || user._id);
 
-      if (isOwner) {
-        // Owner puede especificar tenant via header, o ver todos
-        if (headerTenant) {
-          namespace.set('tenantId', headerTenant);
-        }
-        // Si no especifica header, puede ver todos (no se setea tenantId)
-        return true;
+    if (isOwner) {
+      // Owner puede especificar tenant via header, o ver todos
+      if (headerTenant) {
+        namespace.set('tenantId', headerTenant);
+        setTenant(headerTenant);
       }
+      // Si no especifica header, puede ver todos (no se setea tenantId)
+      return true;
+    }
 
-      // Para roles no OWNER/PLATFORM_ADMIN, se requiere un tenantId en contexto
-      // Prioridad: header > activeTenantId > clientId > first tenantId
-      let tenantId = headerTenant || user.activeTenantId || user.clientId;
-      
-      // Si no tiene ninguno, pero tiene tenantIds, usar el primero
-      if (!tenantId && user.tenantIds && Array.isArray(user.tenantIds) && user.tenantIds.length > 0) {
-        tenantId = user.tenantIds[0];
-      }
-      
-      if (!tenantId) {
-        throw new BadRequestException('Falta X-TENANT-ID o tenant activo en el usuario');
-      }
+    // Para roles no OWNER/PLATFORM_ADMIN, se requiere un tenantId en contexto
+    // Prioridad: header > activeTenantId > clientId > first tenantId
+    let tenantId = headerTenant || user.activeTenantId || user.clientId;
+    
+    // Si no tiene ninguno, pero tiene tenantIds, usar el primero
+    if (!tenantId && user.tenantIds && Array.isArray(user.tenantIds) && user.tenantIds.length > 0) {
+      tenantId = user.tenantIds[0];
+    }
+    
+    if (!tenantId) {
+      throw new BadRequestException('Falta X-TENANT-ID o tenant activo en el usuario');
+    }
 
-      namespace.set('tenantId', String(tenantId));
-    });
+    namespace.set('tenantId', String(tenantId));
+    setTenant(String(tenantId));
 
     return true;
   }
