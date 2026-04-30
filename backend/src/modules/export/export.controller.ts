@@ -21,9 +21,28 @@ export class ExportController {
   constructor(private readonly exportService: ExportService) {}
 
   /**
+   * 0. NIVEL HALLAZGOS - Exportar lista de hallazgos filtrada
+   */
+  @Get(['finding', 'findings'])
+  @Roles(UserRole.ANALYST, UserRole.AREA_ADMIN, UserRole.CLIENT_ADMIN, UserRole.PLATFORM_ADMIN, UserRole.OWNER)
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  @ApiOperation({ summary: 'Exportar lista de hallazgos a CSV con filtros (ANALYST+)' })
+  async exportFindings(
+    @Query() filters: any,
+    @CurrentUser() user: any,
+    @Res() res: Response
+  ) {
+    const csv = await this.exportService.exportFindingsToCSV(filters, user);
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="hallazgos_${Date.now()}.csv"`);
+    res.send(csv);
+  }
+
+  /**
    * A. NIVEL PROYECTO - Exportar proyecto individual
    */
-  @Get('project/:id/excel')
+  @Get(['project/:id/excel', 'projects/:id/excel'])
   @Roles(UserRole.ANALYST, UserRole.AREA_ADMIN, UserRole.CLIENT_ADMIN, UserRole.PLATFORM_ADMIN, UserRole.OWNER)
   @Throttle({ default: { limit: 10, ttl: 60000 } }) // 10 exports por minuto
   @ApiOperation({ summary: 'Exportar proyecto a Excel (ANALYST+)' })
@@ -40,7 +59,7 @@ export class ExportController {
     stream.pipe(res);
   }
 
-  @Get('project/:id/csv')
+  @Get(['project/:id/csv', 'projects/:id/csv'])
   @Roles(UserRole.ANALYST, UserRole.AREA_ADMIN, UserRole.CLIENT_ADMIN, UserRole.PLATFORM_ADMIN, UserRole.OWNER)
   @Throttle({ default: { limit: 10, ttl: 60000 } })
   @ApiOperation({ summary: 'Exportar proyecto a CSV (ANALYST+)' })
@@ -56,7 +75,7 @@ export class ExportController {
     res.send(csv);
   }
 
-  @Get('project/:id/json')
+  @Get(['project/:id/json', 'projects/:id/json'])
   @Roles(UserRole.ANALYST, UserRole.AREA_ADMIN, UserRole.CLIENT_ADMIN, UserRole.PLATFORM_ADMIN, UserRole.OWNER)
   @Throttle({ default: { limit: 10, ttl: 60000 } })
   @ApiOperation({ summary: 'Exportar proyecto a JSON (ANALYST+)' })
@@ -67,7 +86,7 @@ export class ExportController {
     return this.exportService.exportProjectToJSON(projectId, user);
   }
 
-  @Get('project/:id/zip')
+  @Get(['project/:id/zip', 'projects/:id/zip'])
   @Roles(UserRole.ANALYST, UserRole.AREA_ADMIN, UserRole.CLIENT_ADMIN, UserRole.PLATFORM_ADMIN, UserRole.OWNER)
   @Throttle({ default: { limit: 5, ttl: 60000 } })
   @ApiOperation({ summary: 'Exportar proyecto a ZIP con evidencias (ANALYST+)' })
@@ -85,7 +104,7 @@ export class ExportController {
   /**
    * B. NIVEL TENANT - Exportar portfolio completo del cliente
    */
-  @Get('client/:id/portfolio')
+  @Get(['client/:id/portfolio', 'clients/:id/portfolio'])
   @Roles(UserRole.CLIENT_ADMIN, UserRole.PLATFORM_ADMIN, UserRole.OWNER)
   @Throttle({ default: { limit: 3, ttl: 60000 } }) // Solo 3 exports por minuto (proceso pesado)
   @ApiOperation({ summary: 'Exportar portfolio cliente en ZIP (CLIENT_ADMIN+)' })
@@ -102,7 +121,7 @@ export class ExportController {
     zipStream.pipe(res);
   }
 
-  @Get('client/:id/csv')
+  @Get(['client/:id/csv', 'clients/:id/csv'])
   @Roles(UserRole.CLIENT_ADMIN, UserRole.PLATFORM_ADMIN, UserRole.OWNER)
   @Throttle({ default: { limit: 5, ttl: 60000 } })
   @ApiOperation({ summary: 'Exportar todos los hallazgos de un cliente a CSV (CLIENT_ADMIN+)' })
@@ -117,9 +136,9 @@ export class ExportController {
     res.send(csv);
   }
 
-  @Get('finding/:id/pdf')
+  @Get(['finding/:id/pdf', 'findings/:id/pdf'])
   @Roles(UserRole.ANALYST, UserRole.AREA_ADMIN, UserRole.CLIENT_ADMIN, UserRole.PLATFORM_ADMIN, UserRole.OWNER)
-  @ApiOperation({ summary: 'Exportar hallazgo a PDF' })
+  @ApiOperation({ summary: 'Exportar hallazgo a PDF (ANALYST+)' })
   async exportFindingPdf(
     @Param('id') findingId: string,
     @CurrentUser() user: any,
@@ -131,7 +150,7 @@ export class ExportController {
     res.send(buffer);
   }
 
-  @Get('project/:id/pdf')
+  @Get(['project/:id/pdf', 'projects/:id/pdf'])
   @Roles(UserRole.ANALYST, UserRole.AREA_ADMIN, UserRole.CLIENT_ADMIN, UserRole.PLATFORM_ADMIN, UserRole.OWNER)
   @ApiOperation({ summary: 'Exportar proyecto a PDF' })
   async exportProjectPdf(

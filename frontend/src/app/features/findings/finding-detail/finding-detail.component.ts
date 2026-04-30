@@ -1732,7 +1732,9 @@ export class FindingDetailComponent implements OnInit {
   downloadPdf() {
     // Descargar reporte PDF del hallazgo
     // Asume que el backend expone /api/export/finding/:id/pdf
-    const url = `${environment.apiUrl}/export/finding/${this.finding()!._id}/pdf`;
+    // Pasamos el token por query param para que window.open funcione con el Guard JWT
+    const token = this.authService.getToken();
+    const url = `${environment.apiUrl}/export/finding/${this.finding()!._id}/pdf?token=${token}`;
     window.open(url, '_blank');
   }
 
