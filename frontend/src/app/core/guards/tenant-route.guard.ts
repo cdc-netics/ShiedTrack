@@ -1,8 +1,8 @@
 import { Injectable, inject } from '@angular/core';
 import { CanActivate, ActivatedRouteSnapshot, RouterStateSnapshot, UrlTree, Router } from '@angular/router';
 import { Observable } from 'rxjs';
-//import { environment } from '../../environments/environment'; // Corrected path for environment import
-import { environment } from '/frontend/src/environments/environment.prod.ts'; // Importing the production environment configuration
+import { environment } from '../../../environments/environment'; // Corrected path for environment import
+//import { environment } from '/frontend/src/environments/environment.prod.ts'; // Importing the production environment configuration
                       
 @Injectable({
   providedIn: 'root'
