@@ -483,12 +483,14 @@ export class ProjectDetailComponent implements OnInit {
 
   downloadPdf() {
     if (!this.projectId()) return;
-    window.open(`${environment.apiUrl}/export/project/${this.projectId()}/pdf`, '_blank');
+    const token = this.authService.getToken();
+    window.open(`${environment.apiUrl}/export/project/${this.projectId()}/pdf?token=${token}`, '_blank');
   }
 
   downloadZip() {
     if (!this.projectId()) return;
-    window.open(`${environment.apiUrl}/export/project/${this.projectId()}/zip`, '_blank');
+    const token = this.authService.getToken();
+    window.open(`${environment.apiUrl}/export/project/${this.projectId()}/zip?token=${token}`, '_blank');
   }
 
 saveProject(): void {

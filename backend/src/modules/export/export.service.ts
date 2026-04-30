@@ -1,11 +1,13 @@
 import { Injectable, Logger, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { Finding } from '../finding/schemas/finding.schema';
+import { Finding, FindingSchema } from '../finding/schemas/finding.schema';
 import { Project } from '../project/schemas/project.schema';
 import { Client } from '../client/schemas/client.schema';
 import { Evidence } from '../evidence/schemas/evidence.schema';
 import { PdfService } from '../../common/services/pdf.service';
+import { FindingStatus } from '../../common/enums';
+import { Types } from 'mongoose';
 import * as ExcelJS from 'exceljs';
 import archiver from 'archiver';
 import { createReadStream, existsSync, mkdirSync } from 'fs';
@@ -31,17 +33,156 @@ export class ExportService {
     private readonly pdfService: PdfService
   ) {}
 
+  private toObjectId(id?: string): Types.ObjectId | undefined {
+    if (!id || !Types.ObjectId.isValid(id)) return undefined;
+    return new Types.ObjectId(id);
+  }
+
+  private getCurrentTenantId(currentUser?: any): string | undefined {
+    return (
+      currentUser?.tenantId?.toString?.() ??
+      currentUser?.activeTenantId?.toString?.() ??
+      currentUser?.clientId?.toString?.()
+    );
+  }
+
   /**
    * Genera reporte PDF de un hallazgo
    */
   async exportFindingPdf(findingId: string, currentUser: any): Promise<Buffer> {
+    // 1. Fetch the finding
     const finding = await this.findingModel.findById(findingId);
-    if (!finding) throw new NotFoundException('Hallazgo no encontrado');
-    
-    // RBAC: simple check
-    // if (currentUser) ... (Pending detailed check, reusing logic)
+    if (!finding) {
+      throw new NotFoundException('Hallazgo no encontrado');
+    }
 
+    // 2. Fetch the associated project to check RBAC
+    // We need the project to determine the client/tenant for authorization checks.
+    const project = await this.projectModel.findById(finding.projectId).populate('clientId');
+    if (!project) {
+      // This case should ideally not happen if data integrity is maintained,
+      // but it's good practice to handle it.
+      throw new NotFoundException('Proyecto asociado al hallazgo no encontrado');
+    }
+
+    // 3. Implement RBAC checks
+    // Allowed roles bypass strict tenant/client checks, but still need to be authenticated.
+    if (!['OWNER', 'PLATFORM_ADMIN'].includes(currentUser.role)) {
+      // For other roles, check if the user belongs to the same tenant/client as the project.
+      const userTenantId = (currentUser.activeTenantId || currentUser.clientId)?.toString();
+      
+      // Extract the project's tenant/client ID.
+      // Assuming project.clientId is populated and represents the client's ID.
+      // If project.tenantId exists and is used for multi-tenancy, that should also be considered.
+      let projectTenantId: string | undefined;
+      if (project.tenantId) {
+        projectTenantId = (project.tenantId as any)?.toString();
+      } else if (project.clientId && (project.clientId as any)._id) {
+        // Assuming project.clientId is a populated Client object with an _id
+        projectTenantId = (project.clientId as any)._id.toString();
+      }
+
+      // If user is not an OWNER/PLATFORM_ADMIN, they must have a tenant ID,
+      // and it must match the project's tenant ID.
+      if (!userTenantId || !projectTenantId || projectTenantId !== userTenantId) {
+        throw new ForbiddenException('No tiene permisos para acceder a este hallazgo.');
+      }
+    }
+
+    // If all checks pass, generate the PDF report
     return this.pdfService.generateFindingReport(finding);
+  }
+
+  /**
+   * Exporta una lista filtrada de hallazgos a CSV
+   * Soporta filtros por proyecto, cliente, estado y severidad
+   * Respeta Multi-tenancy y RBAC
+   */
+  async exportFindingsToCSV(filters: any, currentUser: any): Promise<string> {
+    const query: any = {};
+    const currentTenantId = this.getCurrentTenantId(currentUser);
+    
+    // 1. Aplicar Multi-tenancy
+    if (currentTenantId && !['OWNER', 'PLATFORM_ADMIN'].includes(currentUser.role)) {
+      query.tenantId = this.toObjectId(currentTenantId);
+    } else if (filters.tenantId || filters.clientId) {
+      // Owner/Platform Admin pueden filtrar por tenant específico
+      query.tenantId = this.toObjectId(filters.tenantId || filters.clientId);
+    }
+
+    // 2. Aplicar filtros opcionales
+    if (filters.projectId) query.projectId = this.toObjectId(filters.projectId);
+    if (filters.status) query.status = filters.status;
+    if (filters.severity) query.severity = filters.severity;
+    
+    // Si es un rol restringido (AREA_ADMIN, ANALYST), solo ve sus áreas
+    if (['AREA_ADMIN', 'ANALYST', 'VIEWER'].includes(currentUser.role) && currentUser.areaIds?.length > 0) {
+       const allowedAreaIds = currentUser.areaIds.map((id: any) => this.toObjectId(id)).filter(Boolean);
+       
+       // Necesitamos encontrar proyectos que pertenezcan a esas áreas
+       const accessibleProjects = await this.projectModel.find({
+         $or: [
+           { areaIds: { $in: allowedAreaIds } },
+           { areaId: { $in: allowedAreaIds } }
+         ]
+       }).select('_id').lean();
+       
+       const projectIds = accessibleProjects.map((p: any) => p._id);
+       
+       if (query.projectId) {
+         // Si ya filtró por proyecto, verificar que sea accesible
+         if (!projectIds.some(id => id.toString() === query.projectId.toString())) {
+           throw new ForbiddenException('No tiene acceso al proyecto seleccionado');
+         }
+       } else {
+         // Si no filtró por proyecto, restringir a los accesibles
+         query.projectId = { $in: projectIds };
+       }
+    }
+
+    // 3. Ejecutar consulta
+    const findings = await this.findingModel.find(query)
+      .populate('projectId', 'name')
+      .populate('assignedTo', 'firstName lastName')
+      .sort({ createdAt: -1 })
+      .lean();
+
+    this.logger.log(`Exportando ${findings.length} hallazgos a CSV para usuario ${currentUser.email}`);
+
+    // 4. Generar CSV
+    const headers = [
+      'Proyecto',
+      'Código',
+      'Título',
+      'Severidad',
+      'Estado',
+      'CVSS',
+      'CVE',
+      'Activo Afectado',
+      'Asignado A',
+      'Fecha Creación'
+    ];
+
+    const rows = (findings as any[]).map((f: any) => [
+      `"${(f.projectId?.name || 'N/A').replace(/"/g, '""')}"`,
+      f.code || '',
+      `"${(f.title || '').replace(/"/g, '""')}"`,
+      f.severity || '',
+      f.status || '',
+      f.cvss_score || 'N/A',
+      f.cve_id || 'N/A',
+      f.affectedAsset || 'N/A',
+      f.assignedTo ? `${f.assignedTo.firstName} ${f.assignedTo.lastName}` : 'No asignado',
+      f.createdAt ? new Date(f.createdAt).toLocaleDateString('es-CL') : 'N/A'
+    ]);
+
+    const BOM = '\uFEFF';
+    const csv = [
+      headers.join(','),
+      ...rows.map(row => row.join(','))
+    ].join('\r\n');
+
+    return BOM + csv;
   }
 
   async exportProjectPdf(projectId: string, currentUser: any): Promise<Buffer> {
@@ -67,11 +208,19 @@ export class ExportService {
       throw new NotFoundException('Proyecto no encontrado');
     }
 
-    // RBAC: Validar que el usuario pertenece al cliente del proyecto
+    // RBAC: Validar que el usuario pertenece al cliente/tenant del proyecto
     if (!['OWNER', 'PLATFORM_ADMIN'].includes(currentUser.role)) {
-      const userTenant = (currentUser.activeTenantId || currentUser.clientId)?.toString();
-      const projectTenant = (project.tenantId as any)?.toString() || (project.clientId as any)?._id?.toString();
-      if (!userTenant || !projectTenant || projectTenant !== userTenant) {
+      const userTenantId = (currentUser.activeTenantId || currentUser.clientId)?.toString();
+      
+      let projectTenantId: string | undefined;
+      if (project.tenantId) {
+        projectTenantId = (project.tenantId as any)?.toString();
+      } else if (project.clientId && (project.clientId as any)._id) {
+        // Assuming project.clientId is a populated Client object
+        projectTenantId = (project.clientId as any)._id.toString();
+      }
+
+      if (!userTenantId || !projectTenantId || projectTenantId !== userTenantId) {
         throw new ForbiddenException('No tiene permisos para exportar este proyecto');
       }
     }
@@ -342,8 +491,10 @@ export class ExportService {
   async exportClientPortfolio(clientId: string, currentUser: any): Promise<PassThrough> {
     // RBAC: Solo CLIENT_ADMIN del cliente u OWNER
     if (!['OWNER', 'PLATFORM_ADMIN'].includes(currentUser.role)) {
-      const userTenant = (currentUser.activeTenantId || currentUser.clientId)?.toString();
-      if (!userTenant || clientId !== userTenant) {
+      const userTenantId = (currentUser.activeTenantId || currentUser.clientId)?.toString();
+      // The 'clientId' parameter is from the URL, representing the client to export.
+      // Ensure userTenantId is defined and matches the requested clientId.
+      if (!userTenantId || clientId !== userTenantId) {
         throw new ForbiddenException('No tiene permisos para exportar este cliente');
       }
     }
@@ -391,8 +542,10 @@ export class ExportService {
   async exportClientPortfolioCSV(clientId: string, currentUser: any): Promise<string> {
     // RBAC: Solo CLIENT_ADMIN del cliente u OWNER
     if (!['OWNER', 'PLATFORM_ADMIN'].includes(currentUser.role)) {
-      const userTenant = (currentUser.activeTenantId || currentUser.clientId)?.toString();
-      if (!userTenant || clientId !== userTenant) {
+      const userTenantId = (currentUser.activeTenantId || currentUser.clientId)?.toString();
+      // The 'clientId' parameter is from the URL, representing the client to export.
+      // Ensure userTenantId is defined and matches the requested clientId.
+      if (!userTenantId || clientId !== userTenantId) {
         throw new ForbiddenException('No tiene permisos para exportar este cliente');
       }
     }

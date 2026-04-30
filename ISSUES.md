@@ -41,6 +41,7 @@ El sistema funciona en lo básico, pero hay problemas de navegación, branding, 
 | B8b | ✅ Completado | Bugs - Frontend | Campo "Cliente" vacío en Tenants/Áreas | Frontend muestra tenantId si falta clientId; Backend ajustado |
 | B6a | ✅ Completado | Bugs - Export | URLs hardcodeadas a localhost | Reemplazado por environment.apiUrl |
 | B6b | ✅ Completado | Bugs - API | Clients usa API hardcodeada a localhost | Reemplazado por environment.apiUrl |
+| B6c | ✅ Completado | Bugs - Export | Error 401 / Ruta finding missing | Implementada ruta /export/finding y filtrado |
 | B7a | ✅ Completado | Bugs - Frontend | Nuevo Hallazgo - Wizard Profesional, seleccion de cliente no permite corregir | Agregado evento focus para mostrar lista completa |
 | B7b | ✅ Completado | Bugs - Frontend | Wizard Profesional campo proyecto no carga de forma inmediata toda la informacion | Corregido filtrado reactivo para soportar objetos poblados y tenantId |
 | B7c | ✅ Completado | Bugs - Frontend | Duración del proyecto no actualiza contador | Implementado seguimiento reactivo de fechas con signals |
