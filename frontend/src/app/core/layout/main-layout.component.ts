@@ -170,6 +170,8 @@ export class MainLayoutComponent implements OnInit, AfterViewInit {
   private readonly http = inject(HttpClient);
   currentTenant: any = null;
 
+  protected readonly environment = environment;
+  
   constructor(
     public authService: AuthService,
     public theme: ThemeService,
