@@ -1,6 +1,8 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/guards/auth.guard';
 import { ProjectCreateComponent } from './features/projects/project-create/project-create.component';
+import { environment } from '../environments/environment';
+import { TenantRouteGuard } from './core/guards/tenant-route.guard';
 
 
 /**
@@ -60,11 +62,13 @@ export const routes: Routes = [
       },
       {
         path: 'admin/tenants',
-        loadComponent: () => import('./features/admin/areas/area-list.component').then(m => m.AreaListComponent)
+        loadComponent: () => import('./features/admin/areas/area-list.component').then(m => m.AreaListComponent),
+        canActivate: [TenantRouteGuard]
       },
       {
         path: 'admin/tenants/:id',
-        loadComponent: () => import('./features/admin/areas/tenant-config-detail.component').then(m => m.TenantConfigDetailComponent)
+        loadComponent: () => import('./features/admin/areas/tenant-config-detail.component').then(m => m.TenantConfigDetailComponent),
+        canActivate: [TenantRouteGuard]
       },
       {
         path: 'admin/templates',

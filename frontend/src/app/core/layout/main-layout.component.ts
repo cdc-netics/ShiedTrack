@@ -68,10 +68,12 @@ import { environment } from '../../../environments/environment';
                   <mat-icon>people</mat-icon>
                   <span>Usuarios</span>
                 </a>
-                <a mat-list-item routerLink="/admin/tenants" routerLinkActive="active">
-                  <mat-icon>business</mat-icon>
-                  <span>Tenants</span>
-                </a>
+                @if (environment.enableTenantSection) {
+                  <a mat-list-item routerLink="/admin/tenants" routerLinkActive="active">
+                    <mat-icon>business</mat-icon>
+                    <span>Tenants</span>
+                  </a>
+                }
                 <a mat-list-item routerLink="/admin/templates" routerLinkActive="active">
                   <mat-icon>description</mat-icon>
                   <span>Templates</span>
