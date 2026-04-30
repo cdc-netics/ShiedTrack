@@ -1,4 +1,5 @@
 export const environment = {
   production: true,
-  apiUrl: 'https://api.shieldtrack.com/api'
+  apiUrl: 'https://api.shieldtrack.com/api',
+  enableTenantSection: true
 };
