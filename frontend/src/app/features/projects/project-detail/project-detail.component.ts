@@ -21,6 +21,7 @@ import { AuthService } from '../../../core/services/auth.service';
 import { UserRole } from '../../../shared/enums';
 
 @Component({
+  standalone: true,
   selector: 'app-project-detail',
   imports: [
     CommonModule,

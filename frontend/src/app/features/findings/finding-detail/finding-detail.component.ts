@@ -82,6 +82,7 @@ interface FindingUpdate {
  * Visualización completa y edición de hallazgos de seguridad
  */
 @Component({
+    standalone: true,
     selector: 'app-finding-detail',
     imports: [
         CommonModule,

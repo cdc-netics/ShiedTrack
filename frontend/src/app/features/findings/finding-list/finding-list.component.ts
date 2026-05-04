@@ -1,4 +1,10 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  inject,
+  OnInit,
+  signal,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { MatTableModule } from '@angular/material/table';
@@ -31,6 +37,8 @@ import { environment } from '../../../../environments/environment';
  * Panel de filtros expandible con animaciones
  */
 @Component({
+  standalone: true,
+    changeDetection: ChangeDetectionStrategy.OnPush,
     selector: 'app-finding-list',
     imports: [
         CommonModule,

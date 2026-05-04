@@ -23,6 +23,7 @@ export interface CloseDialogResult {
  * Permite seleccionar motivo de cierre y agregar comentario opcional
  */
 @Component({
+  standalone: true,
     selector: 'app-close-finding-dialog',
     imports: [
         CommonModule,

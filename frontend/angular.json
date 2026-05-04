@@ -26,6 +26,7 @@
             ],
             "styles": [
               "@angular/material/prebuilt-themes/indigo-pink.css",
+              "src/styles/index.scss",
               "src/styles.css"
             ],
             "scripts": []
@@ -89,6 +90,7 @@
             ],
             "styles": [
               "@angular/material/prebuilt-themes/indigo-pink.css",
+              "src/styles/index.scss",
               "src/styles.css"
             ],
             "scripts": []

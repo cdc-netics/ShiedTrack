@@ -1,5 +1,5 @@
-import { resolve4 } from 'dns/promises';
-import * as net from 'net';
+import { resolve4 } from "dns/promises";
+import * as net from "net";
 
 export interface ResolvedSmtpHost {
   connectionHost: string;
@@ -12,8 +12,10 @@ export interface ResolvedSmtpHost {
  * sin salida IPv6. Cuando se usa una IP para conectar, se conserva servername
  * para que TLS valide el certificado contra el hostname original.
  */
-export async function resolveSmtpHostToIpv4(host: string): Promise<ResolvedSmtpHost> {
-  const normalizedHost = (host || '').trim();
+export async function resolveSmtpHostToIpv4(
+  host: string,
+): Promise<ResolvedSmtpHost> {
+  const normalizedHost = (host || "").trim();
 
   if (!normalizedHost) {
     return {
@@ -48,4 +50,3 @@ export async function resolveSmtpHostToIpv4(host: string): Promise<ResolvedSmtpH
     resolvedToIpv4: false,
   };
 }
-

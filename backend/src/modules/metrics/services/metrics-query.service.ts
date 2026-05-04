@@ -1,15 +1,18 @@
-import { Injectable, Inject } from '@nestjs/common';
-import { MetricsFilterDto } from '../dto/metrics-filter.dto';
-import { IFindingRepository } from '../repositories/interfaces/finding.repository.interface';
-import { IProjectRepository } from '../repositories/interfaces/project.repository.interface';
-import { IClientRepository } from '../repositories/interfaces/client.repository.interface';
+import { Injectable, Inject } from "@nestjs/common";
+import { MetricsFilterDto } from "../dto/metrics-filter.dto";
+import { IFindingRepository } from "../repositories/interfaces/finding.repository.interface";
+import { IProjectRepository } from "../repositories/interfaces/project.repository.interface";
+import { IClientRepository } from "../repositories/interfaces/client.repository.interface";
 
 @Injectable()
 export class MetricsQueryService {
   constructor(
-    @Inject('IFindingRepository') private readonly findingRepository: IFindingRepository,
-    @Inject('IProjectRepository') private readonly projectRepository: IProjectRepository,
-    @Inject('IClientRepository') private readonly clientRepository: IClientRepository,
+    @Inject("IFindingRepository")
+    private readonly findingRepository: IFindingRepository,
+    @Inject("IProjectRepository")
+    private readonly projectRepository: IProjectRepository,
+    @Inject("IClientRepository")
+    private readonly clientRepository: IClientRepository,
   ) {}
 
   /**
@@ -17,14 +20,19 @@ export class MetricsQueryService {
    * el periodo y filtros especificados.
    */
   async getSummary(filters: MetricsFilterDto) {
-    const [findingsCount, projectsCount, clientsCount, openFindings, closedFindings] =
-      await Promise.all([
-        this.findingRepository.countByFilters(filters),
-        this.projectRepository.countByFilters(filters),
-        this.clientRepository.countByFilters(filters),
-        this.findingRepository.countByFilters(filters, { status: 'OPEN' }),
-        this.findingRepository.countByFilters(filters, { status: 'CLOSED' }),
-      ]);
+    const [
+      findingsCount,
+      projectsCount,
+      clientsCount,
+      openFindings,
+      closedFindings,
+    ] = await Promise.all([
+      this.findingRepository.countByFilters(filters),
+      this.projectRepository.countByFilters(filters),
+      this.clientRepository.countByFilters(filters),
+      this.findingRepository.countByFilters(filters, { status: "OPEN" }),
+      this.findingRepository.countByFilters(filters, { status: "CLOSED" }),
+    ]);
 
     return {
       findings: {
@@ -56,7 +64,7 @@ export class MetricsQueryService {
     const results = await this.findingRepository.aggregateBySeverity(filters);
 
     // Garantizar que todas las severidades aparecen, incluso con count 0
-    const severities = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'INFORMATIONAL'];
+    const severities = ["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFORMATIONAL"];
     const map = new Map(results.map((r) => [r._id, r.count]));
 
     return severities.map((severity) => ({
@@ -71,7 +79,14 @@ export class MetricsQueryService {
   async getFindingsByStatus(filters: MetricsFilterDto) {
     const results = await this.findingRepository.aggregateByStatus(filters);
 
-    const statuses = ['OPEN', 'IN_PROGRESS', 'RETEST_REQUIRED', 'RETEST_PASSED', 'RETEST_FAILED', 'CLOSED'];
+    const statuses = [
+      "OPEN",
+      "IN_PROGRESS",
+      "RETEST_REQUIRED",
+      "RETEST_PASSED",
+      "RETEST_FAILED",
+      "CLOSED",
+    ];
     const map = new Map(results.map((r) => [r._id, r.count]));
 
     return statuses.map((status) => ({
@@ -86,7 +101,7 @@ export class MetricsQueryService {
   async getProjectsByStatus(filters: MetricsFilterDto) {
     const results = await this.projectRepository.aggregateByStatus(filters);
 
-    const statuses = ['ACTIVE', 'CLOSED', 'ARCHIVED'];
+    const statuses = ["ACTIVE", "CLOSED", "ARCHIVED"];
     const map = new Map(results.map((r) => [r._id, r.count]));
 
     return statuses.map((status) => ({

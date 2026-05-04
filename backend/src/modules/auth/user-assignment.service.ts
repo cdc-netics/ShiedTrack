@@ -1,11 +1,16 @@
-import { Injectable, BadRequestException, NotFoundException, Logger } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
-import { UserAreaAssignment } from './schemas/user-area-assignment.schema';
-import { User } from './schemas/user.schema';
-import { Area } from '../area/schemas/area.schema';
-import { Project } from '../project/schemas/project.schema';
-import { Client } from '../client/schemas/client.schema';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+  Logger,
+} from "@nestjs/common";
+import { InjectModel } from "@nestjs/mongoose";
+import { Model, Types } from "mongoose";
+import { UserAreaAssignment } from "./schemas/user-area-assignment.schema";
+import { User } from "./schemas/user.schema";
+import { Area } from "../area/schemas/area.schema";
+import { Project } from "../project/schemas/project.schema";
+import { Client } from "../client/schemas/client.schema";
 
 /**
  * Servicio de asignación centralizada de usuarios
@@ -45,18 +50,18 @@ export class UserAssignmentService {
     // Verificar que el usuario existe
     const user = await this.userModel.findById(userId);
     if (!user) {
-      throw new NotFoundException('Usuario no encontrado');
+      throw new NotFoundException("Usuario no encontrado");
     }
 
     // Verificar que el usuario asignador existe
     const assigner = await this.userModel.findById(assignedBy);
     if (!assigner) {
-      throw new NotFoundException('Usuario asignador no encontrado');
+      throw new NotFoundException("Usuario asignador no encontrado");
     }
 
     const result: any = {
       success: true,
-      message: 'Asignaciones actualizadas exitosamente',
+      message: "Asignaciones actualizadas exitosamente",
       assigned: {
         areas: [] as any[],
         projects: [] as any[],
@@ -67,24 +72,34 @@ export class UserAssignmentService {
 
     // Procesar asignación de áreas (soportado nativamente)
     if (assignmentIds.areaIds && assignmentIds.areaIds.length > 0) {
-      result.assigned.areas = await this.replaceUserAreas(userId, assignmentIds.areaIds, assignedBy);
+      result.assigned.areas = await this.replaceUserAreas(
+        userId,
+        assignmentIds.areaIds,
+        assignedBy,
+      );
     }
 
     // Procesar asignación de proyectos (derivar a áreas)
     if (assignmentIds.projectIds && assignmentIds.projectIds.length > 0) {
       const projects = await this.projectModel
-        .find({ _id: { $in: assignmentIds.projectIds.map(id => new Types.ObjectId(id)) } })
+        .find({
+          _id: {
+            $in: assignmentIds.projectIds.map((id) => new Types.ObjectId(id)),
+          },
+        })
         .exec();
 
       if (projects.length !== assignmentIds.projectIds.length) {
-        result.warnings.push('Algunos proyectos no existen');
+        result.warnings.push("Algunos proyectos no existen");
       }
 
       // Obtener todas las áreas de los proyectos
       const areaIdsFromProjects = new Set<string>();
       for (const project of projects) {
         if (project.areaIds && project.areaIds.length > 0) {
-          project.areaIds.forEach(areaId => areaIdsFromProjects.add(areaId.toString()));
+          project.areaIds.forEach((areaId) =>
+            areaIdsFromProjects.add(areaId.toString()),
+          );
         }
       }
 
@@ -94,7 +109,10 @@ export class UserAssignmentService {
           Array.from(areaIdsFromProjects),
           assignedBy,
         );
-        result.assigned.projects = projects.map(p => ({ _id: p._id, name: p.name }));
+        result.assigned.projects = projects.map((p) => ({
+          _id: p._id,
+          name: p.name,
+        }));
         result.assigned.areas = projectAreas;
       }
     }
@@ -102,28 +120,35 @@ export class UserAssignmentService {
     // Procesar asignación de clientes (derivar a sus áreas)
     if (assignmentIds.clientIds && assignmentIds.clientIds.length > 0) {
       const clients = await this.clientModel
-        .find({ _id: { $in: assignmentIds.clientIds.map(id => new Types.ObjectId(id)) } })
+        .find({
+          _id: {
+            $in: assignmentIds.clientIds.map((id) => new Types.ObjectId(id)),
+          },
+        })
         .exec();
 
       if (clients.length !== assignmentIds.clientIds.length) {
-        result.warnings.push('Algunos clientes no existen');
+        result.warnings.push("Algunos clientes no existen");
       }
 
       // Obtener todas las áreas del cliente
       const areaIdsFromClients = await this.areaModel
         .find({
-          clientId: { $in: clients.map(c => c._id) },
+          clientId: { $in: clients.map((c) => c._id) },
         })
-        .select('_id')
+        .select("_id")
         .exec();
 
       if (areaIdsFromClients.length > 0) {
         const clientAreas = await this.replaceUserAreas(
           userId,
-          areaIdsFromClients.map(a => a._id.toString()),
+          areaIdsFromClients.map((a) => a._id.toString()),
           assignedBy,
         );
-        result.assigned.clients = clients.map(c => ({ _id: c._id, name: c.name }));
+        result.assigned.clients = clients.map((c) => ({
+          _id: c._id,
+          name: c.name,
+        }));
         result.assigned.areas = clientAreas;
       }
     }
@@ -138,7 +163,7 @@ export class UserAssignmentService {
     // Verificar que el usuario existe
     const user = await this.userModel.findById(userId);
     if (!user) {
-      throw new NotFoundException('Usuario no encontrado');
+      throw new NotFoundException("Usuario no encontrado");
     }
 
     // Obtener áreas asignadas
@@ -147,7 +172,7 @@ export class UserAssignmentService {
         userId: new Types.ObjectId(userId),
         isActive: true,
       })
-      .populate('areaId')
+      .populate("areaId")
       .exec();
 
     // Agrupar por cliente y obtener proyectos
@@ -170,23 +195,25 @@ export class UserAssignmentService {
         // Obtener proyectos del área
         const projects = await this.projectModel
           .find({ areaIds: area._id })
-          .select('_id name')
+          .select("_id name")
           .exec();
-        projects.forEach(p => projectIdsByClient[clientId].add(p._id.toString()));
+        projects.forEach((p) =>
+          projectIdsByClient[clientId].add(p._id.toString()),
+        );
       }
     }
 
     // Obtener clientes
     const clientIds = Object.keys(areasByClient);
     const clients = await this.clientModel
-      .find({ _id: { $in: clientIds.map(id => new Types.ObjectId(id)) } })
-      .select('_id name displayName')
+      .find({ _id: { $in: clientIds.map((id) => new Types.ObjectId(id)) } })
+      .select("_id name displayName")
       .exec();
 
     const result = {
       userId,
       userName: user.email,
-      clients: clients.map(c => ({
+      clients: clients.map((c) => ({
         _id: c._id,
         name: c.name,
         displayName: c.displayName,
@@ -194,8 +221,10 @@ export class UserAssignmentService {
         projects: Array.from(projectIdsByClient[c._id.toString()] || []),
       })),
       totalAreas: userAreas.length,
-      totalProjects: Object.values(projectIdsByClient)
-        .reduce((sum, set) => sum + set.size, 0),
+      totalProjects: Object.values(projectIdsByClient).reduce(
+        (sum, set) => sum + set.size,
+        0,
+      ),
       totalClients: clients.length,
     };
 
@@ -237,7 +266,7 @@ export class UserAssignmentService {
       assignments.push(await assignment.save());
     }
 
-    return assignments.map(a => ({
+    return assignments.map((a) => ({
       _id: a._id,
       areaId: a.areaId,
       assignedAt: a.assignedAt,

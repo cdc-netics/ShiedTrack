@@ -1,4 +1,4 @@
-import { Type } from 'class-transformer';
+import { Type } from "class-transformer";
 import {
   IsArray,
   IsBoolean,
@@ -9,13 +9,13 @@ import {
   IsString,
   Min,
   ValidateNested,
-} from 'class-validator';
+} from "class-validator";
 import {
   NotificationChannel,
   NotificationEvent,
   NotificationRecipientType,
   NotificationScope,
-} from '../../../common/enums';
+} from "../../../common/enums";
 
 export class NotificationRecipientDto {
   @IsEnum(NotificationRecipientType)

@@ -12,6 +12,7 @@ import { environment } from '../../../../environments/environment';
 
 
 @Component({
+  standalone: true,
     selector: 'app-area-dialog',
     imports: [
         CommonModule,

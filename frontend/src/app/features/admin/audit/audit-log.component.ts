@@ -15,6 +15,7 @@ import { environment } from '../../../../environments/environment';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 
 @Component({
+  standalone: true,
     selector: 'app-audit-log',
     imports: [
         CommonModule,

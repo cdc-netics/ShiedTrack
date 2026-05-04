@@ -1,20 +1,20 @@
-import { Module } from '@nestjs/common';
-import { MongooseModule } from '@nestjs/mongoose';
-import { MetricsController } from './metrics.controller';
-import { MetricsQueryService } from './services/metrics-query.service';
-import { MetricsExportService } from './services/metrics-export.service';
-import { Finding, FindingSchema } from '../finding/schemas/finding.schema';
-import { Project, ProjectSchema } from '../project/schemas/project.schema';
-import { Client, ClientSchema } from '../client/schemas/client.schema';
+import { Module } from "@nestjs/common";
+import { MongooseModule } from "@nestjs/mongoose";
+import { MetricsController } from "./metrics.controller";
+import { MetricsQueryService } from "./services/metrics-query.service";
+import { MetricsExportService } from "./services/metrics-export.service";
+import { Finding, FindingSchema } from "../finding/schemas/finding.schema";
+import { Project, ProjectSchema } from "../project/schemas/project.schema";
+import { Client, ClientSchema } from "../client/schemas/client.schema";
 
 // Repositories
-import { MongooseFindingRepository } from './repositories/mongoose/mongoose-finding.repository';
-import { MongooseProjectRepository } from './repositories/mongoose/mongoose-project.repository';
-import { MongooseClientRepository } from './repositories/mongoose/mongoose-client.repository';
+import { MongooseFindingRepository } from "./repositories/mongoose/mongoose-finding.repository";
+import { MongooseProjectRepository } from "./repositories/mongoose/mongoose-project.repository";
+import { MongooseClientRepository } from "./repositories/mongoose/mongoose-client.repository";
 
 // Strategies
-import { CsvExportStrategy } from './export-strategies/csv-export.strategy';
-import { JsonExportStrategy } from './export-strategies/json-export.strategy';
+import { CsvExportStrategy } from "./export-strategies/csv-export.strategy";
+import { JsonExportStrategy } from "./export-strategies/json-export.strategy";
 
 /**
  * Módulo de Métricas y Estadísticas Exportables (M6)
@@ -40,15 +40,15 @@ import { JsonExportStrategy } from './export-strategies/json-export.strategy';
 
     // Repositories (DIP)
     {
-      provide: 'IFindingRepository',
+      provide: "IFindingRepository",
       useClass: MongooseFindingRepository,
     },
     {
-      provide: 'IProjectRepository',
+      provide: "IProjectRepository",
       useClass: MongooseProjectRepository,
     },
     {
-      provide: 'IClientRepository',
+      provide: "IClientRepository",
       useClass: MongooseClientRepository,
     },
 

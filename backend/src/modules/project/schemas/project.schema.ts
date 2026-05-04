@@ -1,7 +1,7 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document, Types } from 'mongoose';
-import { ServiceArchitecture, ProjectStatus } from '../../../common/enums';
-import { multiTenantPlugin } from '../../../common/plugins/multi-tenant.plugin';
+import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
+import { Document, Types } from "mongoose";
+import { ServiceArchitecture, ProjectStatus } from "../../../common/enums";
+import { multiTenantPlugin } from "../../../common/plugins/multi-tenant.plugin";
 
 /**
  * Subdocumento: Configuración de política de Retest
@@ -44,16 +44,16 @@ export class Project extends Document {
    * @deprecated Los proyectos deben referenciar `tenantId`. Este campo es opcional
    * y solo se mantiene para compatibilidad con datos legacy.
    */
-  @Prop({ type: Types.ObjectId, ref: 'Client', required: false })
+  @Prop({ type: Types.ObjectId, ref: "Client", required: false })
   clientId?: Types.ObjectId;
 
-  @Prop({ type: [{ type: Types.ObjectId, ref: 'Area' }] })
+  @Prop({ type: [{ type: Types.ObjectId, ref: "Area" }] })
   areaIds: Types.ObjectId[];
 
   /**
    * @deprecated Use areaIds instead. Kept for backward compatibility.
    */
-  @Prop({ type: Types.ObjectId, ref: 'Area' })
+  @Prop({ type: Types.ObjectId, ref: "Area" })
   areaId?: Types.ObjectId;
 
   @Prop({ required: true, enum: ServiceArchitecture })
@@ -89,7 +89,7 @@ export class Project extends Document {
 
   // Timestamps automáticos: createdAt, updatedAt
   // Multi-tenant: referencia al tenant
-  @Prop({ type: Types.ObjectId, ref: 'Tenant', required: true, index: true })
+  @Prop({ type: Types.ObjectId, ref: "Tenant", required: true, index: true })
   tenantId: Types.ObjectId;
 }
 
@@ -104,7 +104,10 @@ ProjectSchema.plugin(multiTenantPlugin);
 ProjectSchema.index({ areaId: 1 });
 ProjectSchema.index({ areaIds: 1 });
 ProjectSchema.index({ code: 1 });
-ProjectSchema.index({ 'retestPolicy.enabled': 1, 'retestPolicy.nextRetestAt': 1 }); // Para el scheduler
+ProjectSchema.index({
+  "retestPolicy.enabled": 1,
+  "retestPolicy.nextRetestAt": 1,
+}); // Para el scheduler
 
 // Índice compuesto para consultas de métricas/BI
 ProjectSchema.index({ tenantId: 1, projectStatus: 1, createdAt: 1 });

@@ -9,6 +9,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { HttpClient } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
+import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 
 interface Area {
@@ -21,6 +22,15 @@ interface UserAreaAssignment {
   _id: string;
   areaId: Area;
   isActive: boolean;
+}
+
+interface DialogUser {
+  _id: string;
+  clientId?: string;
+  email?: string;
+  firstName?: string;
+  lastName?: string;
+  role?: string;
 }
 
 /**
@@ -200,7 +210,7 @@ export class AssignAreasDialogComponent implements OnInit {
   selectedAreaIds: string[] = [];
 
   constructor(
-    @Inject(MAT_DIALOG_DATA) public data: { user: any },
+    @Inject(MAT_DIALOG_DATA) public data: { user: DialogUser },
     private dialogRef: MatDialogRef<AssignAreasDialogComponent>,
     http: HttpClient,
     snackBar: MatSnackBar
@@ -227,13 +237,13 @@ export class AssignAreasDialogComponent implements OnInit {
       }
 
       // Cargar todas las áreas disponibles
-      const areas = await this.http.get<Area[]>(url).toPromise();
+      const areas = await firstValueFrom(this.http.get<Area[]>(url));
       this.availableAreas.set(areas || []);
 
       // Cargar áreas ya asignadas al usuario
-      const assignments = await this.http.get<UserAreaAssignment[]>(
+      const assignments = await firstValueFrom(this.http.get<UserAreaAssignment[]>(
         `${environment.apiUrl}/auth/users/${this.data.user._id}/areas`
-      ).toPromise();
+      ));
       this.currentAssignments.set(assignments || []);
 
       // Pre-seleccionar las áreas ya asignadas
@@ -259,10 +269,10 @@ export class AssignAreasDialogComponent implements OnInit {
     this.saving.set(true);
     try {
       // Enviar todas las áreas seleccionadas (reemplaza las anteriores)
-      await this.http.post(
+      await firstValueFrom(this.http.post(
         `${environment.apiUrl}/auth/users/${this.data.user._id}/areas/bulk`,
         { areaIds: this.selectedAreaIds }
-      ).toPromise();
+      ));
 
       this.snackBar.open('Áreas asignadas correctamente', 'Cerrar', { duration: 3000 });
       this.dialogRef.close(true);

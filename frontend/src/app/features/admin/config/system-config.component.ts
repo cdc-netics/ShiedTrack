@@ -15,6 +15,7 @@ import { AuthService } from '../../../core/services/auth.service';
 import { environment } from '../../../../environments/environment';
 
 @Component({
+  standalone: true,
     selector: 'app-system-config',
     imports: [
         CommonModule,

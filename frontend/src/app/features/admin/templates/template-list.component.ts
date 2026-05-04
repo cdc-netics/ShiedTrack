@@ -16,6 +16,7 @@ import { environment } from '../../../../environments/environment';
 import { TemplateDialogComponent } from './template-dialog.component';
 
 @Component({
+  standalone: true,
     selector: 'app-template-list',
     imports: [
         CommonModule,

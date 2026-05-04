@@ -32,6 +32,7 @@ interface Template {
 }
 
 @Component({
+    standalone: true,
     selector: 'app-finding-wizard',
     imports: [
         CommonModule,

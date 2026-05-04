@@ -4,19 +4,19 @@ import {
   Injectable,
   Logger,
   NotFoundException,
-} from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
+} from "@nestjs/common";
+import { InjectModel } from "@nestjs/mongoose";
+import { Model, Types } from "mongoose";
 import {
   NotificationChannel,
   NotificationEvent,
   NotificationRecipientType,
   NotificationScope,
   UserRole,
-} from '../../common/enums';
-import { User } from '../auth/schemas/user.schema';
-import { Project } from '../project/schemas/project.schema';
-import { Tenant } from '../tenant/schemas/tenant.schema';
+} from "../../common/enums";
+import { User } from "../auth/schemas/user.schema";
+import { Project } from "../project/schemas/project.schema";
+import { Tenant } from "../tenant/schemas/tenant.schema";
 import {
   CreateNotificationRuleDto,
   CreateNotificationTemplateDto,
@@ -25,9 +25,9 @@ import {
   NotificationRecipientDto,
   UpdateNotificationRuleDto,
   UpdateNotificationTemplateDto,
-} from './dto/notification.dto';
-import { NotificationRule } from './schemas/notification-rule.schema';
-import { NotificationTemplate } from './schemas/notification-template.schema';
+} from "./dto/notification.dto";
+import { NotificationRule } from "./schemas/notification-rule.schema";
+import { NotificationTemplate } from "./schemas/notification-template.schema";
 
 interface EmailContent {
   subject: string;
@@ -58,126 +58,139 @@ export class NotificationService {
 
   private readonly defaultTemplateSeeds: DefaultTemplateSeed[] = [
     {
-      code: 'SYSTEM_USER_CREATED',
-      name: 'Usuario creado',
+      code: "SYSTEM_USER_CREATED",
+      name: "Usuario creado",
       event: NotificationEvent.USER_CREATED,
-      subject: 'Bienvenido a ShieldTrack - Credenciales de Acceso',
+      subject: "Bienvenido a ShieldTrack - Credenciales de Acceso",
       bodyHtml:
         '<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">' +
         '<h2 style="color: #4caf50;">Bienvenido a ShieldTrack</h2>' +
-        '<p>Hola <strong>{{userName}}</strong>,</p>' +
-        '<p>Tu cuenta fue creada con el rol <strong>{{role}}</strong>.</p>' +
+        "<p>Hola <strong>{{userName}}</strong>,</p>" +
+        "<p>Tu cuenta fue creada con el rol <strong>{{role}}</strong>.</p>" +
         '<div style="background: #e8f5e9; padding: 15px; border-left: 4px solid #4caf50; margin: 20px 0;">' +
-        '<p><strong>Email:</strong> {{userEmail}}</p>' +
-        '<p><strong>Contrasena temporal:</strong> {{tempPassword}}</p>' +
-        '</div>' +
-        '<p>Por seguridad, cambia tu contrasena en el primer inicio de sesion.</p>' +
-        '</div>',
-      variables: ['userName', 'role', 'userEmail', 'tempPassword'],
+        "<p><strong>Email:</strong> {{userEmail}}</p>" +
+        "<p><strong>Contrasena temporal:</strong> {{tempPassword}}</p>" +
+        "</div>" +
+        "<p>Por seguridad, cambia tu contrasena en el primer inicio de sesion.</p>" +
+        "</div>",
+      variables: ["userName", "role", "userEmail", "tempPassword"],
     },
     {
-      code: 'SYSTEM_USER_ASSIGNED_AREA',
-      name: 'Usuario asignado a area',
+      code: "SYSTEM_USER_ASSIGNED_AREA",
+      name: "Usuario asignado a area",
       event: NotificationEvent.USER_ASSIGNED_AREA,
-      subject: 'Asignado a area: {{areaName}}',
+      subject: "Asignado a area: {{areaName}}",
       bodyHtml:
         '<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">' +
         '<h2 style="color: #1976d2;">Asignacion a Area</h2>' +
-        '<p>Hola <strong>{{userName}}</strong>,</p>' +
-        '<p>Has sido asignado al area <strong>{{areaName}}</strong>.</p>' +
-        '</div>',
-      variables: ['userName', 'areaName'],
+        "<p>Hola <strong>{{userName}}</strong>,</p>" +
+        "<p>Has sido asignado al area <strong>{{areaName}}</strong>.</p>" +
+        "</div>",
+      variables: ["userName", "areaName"],
     },
     {
-      code: 'SYSTEM_FINDING_ASSIGNED',
-      name: 'Hallazgo asignado',
+      code: "SYSTEM_FINDING_ASSIGNED",
+      name: "Hallazgo asignado",
       event: NotificationEvent.FINDING_ASSIGNED,
-      subject: 'Hallazgo asignado [{{severity}}]: {{findingTitle}}',
+      subject: "Hallazgo asignado [{{severity}}]: {{findingTitle}}",
       bodyHtml:
         '<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">' +
         '<h2 style="color: #1976d2;">Nuevo Hallazgo Asignado</h2>' +
-        '<p>Hola <strong>{{userName}}</strong>,</p>' +
-        '<p>Se te asigno el hallazgo <strong>{{findingTitle}}</strong>.</p>' +
+        "<p>Hola <strong>{{userName}}</strong>,</p>" +
+        "<p>Se te asigno el hallazgo <strong>{{findingTitle}}</strong>.</p>" +
         '<div style="background: #f5f5f5; padding: 15px; border-left: 4px solid #1976d2; margin: 20px 0;">' +
-        '<p><strong>Codigo:</strong> {{findingCode}}</p>' +
-        '<p><strong>Proyecto:</strong> {{projectName}}</p>' +
-        '<p><strong>Severidad:</strong> {{severity}}</p>' +
-        '</div>' +
-        '</div>',
-      variables: ['userName', 'findingTitle', 'findingCode', 'projectName', 'severity'],
+        "<p><strong>Codigo:</strong> {{findingCode}}</p>" +
+        "<p><strong>Proyecto:</strong> {{projectName}}</p>" +
+        "<p><strong>Severidad:</strong> {{severity}}</p>" +
+        "</div>" +
+        "</div>",
+      variables: [
+        "userName",
+        "findingTitle",
+        "findingCode",
+        "projectName",
+        "severity",
+      ],
     },
     {
-      code: 'SYSTEM_FINDING_CLOSED',
-      name: 'Hallazgo cerrado',
+      code: "SYSTEM_FINDING_CLOSED",
+      name: "Hallazgo cerrado",
       event: NotificationEvent.FINDING_CLOSED,
-      subject: 'Hallazgo cerrado: {{findingTitle}}',
+      subject: "Hallazgo cerrado: {{findingTitle}}",
       bodyHtml:
         '<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">' +
         '<h2 style="color: #4caf50;">Hallazgo Cerrado</h2>' +
-        '<p>Hola <strong>{{userName}}</strong>,</p>' +
-        '<p>El hallazgo <strong>{{findingTitle}}</strong> fue cerrado.</p>' +
+        "<p>Hola <strong>{{userName}}</strong>,</p>" +
+        "<p>El hallazgo <strong>{{findingTitle}}</strong> fue cerrado.</p>" +
         '<div style="background: #e8f5e9; padding: 15px; border-left: 4px solid #4caf50; margin: 20px 0;">' +
-        '<p><strong>Codigo:</strong> {{findingCode}}</p>' +
-        '<p><strong>Proyecto:</strong> {{projectName}}</p>' +
-        '<p><strong>Razon:</strong> {{closeReason}}</p>' +
-        '</div>' +
-        '</div>',
-      variables: ['userName', 'findingTitle', 'findingCode', 'projectName', 'closeReason'],
+        "<p><strong>Codigo:</strong> {{findingCode}}</p>" +
+        "<p><strong>Proyecto:</strong> {{projectName}}</p>" +
+        "<p><strong>Razon:</strong> {{closeReason}}</p>" +
+        "</div>" +
+        "</div>",
+      variables: [
+        "userName",
+        "findingTitle",
+        "findingCode",
+        "projectName",
+        "closeReason",
+      ],
     },
     {
-      code: 'SYSTEM_RETEST_UPCOMING',
-      name: 'Retest proximo',
+      code: "SYSTEM_RETEST_UPCOMING",
+      name: "Retest proximo",
       event: NotificationEvent.RETEST_UPCOMING,
-      subject: 'Recordatorio de Retest - {{projectName}} ({{daysUntilRetest}} dias)',
+      subject:
+        "Recordatorio de Retest - {{projectName}} ({{daysUntilRetest}} dias)",
       bodyHtml:
         '<div style="font-family: Arial, sans-serif; max-width: 700px; margin: 0 auto;">' +
         '<h2 style="color: #f57c00;">Recordatorio de Retest</h2>' +
-        '<p><strong>Proyecto:</strong> {{projectName}}</p>' +
-        '<p><strong>Cliente:</strong> {{clientName}}</p>' +
-        '<p><strong>Fecha de retest:</strong> {{retestDate}}</p>' +
-        '<p><strong>Dias restantes:</strong> {{daysUntilRetest}}</p>' +
+        "<p><strong>Proyecto:</strong> {{projectName}}</p>" +
+        "<p><strong>Cliente:</strong> {{clientName}}</p>" +
+        "<p><strong>Fecha de retest:</strong> {{retestDate}}</p>" +
+        "<p><strong>Dias restantes:</strong> {{daysUntilRetest}}</p>" +
         '<div style="background: #fff3e0; padding: 16px; border-left: 4px solid #f57c00; margin-top: 16px;">{{findingsListHtml}}</div>' +
-        '</div>',
+        "</div>",
       variables: [
-        'projectName',
-        'clientName',
-        'retestDate',
-        'daysUntilRetest',
-        'findingsListHtml',
+        "projectName",
+        "clientName",
+        "retestDate",
+        "daysUntilRetest",
+        "findingsListHtml",
       ],
     },
   ];
 
   private readonly defaultRuleSeeds: DefaultRuleSeed[] = [
     {
-      systemKey: 'SYSTEM_RULE_USER_CREATED',
-      name: 'Regla base - usuario creado',
+      systemKey: "SYSTEM_RULE_USER_CREATED",
+      name: "Regla base - usuario creado",
       event: NotificationEvent.USER_CREATED,
-      templateCode: 'SYSTEM_USER_CREATED',
+      templateCode: "SYSTEM_USER_CREATED",
     },
     {
-      systemKey: 'SYSTEM_RULE_USER_ASSIGNED_AREA',
-      name: 'Regla base - usuario asignado a area',
+      systemKey: "SYSTEM_RULE_USER_ASSIGNED_AREA",
+      name: "Regla base - usuario asignado a area",
       event: NotificationEvent.USER_ASSIGNED_AREA,
-      templateCode: 'SYSTEM_USER_ASSIGNED_AREA',
+      templateCode: "SYSTEM_USER_ASSIGNED_AREA",
     },
     {
-      systemKey: 'SYSTEM_RULE_FINDING_ASSIGNED',
-      name: 'Regla base - hallazgo asignado',
+      systemKey: "SYSTEM_RULE_FINDING_ASSIGNED",
+      name: "Regla base - hallazgo asignado",
       event: NotificationEvent.FINDING_ASSIGNED,
-      templateCode: 'SYSTEM_FINDING_ASSIGNED',
+      templateCode: "SYSTEM_FINDING_ASSIGNED",
     },
     {
-      systemKey: 'SYSTEM_RULE_FINDING_CLOSED',
-      name: 'Regla base - hallazgo cerrado',
+      systemKey: "SYSTEM_RULE_FINDING_CLOSED",
+      name: "Regla base - hallazgo cerrado",
       event: NotificationEvent.FINDING_CLOSED,
-      templateCode: 'SYSTEM_FINDING_CLOSED',
+      templateCode: "SYSTEM_FINDING_CLOSED",
     },
     {
-      systemKey: 'SYSTEM_RULE_RETEST_UPCOMING',
-      name: 'Regla base - retest proximo',
+      systemKey: "SYSTEM_RULE_RETEST_UPCOMING",
+      name: "Regla base - retest proximo",
       event: NotificationEvent.RETEST_UPCOMING,
-      templateCode: 'SYSTEM_RETEST_UPCOMING',
+      templateCode: "SYSTEM_RETEST_UPCOMING",
     },
   ];
 
@@ -217,12 +230,14 @@ export class NotificationService {
     const [users, projects, tenants, templates] = await Promise.all([
       this.userModel
         .find(userFilter)
-        .select('firstName lastName email role activeTenantId clientId tenantIds')
+        .select(
+          "firstName lastName email role activeTenantId clientId tenantIds",
+        )
         .sort({ firstName: 1, lastName: 1, email: 1 })
         .lean(),
       this.projectModel
         .find(projectFilter)
-        .select('name tenantId projectStatus')
+        .select("name tenantId projectStatus")
         .sort({ name: 1 })
         .lean(),
       this.getAccessibleTenants(currentUser),
@@ -255,11 +270,11 @@ export class NotificationService {
 
     return this.ruleModel
       .find(filter)
-      .populate('templateId', 'name code event scope tenantId isActive')
-      .populate('tenantId', 'name code')
-      .populate('projectId', 'name')
-      .populate('createdBy', 'firstName lastName email')
-      .populate('lastModifiedBy', 'firstName lastName email')
+      .populate("templateId", "name code event scope tenantId isActive")
+      .populate("tenantId", "name code")
+      .populate("projectId", "name")
+      .populate("createdBy", "firstName lastName email")
+      .populate("lastModifiedBy", "firstName lastName email")
       .sort({ scope: 1, event: 1, createdAt: -1 })
       .lean();
   }
@@ -281,9 +296,9 @@ export class NotificationService {
 
     return this.ruleModel
       .findById(rule._id)
-      .populate('templateId', 'name code')
-      .populate('tenantId', 'name code')
-      .populate('projectId', 'name')
+      .populate("templateId", "name code")
+      .populate("tenantId", "name code")
+      .populate("projectId", "name")
       .lean();
   }
 
@@ -305,7 +320,8 @@ export class NotificationService {
         enabled: dto.enabled ?? existingRule.enabled,
         channel: dto.channel ?? existingRule.channel,
         recipients:
-          dto.recipients ?? ((existingRule.recipients as any[]) || []).map((recipient) => ({
+          dto.recipients ??
+          ((existingRule.recipients as any[]) || []).map((recipient) => ({
             type: recipient.type,
             value: recipient.value,
           })),
@@ -332,9 +348,9 @@ export class NotificationService {
 
     return this.ruleModel
       .findById(existingRule._id)
-      .populate('templateId', 'name code')
-      .populate('tenantId', 'name code')
-      .populate('projectId', 'name')
+      .populate("templateId", "name code")
+      .populate("tenantId", "name code")
+      .populate("projectId", "name")
       .lean();
   }
 
@@ -359,8 +375,8 @@ export class NotificationService {
 
     return this.templateModel
       .find(filter)
-      .populate('tenantId', 'name code')
-      .populate('createdBy', 'firstName lastName email')
+      .populate("tenantId", "name code")
+      .populate("createdBy", "firstName lastName email")
       .sort({ event: 1, scope: 1, createdAt: -1 })
       .lean();
   }
@@ -381,7 +397,7 @@ export class NotificationService {
 
     return this.templateModel
       .findById(template._id)
-      .populate('tenantId', 'name code')
+      .populate("tenantId", "name code")
       .lean();
   }
 
@@ -416,7 +432,7 @@ export class NotificationService {
 
     return this.templateModel
       .findById(template._id)
-      .populate('tenantId', 'name code')
+      .populate("tenantId", "name code")
       .lean();
   }
 
@@ -459,7 +475,7 @@ export class NotificationService {
 
     const rules = await this.ruleModel
       .find(filter)
-      .populate('templateId')
+      .populate("templateId")
       .sort({ createdAt: 1 });
 
     const projectRules = projectId
@@ -534,7 +550,7 @@ export class NotificationService {
           isActive: true,
           isDeleted: { $ne: true },
         })
-        .select('email')
+        .select("email")
         .lean();
 
       for (const user of users) {
@@ -552,7 +568,7 @@ export class NotificationService {
           isActive: true,
           isDeleted: { $ne: true },
         })
-        .select('email role activeTenantId clientId tenantIds')
+        .select("email role activeTenantId clientId tenantIds")
         .lean();
 
       for (const user of users) {
@@ -581,7 +597,7 @@ export class NotificationService {
   ): Promise<EmailContent> {
     const templateRef = rule.templateId as any;
     const template =
-      templateRef && typeof templateRef === 'object' && templateRef.subject
+      templateRef && typeof templateRef === "object" && templateRef.subject
         ? templateRef
         : rule.templateId
           ? await this.templateModel.findById(rule.templateId).lean()
@@ -591,7 +607,10 @@ export class NotificationService {
       return fallback;
     }
 
-    const renderedSubject = this.renderString(template.subject, variables).trim();
+    const renderedSubject = this.renderString(
+      template.subject,
+      variables,
+    ).trim();
     const renderedHtml = this.renderString(template.bodyHtml, variables).trim();
 
     if (!renderedSubject || !renderedHtml) {
@@ -601,12 +620,19 @@ export class NotificationService {
     return {
       subject: renderedSubject,
       html: renderedHtml,
-      text: renderedHtml.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim(),
+      text: renderedHtml
+        .replace(/<[^>]*>/g, " ")
+        .replace(/\s+/g, " ")
+        .trim(),
     };
   }
 
   isRuleThrottled(rule: NotificationRule): boolean {
-    if (!rule.throttleMinutes || rule.throttleMinutes <= 0 || !rule.lastTriggeredAt) {
+    if (
+      !rule.throttleMinutes ||
+      rule.throttleMinutes <= 0 ||
+      !rule.lastTriggeredAt
+    ) {
       return false;
     }
 
@@ -660,9 +686,11 @@ export class NotificationService {
 
     const templates = await this.templateModel
       .find({
-        code: { $in: this.defaultTemplateSeeds.map((template) => template.code) },
+        code: {
+          $in: this.defaultTemplateSeeds.map((template) => template.code),
+        },
       })
-      .select('_id code')
+      .select("_id code")
       .lean();
 
     const templateMap = new Map(
@@ -777,13 +805,16 @@ export class NotificationService {
 
     if (scope === NotificationScope.PROJECT) {
       throw new BadRequestException(
-        'Las plantillas solo pueden tener scope GLOBAL o TENANT',
+        "Las plantillas solo pueden tener scope GLOBAL o TENANT",
       );
     }
 
-    if (scope === NotificationScope.GLOBAL && !this.isPlatformUser(currentUser?.role)) {
+    if (
+      scope === NotificationScope.GLOBAL &&
+      !this.isPlatformUser(currentUser?.role)
+    ) {
       throw new ForbiddenException(
-        'Solo OWNER/PLATFORM_ADMIN pueden gestionar plantillas globales',
+        "Solo OWNER/PLATFORM_ADMIN pueden gestionar plantillas globales",
       );
     }
 
@@ -797,7 +828,7 @@ export class NotificationService {
 
     if (scope === NotificationScope.TENANT && !tenantId) {
       throw new BadRequestException(
-        'Debe seleccionar un tenant para plantillas TENANT',
+        "Debe seleccionar un tenant para plantillas TENANT",
       );
     }
 
@@ -806,7 +837,7 @@ export class NotificationService {
 
     if (!subject || !bodyHtml) {
       throw new BadRequestException(
-        'La plantilla debe incluir subject y bodyHtml',
+        "La plantilla debe incluir subject y bodyHtml",
       );
     }
 
@@ -820,7 +851,9 @@ export class NotificationService {
       bodyHtml,
       variables:
         dto.variables && dto.variables.length > 0
-          ? Array.from(new Set(dto.variables.map((item) => item.trim()).filter(Boolean)))
+          ? Array.from(
+              new Set(dto.variables.map((item) => item.trim()).filter(Boolean)),
+            )
           : this.extractTemplateVariables(subject, bodyHtml),
       isActive: dto.isActive ?? true,
     };
@@ -838,25 +871,31 @@ export class NotificationService {
     let projectId = dto.projectId;
 
     if (!scope) {
-      throw new BadRequestException('Debe indicar un scope para la regla');
+      throw new BadRequestException("Debe indicar un scope para la regla");
     }
 
     if (scope === NotificationScope.GLOBAL && !isPlatformUser) {
       throw new ForbiddenException(
-        'Solo OWNER/PLATFORM_ADMIN pueden gestionar reglas globales',
+        "Solo OWNER/PLATFORM_ADMIN pueden gestionar reglas globales",
       );
     }
 
-    if (!isPlatformUser && ![NotificationScope.TENANT, NotificationScope.PROJECT].includes(scope)) {
-      throw new ForbiddenException('No tiene permisos para este scope');
+    if (
+      !isPlatformUser &&
+      ![NotificationScope.TENANT, NotificationScope.PROJECT].includes(scope)
+    ) {
+      throw new ForbiddenException("No tiene permisos para este scope");
     }
 
-    if (scope === NotificationScope.TENANT || scope === NotificationScope.PROJECT) {
+    if (
+      scope === NotificationScope.TENANT ||
+      scope === NotificationScope.PROJECT
+    ) {
       tenantId = isPlatformUser ? tenantId || currentTenantId : currentTenantId;
 
       if (!tenantId) {
         throw new BadRequestException(
-          'Debe seleccionar un tenant para reglas TENANT/PROJECT',
+          "Debe seleccionar un tenant para reglas TENANT/PROJECT",
         );
       }
     } else {
@@ -867,24 +906,24 @@ export class NotificationService {
     if (scope === NotificationScope.PROJECT) {
       if (!projectId) {
         throw new BadRequestException(
-          'Debe seleccionar un proyecto para reglas PROJECT',
+          "Debe seleccionar un proyecto para reglas PROJECT",
         );
       }
 
       const project = await this.projectModel
         .findById(projectId)
-        .select('tenantId name')
+        .select("tenantId name")
         .lean();
 
       if (!project) {
-        throw new NotFoundException('Proyecto no encontrado');
+        throw new NotFoundException("Proyecto no encontrado");
       }
 
       tenantId = project.tenantId?.toString();
 
       if (!isPlatformUser && tenantId !== currentTenantId?.toString()) {
         throw new ForbiddenException(
-          'No puede crear reglas para proyectos fuera de su tenant',
+          "No puede crear reglas para proyectos fuera de su tenant",
         );
       }
     }
@@ -898,7 +937,7 @@ export class NotificationService {
 
       if (template.event !== dto.event) {
         throw new BadRequestException(
-          'La plantilla seleccionada pertenece a otro evento',
+          "La plantilla seleccionada pertenece a otro evento",
         );
       }
 
@@ -907,7 +946,7 @@ export class NotificationService {
         template.tenantId?.toString() !== ruleTenantId
       ) {
         throw new BadRequestException(
-          'La plantilla TENANT seleccionada no pertenece al tenant de la regla',
+          "La plantilla TENANT seleccionada no pertenece al tenant de la regla",
         );
       }
     }
@@ -934,14 +973,18 @@ export class NotificationService {
       const value = recipient.value?.trim();
 
       if (!value) {
-        throw new BadRequestException('Todos los destinatarios deben tener valor');
+        throw new BadRequestException(
+          "Todos los destinatarios deben tener valor",
+        );
       }
 
       if (
         type === NotificationRecipientType.EMAIL &&
         !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
       ) {
-        throw new BadRequestException(`Email invalido en destinatarios: ${value}`);
+        throw new BadRequestException(
+          `Email invalido en destinatarios: ${value}`,
+        );
       }
 
       if (
@@ -957,7 +1000,9 @@ export class NotificationService {
         type === NotificationRecipientType.ROLE &&
         !Object.values(UserRole).includes(value as UserRole)
       ) {
-        throw new BadRequestException(`Rol invalido en destinatarios: ${value}`);
+        throw new BadRequestException(
+          `Rol invalido en destinatarios: ${value}`,
+        );
       }
 
       return { type, value };
@@ -968,12 +1013,15 @@ export class NotificationService {
     const rule = await this.ruleModel.findById(id);
 
     if (!rule) {
-      throw new NotFoundException('Regla de notificacion no encontrada');
+      throw new NotFoundException("Regla de notificacion no encontrada");
     }
 
-    if (rule.scope === NotificationScope.GLOBAL && !this.isPlatformUser(currentUser?.role)) {
+    if (
+      rule.scope === NotificationScope.GLOBAL &&
+      !this.isPlatformUser(currentUser?.role)
+    ) {
       throw new ForbiddenException(
-        'Solo OWNER/PLATFORM_ADMIN pueden gestionar reglas globales',
+        "Solo OWNER/PLATFORM_ADMIN pueden gestionar reglas globales",
       );
     }
 
@@ -983,7 +1031,7 @@ export class NotificationService {
     ) {
       const tenantId = this.getCurrentTenantId(currentUser);
       if (!tenantId || rule.tenantId?.toString() !== tenantId.toString()) {
-        throw new ForbiddenException('No tiene acceso a esta regla');
+        throw new ForbiddenException("No tiene acceso a esta regla");
       }
     }
 
@@ -994,7 +1042,7 @@ export class NotificationService {
     const template = await this.templateModel.findById(id);
 
     if (!template) {
-      throw new NotFoundException('Plantilla de notificacion no encontrada');
+      throw new NotFoundException("Plantilla de notificacion no encontrada");
     }
 
     if (
@@ -1002,7 +1050,7 @@ export class NotificationService {
       !this.isPlatformUser(currentUser?.role)
     ) {
       throw new ForbiddenException(
-        'Solo OWNER/PLATFORM_ADMIN pueden gestionar plantillas globales',
+        "Solo OWNER/PLATFORM_ADMIN pueden gestionar plantillas globales",
       );
     }
 
@@ -1012,7 +1060,7 @@ export class NotificationService {
     ) {
       const tenantId = this.getCurrentTenantId(currentUser);
       if (!tenantId || template.tenantId?.toString() !== tenantId.toString()) {
-        throw new ForbiddenException('No tiene acceso a esta plantilla');
+        throw new ForbiddenException("No tiene acceso a esta plantilla");
       }
     }
 
@@ -1023,11 +1071,11 @@ export class NotificationService {
     const template = await this.templateModel.findById(id);
 
     if (!template) {
-      throw new NotFoundException('Plantilla de notificacion no encontrada');
+      throw new NotFoundException("Plantilla de notificacion no encontrada");
     }
 
     if (!template.isActive) {
-      throw new BadRequestException('La plantilla seleccionada esta inactiva');
+      throw new BadRequestException("La plantilla seleccionada esta inactiva");
     }
 
     if (
@@ -1043,7 +1091,9 @@ export class NotificationService {
         !this.isPlatformUser(currentUser?.role) &&
         template.tenantId?.toString() !== tenantId?.toString()
       ) {
-        throw new ForbiddenException('No tiene acceso a la plantilla seleccionada');
+        throw new ForbiddenException(
+          "No tiene acceso a la plantilla seleccionada",
+        );
       }
     }
 
@@ -1052,7 +1102,11 @@ export class NotificationService {
 
   private async getAccessibleTenants(currentUser: any) {
     if (this.isPlatformUser(currentUser?.role)) {
-      return this.tenantModel.find().select('name code').sort({ name: 1 }).lean();
+      return this.tenantModel
+        .find()
+        .select("name code")
+        .sort({ name: 1 })
+        .lean();
     }
 
     const tenantId = this.getCurrentTenantId(currentUser);
@@ -1062,7 +1116,7 @@ export class NotificationService {
 
     return this.tenantModel
       .find({ _id: new Types.ObjectId(tenantId) })
-      .select('name code')
+      .select("name code")
       .lean();
   }
 
@@ -1072,7 +1126,7 @@ export class NotificationService {
 
     return this.templateModel
       .find(filter)
-      .select('name code event scope tenantId')
+      .select("name code event scope tenantId")
       .sort({ event: 1, name: 1 })
       .lean();
   }
@@ -1081,11 +1135,14 @@ export class NotificationService {
     return template.replace(/\{\{\s*([^}]+?)\s*\}\}/g, (_, rawKey: string) => {
       const key = rawKey.trim();
       const value = this.getValueByPath(variables, key);
-      return value === undefined || value === null ? '' : String(value);
+      return value === undefined || value === null ? "" : String(value);
     });
   }
 
-  private extractTemplateVariables(subject: string, bodyHtml: string): string[] {
+  private extractTemplateVariables(
+    subject: string,
+    bodyHtml: string,
+  ): string[] {
     const keys = new Set<string>();
     const matcher = /\{\{\s*([^}]+?)\s*\}\}/g;
     const source = `${subject}\n${bodyHtml}`;
@@ -1098,11 +1155,10 @@ export class NotificationService {
     return Array.from(keys);
   }
 
-  private getValueByPath(
-    variables: Record<string, any>,
-    path: string,
-  ): any {
-    return path.split('.').reduce((acc: any, key: string) => acc?.[key], variables);
+  private getValueByPath(variables: Record<string, any>, path: string): any {
+    return path
+      .split(".")
+      .reduce((acc: any, key: string) => acc?.[key], variables);
   }
 
   private userBelongsToTenant(user: any, tenantId: string): boolean {

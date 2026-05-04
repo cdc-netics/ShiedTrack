@@ -1,0 +1,6 @@
+@use "../tokens/spacing" as s;
+
+.ui-form-grid {
+  display: grid;
+  gap: s.$space-4;
+}

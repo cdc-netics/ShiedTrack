@@ -1,11 +1,17 @@
-import { Injectable, NotFoundException, Logger, BadRequestException, StreamableFile } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
-import { Evidence } from './schemas/evidence.schema';
-import * as fs from 'fs';
-import * as path from 'path';
-import { createReadStream } from 'fs';
-import { promisify } from 'util';
+import {
+  Injectable,
+  NotFoundException,
+  Logger,
+  BadRequestException,
+  StreamableFile,
+} from "@nestjs/common";
+import { InjectModel } from "@nestjs/mongoose";
+import { Model } from "mongoose";
+import { Evidence } from "./schemas/evidence.schema";
+import * as fs from "fs";
+import * as path from "path";
+import { createReadStream } from "fs";
+import { promisify } from "util";
 
 const unlinkAsync = promisify(fs.unlink);
 const mkdirAsync = promisify(fs.mkdir);
@@ -18,18 +24,33 @@ const mkdirAsync = promisify(fs.mkdir);
 @Injectable()
 export class EvidenceService {
   private readonly logger = new Logger(EvidenceService.name);
-  private readonly uploadPath = process.env.EVIDENCE_STORAGE_PATH || './uploads/evidence';
+  private readonly uploadPath =
+    process.env.EVIDENCE_STORAGE_PATH || "./uploads/evidence";
 
   // Extensiones permitidas según requisitos
   private readonly allowedExtensions = [
-    '.pdf', '.log', '.txt',
-    '.jpg', '.jpeg', '.png', '.gif',
-    '.zip', '.rar', '.7z',
-    '.doc', '.docx', '.xls', '.xlsx',
-    '.json', '.xml', '.csv',
+    ".pdf",
+    ".log",
+    ".txt",
+    ".jpg",
+    ".jpeg",
+    ".png",
+    ".gif",
+    ".zip",
+    ".rar",
+    ".7z",
+    ".doc",
+    ".docx",
+    ".xls",
+    ".xlsx",
+    ".json",
+    ".xml",
+    ".csv",
   ];
 
-  constructor(@InjectModel(Evidence.name) private evidenceModel: Model<Evidence>) {
+  constructor(
+    @InjectModel(Evidence.name) private evidenceModel: Model<Evidence>,
+  ) {
     this.ensureUploadDirectory();
   }
 
@@ -43,7 +64,9 @@ export class EvidenceService {
         this.logger.log(`Directorio de evidencias creado: ${this.uploadPath}`);
       }
     } catch (error) {
-      this.logger.error(`Error creando directorio de evidencias: ${error.message}`);
+      this.logger.error(
+        `Error creando directorio de evidencias: ${error.message}`,
+      );
     }
   }
 
@@ -54,7 +77,7 @@ export class EvidenceService {
     const ext = path.extname(filename).toLowerCase();
     if (!this.allowedExtensions.includes(ext)) {
       throw new BadRequestException(
-        `Extensión de archivo no permitida: ${ext}. Permitidas: ${this.allowedExtensions.join(', ')}`,
+        `Extensión de archivo no permitida: ${ext}. Permitidas: ${this.allowedExtensions.join(", ")}`,
       );
     }
   }
@@ -95,7 +118,9 @@ export class EvidenceService {
 
     await evidence.save();
 
-    this.logger.log(`Evidencia subida: ${file.originalname} (${file.size} bytes) para hallazgo ${findingId}`);
+    this.logger.log(
+      `Evidencia subida: ${file.originalname} (${file.size} bytes) para hallazgo ${findingId}`,
+    );
     return evidence;
   }
 
@@ -103,8 +128,9 @@ export class EvidenceService {
    * Obtiene evidencias de un hallazgo
    */
   async findByFinding(findingId: string): Promise<Evidence[]> {
-    return this.evidenceModel.find({ findingId })
-      .populate('uploadedBy', 'firstName lastName email')
+    return this.evidenceModel
+      .find({ findingId })
+      .populate("uploadedBy", "firstName lastName email")
       .sort({ createdAt: -1 });
   }
 
@@ -123,13 +149,15 @@ export class EvidenceService {
    * Descarga un archivo de evidencia (con stream seguro)
    * El controller debe validar JWT antes de llamar este método
    */
-  async downloadFile(id: string): Promise<{ stream: StreamableFile; evidence: Evidence }> {
+  async downloadFile(
+    id: string,
+  ): Promise<{ stream: StreamableFile; evidence: Evidence }> {
     const evidence = await this.findById(id);
 
     // Verificar que el archivo existe en disco
     if (!fs.existsSync(evidence.filePath)) {
       this.logger.error(`Archivo no encontrado en disco: ${evidence.filePath}`);
-      throw new NotFoundException('Archivo no encontrado en el servidor');
+      throw new NotFoundException("Archivo no encontrado en el servidor");
     }
 
     const file = createReadStream(evidence.filePath);

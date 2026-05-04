@@ -17,6 +17,14 @@ body {
   background: #f5f5f5;
 }
 
+/* Hardening UX escritura: evita inversión visual accidental */
+input,
+textarea,
+[contenteditable="true"] {
+  direction: ltr;
+  unicode-bidi: plaintext;
+}
+
 /* Material Design overrides para diseño denso */
 .mat-mdc-table {
   font-size: 14px;

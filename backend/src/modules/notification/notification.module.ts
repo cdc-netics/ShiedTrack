@@ -1,18 +1,18 @@
-import { Module } from '@nestjs/common';
-import { MongooseModule } from '@nestjs/mongoose';
-import { User, UserSchema } from '../auth/schemas/user.schema';
-import { Project, ProjectSchema } from '../project/schemas/project.schema';
-import { Tenant, TenantSchema } from '../tenant/schemas/tenant.schema';
+import { Module } from "@nestjs/common";
+import { MongooseModule } from "@nestjs/mongoose";
+import { User, UserSchema } from "../auth/schemas/user.schema";
+import { Project, ProjectSchema } from "../project/schemas/project.schema";
+import { Tenant, TenantSchema } from "../tenant/schemas/tenant.schema";
 import {
   NotificationRule,
   NotificationRuleSchema,
-} from './schemas/notification-rule.schema';
+} from "./schemas/notification-rule.schema";
 import {
   NotificationTemplate,
   NotificationTemplateSchema,
-} from './schemas/notification-template.schema';
-import { NotificationController } from './notification.controller';
-import { NotificationService } from './notification.service';
+} from "./schemas/notification-template.schema";
+import { NotificationController } from "./notification.controller";
+import { NotificationService } from "./notification.service";
 
 @Module({
   imports: [

@@ -1,5 +1,5 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document, Types } from 'mongoose';
+import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
+import { Document, Types } from "mongoose";
 
 /**
  * Entidad AuditLog
@@ -16,17 +16,17 @@ export class AuditLog extends Document {
   @Prop({ required: true, trim: true })
   entityId!: string; // ID de la entidad afectada o 'N/A'
 
-  @Prop({ type: Types.ObjectId, ref: 'Client', required: false })
+  @Prop({ type: Types.ObjectId, ref: "Client", required: false })
   clientId?: Types.ObjectId;
 
-  @Prop({ type: Types.ObjectId, ref: 'Area', required: false })
+  @Prop({ type: Types.ObjectId, ref: "Area", required: false })
   areaId?: Types.ObjectId;
 
   /**
    * Usuario que ejecutó la acción (FK a User)
    * Puede ser null cuando es "anonymous" o sistema.
    */
-  @Prop({ type: Types.ObjectId, ref: 'User', required: false, default: null })
+  @Prop({ type: Types.ObjectId, ref: "User", required: false, default: null })
   performedBy?: Types.ObjectId | null;
 
   /**
@@ -44,7 +44,7 @@ export class AuditLog extends Document {
   @Prop({ type: String, required: false })
   userAgent?: string;
 
-  @Prop({ required: true, trim: true, default: 'INFO' })
+  @Prop({ required: true, trim: true, default: "INFO" })
   severity!: string; // INFO, WARNING, CRITICAL
 
   // timestamps (por Schema timestamps: true)
@@ -52,7 +52,7 @@ export class AuditLog extends Document {
   updatedAt!: Date;
 
   // Multi-tenant: referencia al tenant
-  @Prop({ type: Types.ObjectId, ref: 'Tenant', required: false })
+  @Prop({ type: Types.ObjectId, ref: "Tenant", required: false })
   tenantId?: Types.ObjectId;
 }
 

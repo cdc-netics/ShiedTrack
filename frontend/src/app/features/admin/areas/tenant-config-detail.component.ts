@@ -27,6 +27,7 @@ interface TenantConfig {
 }
 
 @Component({
+  standalone: true,
     selector: 'app-tenant-config-detail',
     imports: [
         CommonModule,

@@ -24,6 +24,7 @@ import { environment } from '../../../../environments/environment'; // Standardi
  * Gestión de clientes a los que se les presta servicios
  */
 @Component({
+  standalone: true,
     selector: 'app-client-list',
     imports: [
         CommonModule,
