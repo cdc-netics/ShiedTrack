@@ -1,4 +1,5 @@
-import { Component, inject, signal, computed, OnInit, ViewChild, ElementRef } from '@angular/core';
+import { Component, inject, signal, computed, OnInit, ViewChild, ElementRef, AfterViewInit, DestroyRef } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
@@ -206,8 +207,7 @@ interface Template {
                   <div #editor 
                        contenteditable="true" 
                        class="editor"
-                       (input)="onDescriptionChange($event)"
-                       [innerHTML]="basicForm.get('description')?.value || ''"></div>
+                       (input)="onDescriptionChange($event)"></div>
                   @if (basicForm.get('description')?.errors && basicForm.get('description')?.touched) {
                     <small class="error">La descripción es requerida</small>
                   }
@@ -315,10 +315,9 @@ interface Template {
                       <mat-icon>format_list_bulleted</mat-icon>
                     </button>
                   </div>
-                  <div contenteditable="true" 
+                  <div #recEditor contenteditable="true" 
                        class="editor"
-                       (input)="onRecommendationChange($event)"
-                       [innerHTML]="technicalForm.get('recommendation')?.value || ''"></div>
+                       (input)="onRecommendationChange($event)"></div>
                 </div>
 
                 <mat-form-field appearance="outline" class="full-width">
@@ -482,7 +481,24 @@ interface Template {
   `]
 })
 export class FindingWizardComponent implements OnInit {
-  @ViewChild('editor') editorRef!: ElementRef;
+  // Manejo de editores contenteditable con sincronización manual para evitar bug de caret
+  @ViewChild('editor') set editor(el: ElementRef) {
+    if (el) {
+      this.editorRef = el;
+      this.syncEditor(el.nativeElement, this.basicForm.get('description')?.value);
+    }
+  }
+  editorRef!: ElementRef;
+
+  @ViewChild('recEditor') set recEditor(el: ElementRef) {
+    if (el) {
+      this.recEditorRef = el;
+      this.syncEditor(el.nativeElement, this.technicalForm.get('recommendation')?.value);
+    }
+  }
+  recEditorRef!: ElementRef;
+
+  private destroyRef = inject(DestroyRef);
 
   // Dependencias principales
   private fb = inject(FormBuilder);
@@ -581,6 +597,32 @@ export class FindingWizardComponent implements OnInit {
     this.generateCode();
     this.setupClientFilter();
     this.setupProjectFilter();
+    this.setupEditorSync();
+  }
+
+  setupEditorSync(): void {
+    // Sincroniza cambios del modelo a la vista solo si son diferentes
+    this.basicForm.get('description')?.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(val => {
+        if (this.editorRef) {
+          this.syncEditor(this.editorRef.nativeElement, val);
+        }
+      });
+
+    this.technicalForm.get('recommendation')?.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(val => {
+        if (this.recEditorRef) {
+          this.syncEditor(this.recEditorRef.nativeElement, val);
+        }
+      });
+  }
+
+  syncEditor(el: HTMLElement, value: any): void {
+    if (el.innerHTML !== value) {
+      el.innerHTML = value || '';
+    }
   }
 
   initForms(): void {

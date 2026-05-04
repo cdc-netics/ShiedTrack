@@ -6,6 +6,9 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 ## [Unreleased]
+### 🎯 Resumen de Cambios
+
+- **FIX (Frontend):** Corregido bug de "escritura al revés" en los campos de texto enriquecido (Descripción Técnica y Recomendación) del Wizard de Hallazgos. Se implementó sincronización manual del DOM para evitar el reinicio de la posición del cursor (caret) durante la edición.
 
 ## [2.1.4] - 2026-04-29
 ### 🎯 Resumen de Cambios
