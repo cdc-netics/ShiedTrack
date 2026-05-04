@@ -38,7 +38,8 @@ El sistema funciona en lo básico, pero hay problemas de navegación, branding, 
 | B4a | ✅ Completado | Bugs - Backup | mongodump no está en PATH | Instalado en contenedor y mejorado error handling |
 | B5a | ✅ Completado | Bugs - Auditoría | UI mock / endpoint no `/api` | Datos normalizados y auditoría funcional |
 | B5b | ✅ Completado | Bugs - Asignaciones | Endpoint `/assignments` no persiste | Corregido persistencia y lógica de actualización |
-| B8b | ✅ Completado | Bugs - Frontend | Campo "Cliente" vacío en Tenants/Áreas | Frontend muestra tenantId si falta clientId; Backend ajustado |
+| B8b | ✅ Completado | Bugs - Backend | Campo "Cliente" vacío en Tenants/Áreas | Frontend muestra tenantId si falta clientId; Backend ajustado |
+| B9a | ✅ Completado | Bugs - Frontend | Escritura al revés en campos enriquecidos | Sincronización manual del DOM implementada |
 | B6a | ✅ Completado | Bugs - Export | URLs hardcodeadas a localhost | Reemplazado por environment.apiUrl |
 | B6b | ✅ Completado | Bugs - API | Clients usa API hardcodeada a localhost | Reemplazado por environment.apiUrl |
 | B6c | ✅ Completado | Bugs - Export | Error 401 / Ruta finding missing | Implementada ruta /export/finding y filtrado |
@@ -559,6 +560,17 @@ Esto permite que el administrador defina qué proyectos puede ver cada usuario.
 
 También se centralizó su ejecución mediante scripts definidos en package.json.
 Esto facilita el mantenimiento del proyecto y evita duplicación de scripts.
+
+-------------------------------------------------------------------------------------------------------------------
+
+**Fecha de actualización:** 4 de Mayo de 2026
+
+### **B9a — Escritura al revés en campos enriquecidos (Wizard)**
+- **Estado:** ✅ Completado
+- **Descripción:** Al escribir en los campos "Descripción Técnica" o "Recomendación de Remediación" del Wizard de Hallazgos, el texto se ingresaba de forma invertida o el cursor saltaba al inicio en cada pulsación.
+- **Solución sugerida (simple):** Desactivar el binding reactivo del DOM que reinicia el caret.
+- **Recomendación técnica (correcta):** Se eliminó el uso de `[innerHTML]` (que causaba el reinicio del cursor al re-renderizar) y se implementó una sincronización manual del DOM. El componente ahora solo actualiza el `innerHTML` si el contenido del modelo es realmente diferente al del DOM, preservando la posición del cursor durante la escritura. Se utilizaron setters de `ViewChild` y suscripciones a `valueChanges` con `takeUntilDestroyed` para mantener la reactividad sin afectar la experiencia de usuario.
+
 
 
 
