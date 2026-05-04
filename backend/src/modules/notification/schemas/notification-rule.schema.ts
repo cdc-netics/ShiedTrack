@@ -1,11 +1,11 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document, Types } from 'mongoose';
+import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
+import { Document, Types } from "mongoose";
 import {
   NotificationChannel,
   NotificationEvent,
   NotificationRecipientType,
   NotificationScope,
-} from '../../../common/enums';
+} from "../../../common/enums";
 
 export type NotificationRuleDocument = NotificationRule & Document;
 
@@ -18,8 +18,9 @@ export class NotificationRecipient {
   value: string;
 }
 
-export const NotificationRecipientSchema =
-  SchemaFactory.createForClass(NotificationRecipient);
+export const NotificationRecipientSchema = SchemaFactory.createForClass(
+  NotificationRecipient,
+);
 
 @Schema({ timestamps: true })
 export class NotificationRule extends Document {
@@ -35,10 +36,10 @@ export class NotificationRule extends Document {
   @Prop({ required: true, enum: NotificationScope, index: true })
   scope: NotificationScope;
 
-  @Prop({ type: Types.ObjectId, ref: 'Tenant', index: true })
+  @Prop({ type: Types.ObjectId, ref: "Tenant", index: true })
   tenantId?: Types.ObjectId;
 
-  @Prop({ type: Types.ObjectId, ref: 'Project', index: true })
+  @Prop({ type: Types.ObjectId, ref: "Project", index: true })
   projectId?: Types.ObjectId;
 
   @Prop({ default: true })
@@ -54,7 +55,7 @@ export class NotificationRule extends Document {
   @Prop({ type: [NotificationRecipientSchema], default: [] })
   recipients: NotificationRecipient[];
 
-  @Prop({ type: Types.ObjectId, ref: 'NotificationTemplate' })
+  @Prop({ type: Types.ObjectId, ref: "NotificationTemplate" })
   templateId?: Types.ObjectId;
 
   @Prop({ default: 0 })
@@ -63,10 +64,10 @@ export class NotificationRule extends Document {
   @Prop({ default: true })
   includeContextRecipients: boolean;
 
-  @Prop({ type: Types.ObjectId, ref: 'User' })
+  @Prop({ type: Types.ObjectId, ref: "User" })
   createdBy?: Types.ObjectId;
 
-  @Prop({ type: Types.ObjectId, ref: 'User' })
+  @Prop({ type: Types.ObjectId, ref: "User" })
   lastModifiedBy?: Types.ObjectId;
 
   @Prop()

@@ -33,6 +33,7 @@ const DEV_ADMIN_PASSWORD = 'Admin123!';
  * Standalone component con Material UI y anime.js
  */
 @Component({
+  standalone: true,
     selector: 'app-login',
     imports: [
         CommonModule,

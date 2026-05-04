@@ -1,7 +1,7 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
-import { AuditLog } from './schemas/audit-log.schema';
+import { Injectable, Logger } from "@nestjs/common";
+import { InjectModel } from "@nestjs/mongoose";
+import { Model } from "mongoose";
+import { AuditLog } from "./schemas/audit-log.schema";
 
 /**
  * Servicio de Auditoría
@@ -11,7 +11,9 @@ import { AuditLog } from './schemas/audit-log.schema';
 export class AuditService {
   private readonly logger = new Logger(AuditService.name);
 
-  constructor(@InjectModel(AuditLog.name) private auditModel: Model<AuditLog>) {}
+  constructor(
+    @InjectModel(AuditLog.name) private auditModel: Model<AuditLog>,
+  ) {}
 
   /**
    * Registra una acción de auditoría
@@ -32,19 +34,22 @@ export class AuditService {
     try {
       const audit = new this.auditModel({
         ...data,
-        severity: data.severity || 'INFO',
+        severity: data.severity || "INFO",
       });
       await audit.save();
-      
+
       // Log adicional para casos CRITICAL
-      if (data.severity === 'CRITICAL') {
+      if (data.severity === "CRITICAL") {
         this.logger.warn(
           `[AUDIT CRITICAL] ${data.action} on ${data.entityType}:${data.entityId} by ${data.performedBy}`,
         );
       }
     } catch (error) {
       // No bloquear operación si falla auditoría, pero logear
-      this.logger.error(`Error registrando auditoría: ${error.message}`, error.stack);
+      this.logger.error(
+        `Error registrando auditoría: ${error.message}`,
+        error.stack,
+      );
     }
   }
 
@@ -75,10 +80,12 @@ export class AuditService {
       if (filters.endDate) query.createdAt.$lte = filters.endDate;
     }
 
-    return this.auditModel
-      .find(query)
-      //.populate('performedBy', 'email firstName lastName')
-      .sort({ createdAt: -1 })
-      .limit(filters.limit || 100);
+    return (
+      this.auditModel
+        .find(query)
+        //.populate('performedBy', 'email firstName lastName')
+        .sort({ createdAt: -1 })
+        .limit(filters.limit || 100)
+    );
   }
 }

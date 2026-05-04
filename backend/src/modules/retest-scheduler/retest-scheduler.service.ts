@@ -1,10 +1,10 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { Cron, CronExpression } from '@nestjs/schedule';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
-import { Finding } from '../finding/schemas/finding.schema';
-import { Project } from '../project/schemas/project.schema';
-import { EmailService } from '../email/email.service';
+import { Injectable, Logger } from "@nestjs/common";
+import { Cron, CronExpression } from "@nestjs/schedule";
+import { InjectModel } from "@nestjs/mongoose";
+import { Model } from "mongoose";
+import { Finding } from "../finding/schemas/finding.schema";
+import { Project } from "../project/schemas/project.schema";
+import { EmailService } from "../email/email.service";
 
 @Injectable()
 export class RetestSchedulerService {
@@ -20,15 +20,15 @@ export class RetestSchedulerService {
 
   @Cron(CronExpression.EVERY_DAY_AT_9AM)
   async handleRetestNotifications() {
-    this.logger.log('Ejecutando cron job de notificaciones de retest...');
+    this.logger.log("Ejecutando cron job de notificaciones de retest...");
 
     try {
       const projects = await this.projectModel
         .find({
-          'retestPolicy.enabled': true,
-          projectStatus: 'ACTIVE',
+          "retestPolicy.enabled": true,
+          projectStatus: "ACTIVE",
         })
-        .populate('clientId', 'name');
+        .populate("clientId", "name");
 
       this.logger.log(
         `Encontrados ${projects.length} proyectos con retest habilitado`,
@@ -38,7 +38,7 @@ export class RetestSchedulerService {
         await this.processProjectRetest(project);
       }
 
-      this.logger.log('Cron job de retest completado exitosamente');
+      this.logger.log("Cron job de retest completado exitosamente");
     } catch (error: any) {
       this.logger.error(
         `Error en cron job de retest: ${error?.message || error}`,
@@ -79,9 +79,9 @@ export class RetestSchedulerService {
         .find({
           projectId: (project as any)._id,
           retestIncluded: true,
-          status: { $ne: 'CLOSED' },
+          status: { $ne: "CLOSED" },
         })
-        .select('code title severity status')
+        .select("code title severity status")
         .lean();
 
       if (findings.length === 0) {
@@ -105,7 +105,7 @@ export class RetestSchedulerService {
       await this.emailService.notifyRetestUpcoming(
         recipients,
         project.name,
-        (project as any).clientId?.name || 'N/A',
+        (project as any).clientId?.name || "N/A",
         new Date(project.retestPolicy.nextRetestAt ?? new Date()),
         daysUntilRetest,
         findings,
@@ -126,14 +126,17 @@ export class RetestSchedulerService {
     }
   }
 
-  async triggerManualRetestCheck(): Promise<{ message: string; processed: number }> {
-    this.logger.log('Ejecucion manual de retest check solicitada');
+  async triggerManualRetestCheck(): Promise<{
+    message: string;
+    processed: number;
+  }> {
+    this.logger.log("Ejecucion manual de retest check solicitada");
     await this.handleRetestNotifications();
 
     return {
-      message: 'Retest check ejecutado manualmente',
+      message: "Retest check ejecutado manualmente",
       processed: await this.projectModel.countDocuments({
-        'retestPolicy.enabled': true,
+        "retestPolicy.enabled": true,
       }),
     };
   }

@@ -1,0 +1,7 @@
+@use "../tokens/radius" as r;
+@use "../tokens/spacing" as s;
+
+.ui-chip {
+  border-radius: r.$radius-sm;
+  padding: s.$space-1 s.$space-2;
+}

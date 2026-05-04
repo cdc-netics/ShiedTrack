@@ -1,7 +1,12 @@
-import { CallHandler, ExecutionContext, Injectable, NestInterceptor } from '@nestjs/common';
-import { Observable } from 'rxjs';
-import { tap } from 'rxjs/operators';
-import { AuditService } from './audit.service';
+import {
+  CallHandler,
+  ExecutionContext,
+  Injectable,
+  NestInterceptor,
+} from "@nestjs/common";
+import { Observable } from "rxjs";
+import { tap } from "rxjs/operators";
+import { AuditService } from "./audit.service";
 
 /**
  * Interceptor global de auditoría
@@ -17,8 +22,8 @@ export class AuditInterceptor implements NestInterceptor {
 
     return next.handle().pipe(
       tap(async (response) => {
-        const isExport = method === 'GET' && url.includes('/export/');
-        const isMutation = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method);
+        const isExport = method === "GET" && url.includes("/export/");
+        const isMutation = ["POST", "PUT", "PATCH", "DELETE"].includes(method);
 
         if (!isMutation && !isExport) {
           return;
@@ -26,16 +31,16 @@ export class AuditInterceptor implements NestInterceptor {
 
         await this.auditService.log({
           action: `${method} ${url}`,
-          entityType: isExport ? 'EXPORT' : 'HTTP',
-          entityId: body?.id || body?._id || params?.id || params?._id || 'N/A',
+          entityType: isExport ? "EXPORT" : "HTTP",
+          entityId: body?.id || body?._id || params?.id || params?._id || "N/A",
           performedBy: user?.userId ?? null,
-          performedByLabel: user?.userId ? '' : 'anonymous',
+          performedByLabel: user?.userId ? "" : "anonymous",
           clientId: user?.clientId,
           // Si el usuario tiene un área principal, usarla? O extraer del body?
           // Por ahora nos limitamos al contexto seguro del usuario.
-          // areaId: user?.areaIds?.[0] || undefined, 
+          // areaId: user?.areaIds?.[0] || undefined,
           ip,
-          userAgent: headers['user-agent'],
+          userAgent: headers["user-agent"],
           metadata: {
             body: isExport ? {} : body, // No logear body en exports
             params,
@@ -45,4 +50,3 @@ export class AuditInterceptor implements NestInterceptor {
     );
   }
 }
-

@@ -1,4 +1,10 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  inject,
+  OnInit,
+  signal,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
@@ -17,6 +23,8 @@ import { environment } from '../../../environments/environment';
  * Desktop-First: Optimizado para pantallas ≥1366px
  */
 @Component({
+  standalone: true,
+    changeDetection: ChangeDetectionStrategy.OnPush,
     selector: 'app-dashboard',
     imports: [
         CommonModule,

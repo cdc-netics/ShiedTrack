@@ -17,6 +17,7 @@ import { ThemeService } from '../services/theme.service';
 import { environment } from '../../../environments/environment';
 
 @Component({
+  standalone: true,
   selector: 'app-main-layout',
   imports: [
     CommonModule,

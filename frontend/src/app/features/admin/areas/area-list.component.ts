@@ -29,6 +29,7 @@ interface Area {
 }
 
 @Component({
+  standalone: true,
     selector: 'app-area-list',
     imports: [
         CommonModule,

@@ -27,6 +27,7 @@ import { UserAssignmentDialogComponent } from './user-assignment-dialog.componen
  * - Cambio rápido de rol
  */
 @Component({
+  standalone: true,
   selector: 'app-user-list-improved',
   imports: [
     CommonModule,

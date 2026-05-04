@@ -4,81 +4,81 @@
  */
 export enum UserRole {
   /** Propietario del sistema - Único con permiso de hard delete */
-  OWNER = 'OWNER',
-  
+  OWNER = "OWNER",
+
   /** Administrador de plataforma - Acceso completo excepto hard delete */
-  PLATFORM_ADMIN = 'PLATFORM_ADMIN',
-  
+  PLATFORM_ADMIN = "PLATFORM_ADMIN",
+
   /** Administrador de cliente - Gestiona su tenant */
-  CLIENT_ADMIN = 'CLIENT_ADMIN',
-  
+  CLIENT_ADMIN = "CLIENT_ADMIN",
+
   /** Administrador de área - Gestiona su área específica */
-  AREA_ADMIN = 'AREA_ADMIN',
-  
+  AREA_ADMIN = "AREA_ADMIN",
+
   /** Analista SOC - Crea hallazgos, updates y sube evidencias */
-  ANALYST = 'ANALYST',
-  
+  ANALYST = "ANALYST",
+
   /** Visualizador - Solo lectura */
-  VIEWER = 'VIEWER',
+  VIEWER = "VIEWER",
 }
 
 /**
  * Eventos configurables del sistema de notificaciones
  */
 export enum NotificationEvent {
-  USER_CREATED = 'USER_CREATED',
-  USER_ASSIGNED_AREA = 'USER_ASSIGNED_AREA',
-  FINDING_ASSIGNED = 'FINDING_ASSIGNED',
-  FINDING_CLOSED = 'FINDING_CLOSED',
-  RETEST_UPCOMING = 'RETEST_UPCOMING',
+  USER_CREATED = "USER_CREATED",
+  USER_ASSIGNED_AREA = "USER_ASSIGNED_AREA",
+  FINDING_ASSIGNED = "FINDING_ASSIGNED",
+  FINDING_CLOSED = "FINDING_CLOSED",
+  RETEST_UPCOMING = "RETEST_UPCOMING",
 }
 
 /**
  * Alcance de una regla o plantilla de notificación
  */
 export enum NotificationScope {
-  GLOBAL = 'GLOBAL',
-  TENANT = 'TENANT',
-  PROJECT = 'PROJECT',
+  GLOBAL = "GLOBAL",
+  TENANT = "TENANT",
+  PROJECT = "PROJECT",
 }
 
 /**
  * Canales soportados por el motor de notificaciones
  */
 export enum NotificationChannel {
-  EMAIL = 'EMAIL',
+  EMAIL = "EMAIL",
 }
 
 /**
  * Tipos de destinatarios configurables en reglas
  */
 export enum NotificationRecipientType {
-  ROLE = 'ROLE',
-  USER = 'USER',
-  EMAIL = 'EMAIL',
+  ROLE = "ROLE",
+  USER = "USER",
+  EMAIL = "EMAIL",
 }
 
 /**
  * Arquitectura de servicio de un proyecto
  */
 export enum ServiceArchitecture {
-  CLOUD = 'CLOUD',
-  WEB = 'WEB',
-  FTP = 'FTP',
-  API = 'API',
-  ONPREM = 'ONPREM',
-  HYBRID = 'HYBRID',
-  MOBILE = 'MOBILE',
-  DESKTOP = 'DESKTOP',
-  IOT = 'IOT',
-  BLOCKCHAIN = 'BLOCKCHAIN',
-  MICROSERVICES = 'MICROSERVICES',
-  SERVERLESS = 'SERVERLESS',
-  CONTAINER = 'CONTAINER',
-  MAINFRAME = 'MAINFRAME',
-  DATABASE = 'DATABASE',
-  NETWORK = 'NETWORK',
-  OTHER = 'OTHER',
+  CLOUD = "CLOUD",
+  WEB = "WEB",
+  FTP = "FTP",
+  API = "API",
+  ONPREM = "ONPREM",
+  HYBRID = "HYBRID",
+  MOBILE = "MOBILE",
+  DESKTOP = "DESKTOP",
+  IOT = "IOT",
+  BLOCKCHAIN = "BLOCKCHAIN",
+  MICROSERVICES = "MICROSERVICES",
+  SERVERLESS = "SERVERLESS",
+  CONTAINER = "CONTAINER",
+  MAINFRAME = "MAINFRAME",
+  DATABASE = "DATABASE",
+  NETWORK = "NETWORK",
+  OTHER = "OTHER",
 }
 
 /**
@@ -86,24 +86,24 @@ export enum ServiceArchitecture {
  */
 export enum ProjectStatus {
   /** Proyecto activo */
-  ACTIVE = 'ACTIVE',
-  
+  ACTIVE = "ACTIVE",
+
   /** Proyecto cerrado - Detiene hallazgos y notificaciones */
-  CLOSED = 'CLOSED',
-  
+  CLOSED = "CLOSED",
+
   /** Proyecto archivado - Solo consulta histórica */
-  ARCHIVED = 'ARCHIVED',
+  ARCHIVED = "ARCHIVED",
 }
 
 /**
  * Severidad de un hallazgo
  */
 export enum FindingSeverity {
-  CRITICAL = 'CRITICAL',
-  HIGH = 'HIGH',
-  MEDIUM = 'MEDIUM',
-  LOW = 'LOW',
-  INFORMATIONAL = 'INFORMATIONAL',
+  CRITICAL = "CRITICAL",
+  HIGH = "HIGH",
+  MEDIUM = "MEDIUM",
+  LOW = "LOW",
+  INFORMATIONAL = "INFORMATIONAL",
 }
 
 /**
@@ -112,22 +112,22 @@ export enum FindingSeverity {
  */
 export enum FindingStatus {
   /** Hallazgo abierto - Pendiente de atención */
-  OPEN = 'OPEN',
-  
+  OPEN = "OPEN",
+
   /** En proceso de remediación */
-  IN_PROGRESS = 'IN_PROGRESS',
-  
+  IN_PROGRESS = "IN_PROGRESS",
+
   /** Requiere retest - Validación pendiente */
-  RETEST_REQUIRED = 'RETEST_REQUIRED',
-  
+  RETEST_REQUIRED = "RETEST_REQUIRED",
+
   /** Retest exitoso - Vulnerabilidad corregida */
-  RETEST_PASSED = 'RETEST_PASSED',
-  
+  RETEST_PASSED = "RETEST_PASSED",
+
   /** Retest fallido - Vulnerabilidad persiste */
-  RETEST_FAILED = 'RETEST_FAILED',
-  
+  RETEST_FAILED = "RETEST_FAILED",
+
   /** Hallazgo cerrado */
-  CLOSED = 'CLOSED',
+  CLOSED = "CLOSED",
 }
 
 /**
@@ -135,22 +135,22 @@ export enum FindingStatus {
  */
 export enum CloseReason {
   /** Vulnerabilidad corregida */
-  FIXED = 'FIXED',
-  
+  FIXED = "FIXED",
+
   /** Riesgo aceptado por el cliente */
-  RISK_ACCEPTED = 'RISK_ACCEPTED',
-  
+  RISK_ACCEPTED = "RISK_ACCEPTED",
+
   /** Falso positivo */
-  FALSE_POSITIVE = 'FALSE_POSITIVE',
-  
+  FALSE_POSITIVE = "FALSE_POSITIVE",
+
   /** Contrato finalizado */
-  CONTRACT_ENDED = 'CONTRACT_ENDED',
-  
+  CONTRACT_ENDED = "CONTRACT_ENDED",
+
   /** Fuera del alcance del proyecto */
-  OUT_OF_SCOPE = 'OUT_OF_SCOPE',
-  
+  OUT_OF_SCOPE = "OUT_OF_SCOPE",
+
   /** Duplicado de otro hallazgo */
-  DUPLICATE = 'DUPLICATE',
+  DUPLICATE = "DUPLICATE",
 }
 
 /**
@@ -158,14 +158,14 @@ export enum CloseReason {
  */
 export enum FindingUpdateType {
   /** Seguimiento operativo */
-  FOLLOWUP = 'FOLLOWUP',
-  
+  FOLLOWUP = "FOLLOWUP",
+
   /** Actualización técnica */
-  TECHNICAL = 'TECHNICAL',
-  
+  TECHNICAL = "TECHNICAL",
+
   /** Cambio de estado */
-  STATUS_CHANGE = 'STATUS_CHANGE',
-  
+  STATUS_CHANGE = "STATUS_CHANGE",
+
   /** Comentario general */
-  COMMENT = 'COMMENT',
+  COMMENT = "COMMENT",
 }

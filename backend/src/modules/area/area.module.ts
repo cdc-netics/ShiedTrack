@@ -1,8 +1,8 @@
-import { Module } from '@nestjs/common';
-import { MongooseModule } from '@nestjs/mongoose';
-import { AreaService } from './area.service';
-import { AreaController } from './area.controller';
-import { Area, AreaSchema } from './schemas/area.schema';
+import { Module } from "@nestjs/common";
+import { MongooseModule } from "@nestjs/mongoose";
+import { AreaService } from "./area.service";
+import { AreaController } from "./area.controller";
+import { Area, AreaSchema } from "./schemas/area.schema";
 
 @Module({
   imports: [

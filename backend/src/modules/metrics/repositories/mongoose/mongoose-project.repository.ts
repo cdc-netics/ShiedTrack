@@ -1,9 +1,9 @@
-import { Injectable } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types, PipelineStage } from 'mongoose';
-import { Project } from '../../../project/schemas/project.schema';
-import { MetricsFilterDto } from '../../dto/metrics-filter.dto';
-import { IProjectRepository } from '../interfaces/project.repository.interface';
+import { Injectable } from "@nestjs/common";
+import { InjectModel } from "@nestjs/mongoose";
+import { Model, Types, PipelineStage } from "mongoose";
+import { Project } from "../../../project/schemas/project.schema";
+import { MetricsFilterDto } from "../../dto/metrics-filter.dto";
+import { IProjectRepository } from "../interfaces/project.repository.interface";
 
 @Injectable()
 export class MongooseProjectRepository implements IProjectRepository {
@@ -15,18 +15,18 @@ export class MongooseProjectRepository implements IProjectRepository {
     const match: Record<string, any> = {};
 
     if (filters.tenantId) {
-      match['tenantId'] = new Types.ObjectId(filters.tenantId);
+      match["tenantId"] = new Types.ObjectId(filters.tenantId);
     }
     if (filters.clientId) {
-      match['clientId'] = new Types.ObjectId(filters.clientId);
+      match["clientId"] = new Types.ObjectId(filters.clientId);
     }
     if (filters.from || filters.to) {
-      match['createdAt'] = {};
-      if (filters.from) match['createdAt']['$gte'] = new Date(filters.from);
+      match["createdAt"] = {};
+      if (filters.from) match["createdAt"]["$gte"] = new Date(filters.from);
       if (filters.to) {
         const to = new Date(filters.to);
         to.setHours(23, 59, 59, 999);
-        match['createdAt']['$lte'] = to;
+        match["createdAt"]["$lte"] = to;
       }
     }
 
@@ -42,7 +42,7 @@ export class MongooseProjectRepository implements IProjectRepository {
       { $match: this.buildMatch(filters) },
       {
         $group: {
-          _id: '$projectStatus',
+          _id: "$projectStatus",
           count: { $sum: 1 },
         },
       },
@@ -56,13 +56,13 @@ export class MongooseProjectRepository implements IProjectRepository {
       { $match: this.buildMatch(filters) },
       {
         $group: {
-          _id: { tenantId: '$tenantId', clientId: '$clientId' },
+          _id: { tenantId: "$tenantId", clientId: "$clientId" },
           projectCount: { $sum: 1 },
           activeProjects: {
-            $sum: { $cond: [{ $eq: ['$projectStatus', 'ACTIVE'] }, 1, 0] },
+            $sum: { $cond: [{ $eq: ["$projectStatus", "ACTIVE"] }, 1, 0] },
           },
           closedProjects: {
-            $sum: { $cond: [{ $eq: ['$projectStatus', 'CLOSED'] }, 1, 0] },
+            $sum: { $cond: [{ $eq: ["$projectStatus", "CLOSED"] }, 1, 0] },
           },
         },
       },

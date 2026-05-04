@@ -1,16 +1,20 @@
-import { Injectable, Inject, BadRequestException } from '@nestjs/common';
-import { Response } from 'express';
-import { Types } from 'mongoose';
-import { MetricsExportFilterDto, MetricsExportFormat } from '../dto/metrics-filter.dto';
-import { IFindingRepository } from '../repositories/interfaces/finding.repository.interface';
-import { IExportStrategy } from '../export-strategies/export-strategy.interface';
-import { CsvExportStrategy } from '../export-strategies/csv-export.strategy';
-import { JsonExportStrategy } from '../export-strategies/json-export.strategy';
+import { Injectable, Inject, BadRequestException } from "@nestjs/common";
+import { Response } from "express";
+import { Types } from "mongoose";
+import {
+  MetricsExportFilterDto,
+  MetricsExportFormat,
+} from "../dto/metrics-filter.dto";
+import { IFindingRepository } from "../repositories/interfaces/finding.repository.interface";
+import { IExportStrategy } from "../export-strategies/export-strategy.interface";
+import { CsvExportStrategy } from "../export-strategies/csv-export.strategy";
+import { JsonExportStrategy } from "../export-strategies/json-export.strategy";
 
 @Injectable()
 export class MetricsExportService {
   constructor(
-    @Inject('IFindingRepository') private readonly findingRepository: IFindingRepository,
+    @Inject("IFindingRepository")
+    private readonly findingRepository: IFindingRepository,
     private readonly csvExportStrategy: CsvExportStrategy,
     private readonly jsonExportStrategy: JsonExportStrategy,
   ) {}
@@ -18,7 +22,10 @@ export class MetricsExportService {
   /**
    * Obtiene los hallazgos y los exporta en el formato solicitado.
    */
-  async exportMetrics(filters: MetricsExportFilterDto, res: Response): Promise<void> {
+  async exportMetrics(
+    filters: MetricsExportFilterDto,
+    res: Response,
+  ): Promise<void> {
     const findings = await this.findingRepository.findForExport(filters);
 
     const data = findings.map((f) => {
@@ -42,7 +49,7 @@ export class MetricsExportService {
 
     const format = filters.format ?? MetricsExportFormat.JSON;
     const strategy = this.getStrategy(format);
-    const timestamp = new Date().toISOString().split('T')[0];
+    const timestamp = new Date().toISOString().split("T")[0];
     const filename = `shieldtrack-metrics-${timestamp}`;
 
     await strategy.export(data, res, filename);
@@ -55,7 +62,9 @@ export class MetricsExportService {
       case MetricsExportFormat.JSON:
         return this.jsonExportStrategy;
       default:
-        throw new BadRequestException(`Export format ${format} is not supported.`);
+        throw new BadRequestException(
+          `Export format ${format} is not supported.`,
+        );
     }
   }
 }

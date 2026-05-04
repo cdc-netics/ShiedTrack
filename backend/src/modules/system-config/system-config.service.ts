@@ -1,11 +1,11 @@
-import { BadRequestException, Injectable, Logger } from '@nestjs/common';
-import { InjectConnection, InjectModel } from '@nestjs/mongoose';
-import { Connection, Model } from 'mongoose';
-import * as nodemailer from 'nodemailer';
-import { resolveSmtpHostToIpv4 } from '../../common/utils/smtp-network';
-import { EmailService } from '../email/email.service';
-import { SystemBranding } from './schemas/system-branding.schema';
-import { SystemConfig, encryptText } from './schemas/system-config.schema';
+import { BadRequestException, Injectable, Logger } from "@nestjs/common";
+import { InjectConnection, InjectModel } from "@nestjs/mongoose";
+import { Connection, Model } from "mongoose";
+import * as nodemailer from "nodemailer";
+import { resolveSmtpHostToIpv4 } from "../../common/utils/smtp-network";
+import { EmailService } from "../email/email.service";
+import { SystemBranding } from "./schemas/system-branding.schema";
+import { SystemConfig, encryptText } from "./schemas/system-config.schema";
 
 @Injectable()
 export class SystemConfigService {
@@ -24,12 +24,20 @@ export class SystemConfigService {
   async resetDatabase(
     confirmation: string,
   ): Promise<{ success: boolean; message: string }> {
-    if (confirmation !== 'DELETE') {
-      throw new BadRequestException('Confirmacion invalida. Se requiere "DELETE".');
+    if (confirmation !== "DELETE") {
+      throw new BadRequestException(
+        'Confirmacion invalida. Se requiere "DELETE".',
+      );
     }
 
-    const collectionsToClear = ['findings', 'projects', 'clients', 'areas', 'auditlogs'];
-    this.logger.warn('INICIANDO RESET DE BASE DE DATOS - Accion Admin Owner');
+    const collectionsToClear = [
+      "findings",
+      "projects",
+      "clients",
+      "areas",
+      "auditlogs",
+    ];
+    this.logger.warn("INICIANDO RESET DE BASE DE DATOS - Accion Admin Owner");
 
     for (const name of collectionsToClear) {
       try {
@@ -45,7 +53,7 @@ export class SystemConfigService {
 
     return {
       success: true,
-      message: 'Base de datos de negocio reseteada exitosamente',
+      message: "Base de datos de negocio reseteada exitosamente",
     };
   }
 
@@ -70,8 +78,8 @@ export class SystemConfigService {
     userId: string,
   ): Promise<SystemConfig> {
     const config = await this.getOrCreateSmtpConfig();
-    const nextUser = (data.smtp_user || '').trim();
-    const nextPass = (data.smtp_pass || '').trim();
+    const nextUser = (data.smtp_user || "").trim();
+    const nextPass = (data.smtp_pass || "").trim();
 
     config.smtp_host = data.smtp_host;
     config.smtp_port = data.smtp_port;
@@ -106,8 +114,8 @@ export class SystemConfigService {
       smtp_host: config.smtp_host,
       smtp_port: config.smtp_port,
       smtp_secure: config.smtp_secure,
-      smtp_user: '***********',
-      smtp_pass: '***********',
+      smtp_user: "***********",
+      smtp_pass: "***********",
       smtp_from_email: config.smtp_from_email,
       smtp_from_name: config.smtp_from_name,
       smtp_reply_to: config.smtp_reply_to,
@@ -150,11 +158,14 @@ export class SystemConfigService {
       });
 
       await transporter.verify();
-      this.logger.log('Conexion SMTP verificada exitosamente');
-      return { success: true, message: 'Conexion SMTP exitosa' };
+      this.logger.log("Conexion SMTP verificada exitosamente");
+      return { success: true, message: "Conexion SMTP exitosa" };
     } catch (error: any) {
       this.logger.error(`Error verificando SMTP: ${error?.message || error}`);
-      return { success: false, message: error?.message || 'Error SMTP desconocido' };
+      return {
+        success: false,
+        message: error?.message || "Error SMTP desconocido",
+      };
     }
   }
 
@@ -165,11 +176,13 @@ export class SystemConfigService {
       .lean();
 
     if (!config) {
-      this.logger.log('No se encontro configuracion de branding, creando una por defecto');
+      this.logger.log(
+        "No se encontro configuracion de branding, creando una por defecto",
+      );
       const newConfig = new this.systemBrandingModel({
-        appName: 'ShieldTrack',
-        primaryColor: '#1976d2',
-        secondaryColor: '#424242',
+        appName: "ShieldTrack",
+        primaryColor: "#1976d2",
+        secondaryColor: "#424242",
         isActive: true,
       });
       await newConfig.save();
@@ -179,16 +192,21 @@ export class SystemConfigService {
     return config;
   }
 
-  async updateBrandingConfig(data: Partial<any>, updatedBy: string): Promise<any> {
-    let config = await this.systemBrandingModel.findOne().sort({ createdAt: -1 });
+  async updateBrandingConfig(
+    data: Partial<any>,
+    updatedBy: string,
+  ): Promise<any> {
+    let config = await this.systemBrandingModel
+      .findOne()
+      .sort({ createdAt: -1 });
 
     if (!config) {
       config = new this.systemBrandingModel({
-        appName: data.appName || 'ShieldTrack',
+        appName: data.appName || "ShieldTrack",
         faviconUrl: data.faviconUrl,
         logoUrl: data.logoUrl,
-        primaryColor: data.primaryColor || '#1976d2',
-        secondaryColor: data.secondaryColor || '#424242',
+        primaryColor: data.primaryColor || "#1976d2",
+        secondaryColor: data.secondaryColor || "#424242",
         isActive: data.isActive !== undefined ? data.isActive : true,
         lastModifiedBy: updatedBy,
       });
@@ -196,33 +214,41 @@ export class SystemConfigService {
       if (data.appName !== undefined) config.appName = data.appName;
       if (data.faviconUrl !== undefined) config.faviconUrl = data.faviconUrl;
       if (data.logoUrl !== undefined) config.logoUrl = data.logoUrl;
-      if (data.primaryColor !== undefined) config.primaryColor = data.primaryColor;
-      if (data.secondaryColor !== undefined) config.secondaryColor = data.secondaryColor;
+      if (data.primaryColor !== undefined)
+        config.primaryColor = data.primaryColor;
+      if (data.secondaryColor !== undefined)
+        config.secondaryColor = data.secondaryColor;
       if (data.isActive !== undefined) config.isActive = data.isActive;
       (config as any).lastModifiedBy = updatedBy;
     }
 
     await config.save();
-    this.logger.log(`Configuracion de branding actualizada por usuario ${updatedBy}`);
+    this.logger.log(
+      `Configuracion de branding actualizada por usuario ${updatedBy}`,
+    );
 
     return config.toObject();
   }
 
   private async getOrCreateSmtpConfig(): Promise<SystemConfig> {
-    let config = await this.systemConfigModel.findOne({ configKey: 'smtp_config' });
+    let config = await this.systemConfigModel.findOne({
+      configKey: "smtp_config",
+    });
 
     if (!config) {
-      this.logger.warn('Configuracion SMTP no encontrada, creando config por defecto');
+      this.logger.warn(
+        "Configuracion SMTP no encontrada, creando config por defecto",
+      );
       config = new this.systemConfigModel({
-        configKey: 'smtp_config',
-        smtp_host: 'localhost',
+        configKey: "smtp_config",
+        smtp_host: "localhost",
         smtp_port: 587,
         smtp_secure: false,
-        smtp_user_encrypted: encryptText('user@example.com'),
-        smtp_pass_encrypted: encryptText('password'),
-        smtp_from_email: 'noreply@shieldtrack.com',
-        smtp_from_name: 'ShieldTrack Notificaciones',
-        smtp_reply_to: '',
+        smtp_user_encrypted: encryptText("user@example.com"),
+        smtp_pass_encrypted: encryptText("password"),
+        smtp_from_email: "noreply@shieldtrack.com",
+        smtp_from_name: "ShieldTrack Notificaciones",
+        smtp_reply_to: "",
         smtp_timeout_ms: 10000,
         smtp_tls_reject_unauthorized: true,
       });
@@ -233,7 +259,7 @@ export class SystemConfigService {
   }
 
   private isMaskedSecret(value?: string): boolean {
-    const normalized = (value || '').trim();
+    const normalized = (value || "").trim();
     return normalized.length >= 3 && /^\*+$/.test(normalized);
   }
 }

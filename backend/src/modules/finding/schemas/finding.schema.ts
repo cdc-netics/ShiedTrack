@@ -1,7 +1,11 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document, Types } from 'mongoose';
-import { FindingSeverity, FindingStatus, CloseReason } from '../../../common/enums';
-import { multiTenantPlugin } from '../../../common/plugins/multi-tenant.plugin';
+import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
+import { Document, Types } from "mongoose";
+import {
+  FindingSeverity,
+  FindingStatus,
+  CloseReason,
+} from "../../../common/enums";
+import { multiTenantPlugin } from "../../../common/plugins/multi-tenant.plugin";
 
 /**
  * Entidad Hallazgo (Finding)
@@ -27,7 +31,7 @@ export class Finding extends Document {
   @Prop({ required: true, enum: FindingStatus, default: FindingStatus.OPEN })
   status!: FindingStatus;
 
-  @Prop({ type: Types.ObjectId, ref: 'Project', required: true })
+  @Prop({ type: Types.ObjectId, ref: "Project", required: true })
   projectId!: Types.ObjectId;
 
   /**
@@ -43,7 +47,7 @@ export class Finding extends Document {
   @Prop()
   closedAt?: Date;
 
-  @Prop({ type: Types.ObjectId, ref: 'User' })
+  @Prop({ type: Types.ObjectId, ref: "User" })
   closedBy?: Types.ObjectId;
 
   // Información técnica adicional
@@ -62,11 +66,11 @@ export class Finding extends Document {
   @Prop({ min: 0, max: 10 })
   cvss_score?: number; // CVSS Score validado 0-10 con decimales
 
-  @Prop({ 
+  @Prop({
     validate: {
       validator: (v: string) => !v || /^CVE-\d{4}-\d{4,7}$/.test(v),
-      message: 'CVE ID debe tener formato CVE-YYYY-NNNN (ej: CVE-2024-12345)'
-    }
+      message: "CVE ID debe tener formato CVE-YYYY-NNNN (ej: CVE-2024-12345)",
+    },
   })
   cve_id?: string; // ID CVE validado con regex
 
@@ -95,16 +99,16 @@ export class Finding extends Document {
   tags!: string[];
 
   // Referencias
-  @Prop({ type: Types.ObjectId, ref: 'User' })
+  @Prop({ type: Types.ObjectId, ref: "User" })
   assignedTo?: Types.ObjectId;
 
-  @Prop({ type: Types.ObjectId, ref: 'User', required: true })
+  @Prop({ type: Types.ObjectId, ref: "User", required: true })
   createdBy!: Types.ObjectId;
 
   // Timestamps automáticos: createdAt, updatedAt
 
   // Multi-tenant: referencia al tenant
-  @Prop({ type: Types.ObjectId, ref: 'Tenant'})
+  @Prop({ type: Types.ObjectId, ref: "Tenant" })
   tenantId?: Types.ObjectId;
 }
 
@@ -125,4 +129,10 @@ FindingSchema.index({ cve_id: 1 }); // Búsqueda por CVE
 FindingSchema.index({ tenantId: 1 });
 
 // Índice compuesto para consultas de métricas/BI
-FindingSchema.index({ tenantId: 1, projectId: 1, severity: 1, status: 1, createdAt: 1 });
+FindingSchema.index({
+  tenantId: 1,
+  projectId: 1,
+  severity: 1,
+  status: 1,
+  createdAt: 1,
+});

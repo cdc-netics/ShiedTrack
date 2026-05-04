@@ -46,6 +46,7 @@ interface TemplateForm {
 }
 
 @Component({
+  standalone: true,
   selector: 'app-notification-management',
   imports: [
     CommonModule,

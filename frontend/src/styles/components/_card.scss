@@ -1,0 +1,5 @@
+@use "../tokens/spacing" as s;
+
+.ui-card-header {
+  margin-bottom: s.$space-3;
+}

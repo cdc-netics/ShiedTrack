@@ -1,9 +1,9 @@
-import { IsOptional, IsDateString, IsString, IsEnum } from 'class-validator';
-import { ApiPropertyOptional } from '@nestjs/swagger';
+import { IsOptional, IsDateString, IsString, IsEnum } from "class-validator";
+import { ApiPropertyOptional } from "@nestjs/swagger";
 
 export enum MetricsExportFormat {
-  JSON = 'json',
-  CSV = 'csv',
+  JSON = "json",
+  CSV = "csv",
 }
 
 /**
@@ -13,40 +13,40 @@ export enum MetricsExportFormat {
  */
 export class MetricsFilterDto {
   @ApiPropertyOptional({
-    description: 'Fecha de inicio del rango (ISO 8601). Ej: 2025-01-01',
-    example: '2025-01-01',
+    description: "Fecha de inicio del rango (ISO 8601). Ej: 2025-01-01",
+    example: "2025-01-01",
   })
   @IsOptional()
   @IsDateString()
   from?: string;
 
   @ApiPropertyOptional({
-    description: 'Fecha de fin del rango (ISO 8601). Ej: 2025-12-31',
-    example: '2025-12-31',
+    description: "Fecha de fin del rango (ISO 8601). Ej: 2025-12-31",
+    example: "2025-12-31",
   })
   @IsOptional()
   @IsDateString()
   to?: string;
 
   @ApiPropertyOptional({
-    description: 'ID del tenant para filtrar (ObjectId de MongoDB)',
-    example: '66a0f5c3e4b08a1d2c3e4f50',
+    description: "ID del tenant para filtrar (ObjectId de MongoDB)",
+    example: "66a0f5c3e4b08a1d2c3e4f50",
   })
   @IsOptional()
   @IsString()
   tenantId?: string;
 
   @ApiPropertyOptional({
-    description: 'ID del cliente para filtrar (ObjectId de MongoDB)',
-    example: '66a0f5c3e4b08a1d2c3e4f51',
+    description: "ID del cliente para filtrar (ObjectId de MongoDB)",
+    example: "66a0f5c3e4b08a1d2c3e4f51",
   })
   @IsOptional()
   @IsString()
   clientId?: string;
 
   @ApiPropertyOptional({
-    description: 'ID del proyecto para filtrar (ObjectId de MongoDB)',
-    example: '66a0f5c3e4b08a1d2c3e4f52',
+    description: "ID del proyecto para filtrar (ObjectId de MongoDB)",
+    example: "66a0f5c3e4b08a1d2c3e4f52",
   })
   @IsOptional()
   @IsString()
@@ -59,7 +59,7 @@ export class MetricsFilterDto {
  */
 export class MetricsExportFilterDto extends MetricsFilterDto {
   @ApiPropertyOptional({
-    description: 'Formato de exportación',
+    description: "Formato de exportación",
     enum: MetricsExportFormat,
     default: MetricsExportFormat.JSON,
   })

@@ -1,6 +1,6 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document, Types } from 'mongoose';
-import { NotificationEvent, NotificationScope } from '../../../common/enums';
+import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
+import { Document, Types } from "mongoose";
+import { NotificationEvent, NotificationScope } from "../../../common/enums";
 
 export type NotificationTemplateDocument = NotificationTemplate & Document;
 
@@ -23,7 +23,7 @@ export class NotificationTemplate extends Document {
   })
   scope: NotificationScope;
 
-  @Prop({ type: Types.ObjectId, ref: 'Tenant', index: true })
+  @Prop({ type: Types.ObjectId, ref: "Tenant", index: true })
   tenantId?: Types.ObjectId;
 
   @Prop({ required: true })
@@ -38,7 +38,7 @@ export class NotificationTemplate extends Document {
   @Prop({ default: true })
   isActive: boolean;
 
-  @Prop({ type: Types.ObjectId, ref: 'User' })
+  @Prop({ type: Types.ObjectId, ref: "User" })
   createdBy?: Types.ObjectId;
 }
 

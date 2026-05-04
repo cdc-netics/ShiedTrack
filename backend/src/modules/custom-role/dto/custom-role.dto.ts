@@ -1,5 +1,13 @@
-import { IsString, IsNotEmpty, IsOptional, IsArray, IsBoolean, IsMongoId, ValidateNested } from 'class-validator';
-import { Type } from 'class-transformer';
+import {
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  IsArray,
+  IsBoolean,
+  IsMongoId,
+  ValidateNested,
+} from "class-validator";
+import { Type } from "class-transformer";
 
 export class PermissionDto {
   @IsString()

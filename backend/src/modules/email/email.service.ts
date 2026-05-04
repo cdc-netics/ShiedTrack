@@ -1,13 +1,14 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
-import * as nodemailer from 'nodemailer';
+import { Injectable, Logger } from "@nestjs/common";
+import { InjectModel } from "@nestjs/mongoose";
+import { Model } from "mongoose";
+import * as nodemailer from "nodemailer";
+import { NotificationEvent } from "../../common/enums";
+import { resolveSmtpHostToIpv4 } from "../../common/utils/smtp-network";
+import { NotificationService } from "../notification/notification.service";
 import {
-  NotificationEvent,
-} from '../../common/enums';
-import { resolveSmtpHostToIpv4 } from '../../common/utils/smtp-network';
-import { NotificationService } from '../notification/notification.service';
-import { SystemConfig, decryptText } from '../system-config/schemas/system-config.schema';
+  SystemConfig,
+  decryptText,
+} from "../system-config/schemas/system-config.schema";
 
 export interface EmailOptions {
   to: string | string[];
@@ -53,12 +54,14 @@ export class EmailService {
   private async initializeTransporter(): Promise<void> {
     try {
       const config = await this.systemConfigModel
-        .findOne({ configKey: 'smtp_config' })
+        .findOne({ configKey: "smtp_config" })
         .lean();
 
       if (!config?.smtp_host) {
         this.transporter = null;
-        this.logger.warn('Configuracion SMTP no encontrada - email deshabilitado');
+        this.logger.warn(
+          "Configuracion SMTP no encontrada - email deshabilitado",
+        );
         return;
       }
 
@@ -96,7 +99,7 @@ export class EmailService {
           : {}),
       });
 
-      this.logger.log('Transporter SMTP inicializado correctamente');
+      this.logger.log("Transporter SMTP inicializado correctamente");
     } catch (error: any) {
       this.transporter = null;
       this.logger.error(
@@ -115,21 +118,21 @@ export class EmailService {
     }
 
     if (!this.transporter) {
-      this.logger.warn('Transporter no configurado - email no enviado');
+      this.logger.warn("Transporter no configurado - email no enviado");
       return false;
     }
 
     try {
       const config = await this.systemConfigModel
-        .findOne({ configKey: 'smtp_config' })
+        .findOne({ configKey: "smtp_config" })
         .lean();
-      const fromEmail = config?.smtp_from_email || 'noreply@shieldtrack.com';
-      const fromName = config?.smtp_from_name || 'ShieldTrack';
+      const fromEmail = config?.smtp_from_email || "noreply@shieldtrack.com";
+      const fromName = config?.smtp_from_name || "ShieldTrack";
       const replyTo = options.replyTo || config?.smtp_reply_to || undefined;
 
       await this.transporter.sendMail({
         from: `"${fromName}" <${fromEmail}>`,
-        to: Array.isArray(options.to) ? options.to.join(', ') : options.to,
+        to: Array.isArray(options.to) ? options.to.join(", ") : options.to,
         subject: options.subject,
         html: options.html,
         text: options.text || this.htmlToText(options.html),
@@ -169,7 +172,7 @@ export class EmailService {
           </span>
         </div>
 
-        ${description ? `<p><strong>Descripcion:</strong><br>${description}</p>` : ''}
+        ${description ? `<p><strong>Descripcion:</strong><br>${description}</p>` : ""}
 
         <p>Puedes revisar el detalle directamente en ShieldTrack.</p>
         <p style="margin-top: 30px; color: #666; font-size: 12px;">
@@ -232,7 +235,7 @@ export class EmailService {
         <div style="background: #f5f5f5; padding: 15px; border-left: 4px solid ${severityColor}; margin: 20px 0;">
           <strong>${findingTitle}</strong><br>
           <small>Codigo: ${findingCode}</small><br>
-          ${projectName ? `<small>Proyecto: ${projectName}</small><br>` : ''}
+          ${projectName ? `<small>Proyecto: ${projectName}</small><br>` : ""}
           <span style="display: inline-block; margin-top: 10px; padding: 4px 8px; background: ${severityColor}; color: white; border-radius: 4px; font-size: 12px;">
             ${severity}
           </span>
@@ -250,7 +253,7 @@ export class EmailService {
         userName: this.getDisplayName(userName),
         findingTitle,
         findingCode,
-        projectName: projectName || 'Proyecto sin nombre',
+        projectName: projectName || "Proyecto sin nombre",
         severity,
       },
       fallback: {
@@ -280,13 +283,13 @@ export class EmailService {
           .map(
             (finding) => `
               <li style="margin-bottom: 10px;">
-                <strong>[${finding.severity || 'N/A'}]</strong>
+                <strong>[${finding.severity || "N/A"}]</strong>
                 ${finding.code}: ${finding.title}
-                ${finding.status ? `<br><small>Estado: ${finding.status}</small>` : ''}
+                ${finding.status ? `<br><small>Estado: ${finding.status}</small>` : ""}
               </li>
             `,
           )
-          .join('')}
+          .join("")}
       </ul>
     `;
 
@@ -295,7 +298,7 @@ export class EmailService {
         <h2 style="color: #f57c00;">Recordatorio de Retest</h2>
         <p><strong>Proyecto:</strong> ${projectName}</p>
         <p><strong>Cliente:</strong> ${clientName}</p>
-        <p><strong>Fecha de retest:</strong> ${retestDate.toLocaleDateString('es-CL')}</p>
+        <p><strong>Fecha de retest:</strong> ${retestDate.toLocaleDateString("es-CL")}</p>
         <p><strong>Dias restantes:</strong> ${daysUntilRetest}</p>
         <div style="background: #fff3e0; padding: 16px; border-left: 4px solid #f57c00; margin-top: 16px;">
           ${findingsListHtml}
@@ -311,7 +314,7 @@ export class EmailService {
       variables: {
         projectName,
         clientName,
-        retestDate: retestDate.toLocaleDateString('es-CL'),
+        retestDate: retestDate.toLocaleDateString("es-CL"),
         daysUntilRetest,
         findingsListHtml,
       },
@@ -354,7 +357,7 @@ export class EmailService {
         tempPassword,
       },
       fallback: {
-        subject: 'Bienvenido a ShieldTrack - Credenciales de Acceso',
+        subject: "Bienvenido a ShieldTrack - Credenciales de Acceso",
         html: fallbackHtml,
       },
     });
@@ -409,7 +412,7 @@ export class EmailService {
         <div style="background: #e8f5e9; padding: 15px; border-left: 4px solid #4caf50; margin: 20px 0;">
           <strong>${findingTitle}</strong><br>
           <small>Codigo: ${findingCode}</small><br>
-          ${projectName ? `<small>Proyecto: ${projectName}</small><br>` : ''}
+          ${projectName ? `<small>Proyecto: ${projectName}</small><br>` : ""}
           <p style="margin-top: 10px;"><strong>Razon:</strong> ${closeReason}</p>
         </div>
         <p>Puedes revisar el estado final en ShieldTrack.</p>
@@ -425,7 +428,7 @@ export class EmailService {
         userName: this.getContextGreeting(recipients),
         findingTitle,
         findingCode,
-        projectName: projectName || 'Proyecto sin nombre',
+        projectName: projectName || "Proyecto sin nombre",
         closeReason,
       },
       fallback: {
@@ -446,7 +449,7 @@ export class EmailService {
 
     if (rules.length === 0) {
       this.logger.log(
-        `No hay reglas activas para ${options.event} en tenant=${options.tenantId || '-'} project=${options.projectId || '-'}`,
+        `No hay reglas activas para ${options.event} en tenant=${options.tenantId || "-"} project=${options.projectId || "-"}`,
       );
       return;
     }
@@ -458,7 +461,8 @@ export class EmailService {
     const variables = {
       ...options.variables,
       userName:
-        options.variables?.userName || this.getContextGreeting(contextRecipients),
+        options.variables?.userName ||
+        this.getContextGreeting(contextRecipients),
     };
 
     for (const rule of rules) {
@@ -506,7 +510,7 @@ export class EmailService {
 
     for (const recipient of recipients) {
       const normalized =
-        typeof recipient === 'string'
+        typeof recipient === "string"
           ? {
               email: this.normalizeEmail(recipient),
               name: undefined,
@@ -534,23 +538,23 @@ export class EmailService {
       return this.getDisplayName(normalized[0].name);
     }
 
-    return 'equipo';
+    return "equipo";
   }
 
   private getDisplayName(userName?: string): string {
-    return userName?.trim() || 'usuario';
+    return userName?.trim() || "usuario";
   }
 
   private getSeverityColor(severity?: string): string {
     const severityColors: Record<string, string> = {
-      CRITICAL: '#d32f2f',
-      HIGH: '#f57c00',
-      MEDIUM: '#fbc02d',
-      LOW: '#388e3c',
-      INFO: '#1976d2',
+      CRITICAL: "#d32f2f",
+      HIGH: "#f57c00",
+      MEDIUM: "#fbc02d",
+      LOW: "#388e3c",
+      INFO: "#1976d2",
     };
 
-    return severityColors[severity || ''] || '#1976d2';
+    return severityColors[severity || ""] || "#1976d2";
   }
 
   private normalizeEmail(email?: string): string | null {
@@ -563,6 +567,9 @@ export class EmailService {
   }
 
   private htmlToText(html: string): string {
-    return html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+    return html
+      .replace(/<[^>]*>/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
   }
 }

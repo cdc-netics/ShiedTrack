@@ -1,5 +1,12 @@
-import { ExceptionFilter, Catch, ArgumentsHost, HttpException, HttpStatus, Logger } from '@nestjs/common';
-import { Request, Response } from 'express';
+import {
+  ExceptionFilter,
+  Catch,
+  ArgumentsHost,
+  HttpException,
+  HttpStatus,
+  Logger,
+} from "@nestjs/common";
+import { Request, Response } from "express";
 
 /**
  * Filtro global para capturar todas las excepciones HTTP
@@ -24,7 +31,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const message =
       exception instanceof HttpException
         ? exception.getResponse()
-        : 'Error interno del servidor';
+        : "Error interno del servidor";
 
     // Construir respuesta de error estructurada
     const errorResponse = {
@@ -32,13 +39,16 @@ export class HttpExceptionFilter implements ExceptionFilter {
       timestamp: new Date().toISOString(),
       path: request.url,
       method: request.method,
-      message: typeof message === 'string' ? message : (message as any).message || message,
+      message:
+        typeof message === "string"
+          ? message
+          : (message as any).message || message,
     };
 
     // Log del error para auditoría
     this.logger.error(
       `${request.method} ${request.url} - Status: ${status} - ${JSON.stringify(errorResponse.message)}`,
-      exception instanceof Error ? exception.stack : '',
+      exception instanceof Error ? exception.stack : "",
     );
 
     response.status(status).json(errorResponse);
