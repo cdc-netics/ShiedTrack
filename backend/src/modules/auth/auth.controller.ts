@@ -7,6 +7,7 @@ import {
   Patch,
   Param,
   Delete,
+  Logger,
 } from "@nestjs/common";
 import {
   ApiTags,
@@ -37,6 +38,8 @@ import { UserRole } from "../../common/enums";
 @ApiTags("Auth")
 @Controller("auth")
 export class AuthController {
+  private readonly logger = new Logger(AuthController.name);
+
   constructor(
     private readonly authService: AuthService,
     private readonly userAreaService: UserAreaService,
@@ -66,7 +69,7 @@ export class AuthController {
   @ApiResponse({ status: 200, description: "Login exitoso" })
   @ApiResponse({ status: 401, description: "Credenciales inválidas" })
   async login(@Body() dto: LoginDto) {
-    console.log("🔐 Intento de login recibido:", {
+    this.logger.debug("Intento de login recibido", {
       email: dto.email,
       hasPassword: !!dto.password,
     });

@@ -35,7 +35,7 @@ import { TemplateDialogComponent } from './template-dialog.component';
     template: `
     <div class="template-container">
       <div class="header">
-        <h1>� Plantillas de Vulnerabilidades</h1>
+        <h1>🛡️ Plantillas de Vulnerabilidades</h1>
         <button mat-raised-button color="primary" (click)="openTemplateDialog()">
           <mat-icon>add</mat-icon>
           Nueva Plantilla

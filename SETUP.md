@@ -1,27 +1,36 @@
-# 🔧 Configuración Inicial - ShieldTrack
+# Configuración inicial - ShieldTrack
 
-Guía para poner en marcha ShieldTrack. **El flujo previsto en equipo es Docker**; el desarrollo “todo en el host” es opcional.
+Guía para poner en marcha el proyecto. **El flujo previsto es Docker (Compose)**; correr backend y frontend con `npm` en el equipo es opcional.
 
-## 📋 Pre-requisitos
+## Pre-requisitos
 
 **Con Docker (recomendado)**
 
-- **Docker** y **Docker Compose** (Plugin V2: `docker compose`).
+- Docker y Docker Compose (plugin v2: `docker compose`).
 
 **Sin Docker (opcional)**
 
-- **Node.js**: v24.x o superior (LTS recomendado).
-- **npm**: v10.x o superior.
-- **MongoDB**: v6.x u v8.x (local o Atlas).
-- **Git**: Para control de versiones.
+- Node.js 24.x o superior.
+- npm 10.x o superior.
+- MongoDB 6.x u 8.x (local o Atlas).
+- Git.
 
 ---
 
-## ⚡ Inicio rápido con Docker
+## Inicio rápido con Docker
 
-1. **Variables de entorno:** en la raíz del repo, copie `.env.example` a `.env` y defina al menos `JWT_SECRET` (valor largo y aleatorio). Revise `MONGODB_URI`, `FRONTEND_URL` y `CORS_ORIGINS` si su URL no es `http://localhost`.
-2. **Usuarios de prueba** (emails y contraseñas del seed y del login en modo desarrollo): **[docs/DEVELOPMENT-CREDENTIALS.md](docs/DEVELOPMENT-CREDENTIALS.md)**.
-3. Desde la raíz del repositorio:
+1. **Variables en la raíz del repo**  
+   Copie [`.env.example`](.env.example) a **`.env`** (junto a `docker-compose.yml`). Revise como mínimo:
+   - **`JWT_SECRET`**: cadena larga y aleatoria (no deje el valor de ejemplo en entornos reales).
+   - **MongoDB:** `MONGO_INITDB_ROOT_USERNAME`, `MONGO_INITDB_ROOT_PASSWORD` y **`MONGODB_URI`** deben ser coherentes (mismo usuario/contraseña; en la URI use `authSource=admin` para el root del contenedor). El host dentro de la red Docker es **`mongodb`**, no `localhost`.
+   - **Puertos del host:** `MONGO_PORT`, `BACKEND_PORT`, `FRONTEND_PORT` si 27017, 3000 u 80 están ocupados.
+   - **`CORS_ORIGINS`** y **`FRONTEND_URL`** si accede al front con otra URL (p. ej. `ng serve` en el puerto 4200).
+
+   Referencia detallada y producción: **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)**.
+
+2. **Usuarios de prueba** (tras los seeds): emails y contraseñas en **[docs/DEVELOPMENT-CREDENTIALS.md](docs/DEVELOPMENT-CREDENTIALS.md)**.
+
+3. **Arranque** desde la raíz del repositorio:
 
 ```bash
 npm start
@@ -29,18 +38,29 @@ npm start
 
 Equivalente: `docker compose up --build`. En segundo plano: `npm run start:detached`. Para parar: `npm run stop`.
 
-- Frontend: **http://localhost** (puerto 80 del host, configurable con `FRONTEND_PORT` en `.env`)
-- API: **http://localhost:3000** — Swagger: `/api/docs`
+### URLs (dependen de `BACKEND_PORT` y `FRONTEND_PORT` en `.env`)
 
-Por defecto **MongoDB en Docker no usa usuario ni contraseña** (solo apropiado en desarrollo local). Detalle, secretos y producción: **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)**.
+| Servicio | URL típica |
+|----------|------------|
+| Aplicación web | `http://localhost` si `FRONTEND_PORT=80`, si no `http://localhost:<FRONTEND_PORT>` |
+| API / Swagger | `http://localhost:<BACKEND_PORT>/api/docs` (por defecto `BACKEND_PORT=3000`) |
 
 ---
 
-## 💻 Desarrollo local sin Docker
+## Dos `.env`: raíz vs `backend/`
+
+| Archivo | Cuándo usarlo |
+|---------|----------------|
+| **`.env` en la raíz** | **Docker Compose**: puertos, Mongo, JWT, CORS, `MONGODB_URI` hacia el servicio `mongodb`. Es la fuente principal al usar `npm start` / `docker compose`. |
+| **`backend/.env`** | Solo si ejecuta el backend con **`cd backend && npm start`** (sin contenedor del API). Copie `backend/.env.example` y ponga `MONGODB_URI` acorde (p. ej. `mongodb://localhost:27017/...` con o sin usuario). |
+
+Si todo corre en Docker, no necesita `backend/.env` para que el stack funcione.
+
+---
+
+## Desarrollo local sin Docker
 
 ### Windows
-
-Script que intenta MongoDB en el sistema y abre backend + frontend:
 
 ```powershell
 npm run start:local:win
@@ -52,9 +72,9 @@ npm run start:local:win
 npm run start:local:unix
 ```
 
-### Manual (cualquier SO)
+### Manual
 
-**1. Backend (NestJS)**
+**Backend**
 
 ```bash
 cd backend
@@ -64,7 +84,7 @@ npm run build
 npm start
 ```
 
-**2. Frontend (Angular)**
+**Frontend**
 
 ```bash
 cd frontend
@@ -74,56 +94,72 @@ npm start
 
 ---
 
-## 🔐 Configuración de Variables (.env)
+## Variables resumidas (backend)
 
-Partir de `backend/.env.example`. Variables mínimas:
+Para el proceso Nest (también inyectadas en el contenedor desde el `.env` de la raíz en Compose):
 
-- `MONGODB_URI` — instancia MongoDB (local o Atlas). En Compose use el hostname del servicio (`mongodb`, ver `docker-compose.yml`).
-- `JWT_SECRET` — cadena larga y aleatoria (obligatoria en producción).
-- `CORS_ORIGINS` — orígenes permitidos separados por comas. Con Angular en `npm start` suele ser `http://localhost:4200`; con el front en Docker en el puerto 80 use `http://localhost` y `http://127.0.0.1` como en Compose.
-- `FRONTEND_URL` — referencia del front; también puede alimentar CORS si no define `CORS_ORIGINS`.
-- `NODE_ENV` — usar `production` en despliegues reales (política CORS más estricta).
+- **`MONGODB_URI`** — Conexión a MongoDB. En Compose: host `mongodb`. Con usuario root del contenedor: incluya credenciales y `authSource=admin`.
+- **`JWT_SECRET`** — Firma de tokens.
+- **`CORS_ORIGINS`** — Orígenes separados por comas. Con front en Docker en el puerto 80 suelen bastar `http://localhost` y `http://127.0.0.1`; con `ng serve`, añada `http://localhost:4200`.
+- **`FRONTEND_URL`** — Referencia del front.
+- **`NODE_ENV`** — En despliegues reales use `production` (CORS más estricto).
 
-Documentación de API en tiempo de ejecución: **Swagger** en `http://localhost:{PORT}/api/docs`. Detalle en [docs/API.md](docs/API.md) y despliegue en [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+Swagger: `http://localhost:<BACKEND_PORT>/api/docs`. Más detalle: [docs/API.md](docs/API.md), [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
 ---
 
-## 🧪 Datos de Prueba
+## Datos de prueba (seeds)
 
-Para cargar datos iniciales y roles de prueba:
+En Docker, al arrancar el contenedor **backend** se ejecutan `seed:owner` y `seed:test` ([backend/docker-entrypoint.sh](backend/docker-entrypoint.sh)).
+
+Para repetirlos sin reiniciar el stack:
+
+```bash
+docker compose exec backend npm run seed:owner
+docker compose exec backend npm run seed:test
+```
+
+Sin Docker:
 
 ```bash
 cd backend
+npm run seed:owner
 npm run seed:test
 ```
 
-En Docker los seeds de owner/prueba se ejecutan al arrancar el backend (entrypoint).
-
 ---
 
-## 🆘 Solución de Problemas Comunes
+## Solución de problemas
 
-### Error: "Cannot find module evidence.module"
+### Error: "Cannot find module …"
 
-Ejecute `npm install` nuevamente en la carpeta `backend`.
+Ejecute `npm install` de nuevo en la carpeta `backend` (o `frontend` según el error).
 
-### Puerto en uso (3000, 80 o 4200)
+### Puerto en uso (3000, 80, 4200, 27017)
 
-**Docker:** `docker compose down` y revise que no haya otro stack usando los mismos puertos.
+Ajuste `BACKEND_PORT`, `FRONTEND_PORT` o `MONGO_PORT` en el **`.env` de la raíz** y vuelva a levantar Compose.
 
-**Windows (proceso en puerto):**
+**Windows (liberar un puerto):**
 
 ```powershell
 netstat -ano | findstr :3000
 taskkill /F /PID <PID>
 ```
 
+### 502 Bad Gateway (nginx / front en Docker)
+
+El front hace proxy al API en el contenedor **backend**. Si el backend está reiniciándose (icono cargando en Docker Desktop) o no arranca:
+
+1. `docker compose logs backend --tail 80` — si aparece que no existe `dist/main.js`, reconstruya: `docker compose build backend --no-cache` y `docker compose up -d`.
+2. Compruebe que **Mongo** está healthy y que el volumen tiene el usuario de `MONGODB_URI` (ver sección siguiente).
+
 ### MongoDB no conecta
 
-**Docker:** compruebe `docker compose ps` y logs: `docker compose logs mongodb backend`.
-
-**Host local:** servicio MongoDB en marcha o URI correcta en `.env`.
+- **Docker:** `docker compose ps` y `docker compose logs mongodb backend`.
+- **URI:** Dentro de los contenedores el host debe ser **`mongodb`**. Usuario/contraseña en `MONGODB_URI` deben coincidir con `MONGO_INITDB_ROOT_*`.
+- **`dependency failed` / `mongodb` unhealthy:** Volumen creado antes de `MONGO_INITDB_*`: Mongo puede tener `authorization` pero sin el usuario de `MONGODB_URI` en `admin` (logs: `UserNotFound`). El healthcheck hace `ping` sin credenciales y luego con `MONGO_INITDB_ROOT_*`; hay `start_period` y reintentos.
+- **Mongo healthy pero el API no conecta:** El tráfico `backend` → hostname `mongodb` no usa la excepción de localhost; hace falta el root creado en la primera inicialización del volumen. Si no existe, use `docker compose down -v` y vuelva a levantar en desarrollo (borra datos locales) o cree el usuario a mano. [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
 ---
 
-📖 Modelo de datos y flujos: **[docs/architecture.md](docs/architecture.md)**. Multi-tenant: **[docs/MULTI-TENANCY.md](docs/MULTI-TENANCY.md)**.
+Modelo de datos: **[docs/architecture.md](docs/architecture.md)**. Multi-tenant: **[docs/MULTI-TENANCY.md](docs/MULTI-TENANCY.md)**.

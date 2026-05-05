@@ -7,7 +7,15 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 ## [Unreleased]
 
-_(Vacío: próximos cambios irán aquí.)_
+- **FIX (Docker — backend / 502):** `nest build` con la config previa podía dejar **solo `.d.ts`** en `dist` (sin `.js`), de modo que el entrypoint fallaba y nginx devolvía **502**. Se añade `nest-cli.json` (`builder: "tsc"`, `tsconfig.build.json`), `tsconfig.build.json` con `include`/`rootDir`/`incremental: false`, y `docker-entrypoint.sh` admite `dist/main.js` o `dist/src/main.js`.
+- **DOCKER (Mongo healthcheck):** El servicio `mongodb` podía quedar `unhealthy` con un volumen antiguo sin usuario root: el check solo autenticaba y Mongo devolvía `UserNotFound`. Ahora el healthcheck hace ping sin credenciales y, si hace falta, prueba con `MONGO_INITDB_ROOT_*`; más `start_period` y reintentos para arranques lentos.
+- **DOCS:** Reescritura y ampliación de [SETUP.md](SETUP.md), [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) y [README.md](README.md): dos `.env` (raíz vs `backend/`), puertos `MONGO_PORT` / `BACKEND_PORT` / `FRONTEND_PORT`, Mongo con credenciales, seeds con `docker compose exec`, URLs dinámicas; corrección de caracteres corruptos en DEPLOYMENT.
+- **CONFIG / Docker + Mongo + DX:** `MONGO_INITDB_ROOT_USERNAME` y `MONGO_INITDB_ROOT_PASSWORD` en `.env` / `.env.example` (valores de ejemplo) y `MONGODB_URI` con `authSource=admin`. `docker-compose.yml` aplica credenciales al servicio `mongodb`, healthcheck con `mongosh` autenticado, `MONGODB_URI` por defecto alineada en el backend. Puertos en `.env`; `NODE_ENV` por defecto `development`. Documentacion: [SETUP.md](SETUP.md), [docs/DEVELOPMENT-CREDENTIALS.md](docs/DEVELOPMENT-CREDENTIALS.md), [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md), `.env.example`; seeds manuales con `docker compose exec backend npm run seed:owner` / `seed:test`.
+- **FIX (Backend — CORS):** En `main.ts`, las peticiones **sin** cabecera `Origin` (mismo host detrás de nginx o algunos navegadores) ya no quedan bloqueadas cuando `NODE_ENV=production`. Antes el login desde el front en Docker podía fallar de forma silenciosa en el cliente.
+- **FIX (Frontend — Login):** Mensajes de error más explícitos si no hay respuesta del servidor o hay código HTTP.
+- **CONFIG:** `CORS_ORIGINS` por defecto en Compose y `.env.example` incluye `http://localhost:4200` y `127.0.0.1:4200` para `ng serve`. Documentación en [docs/DEVELOPMENT-CREDENTIALS.md](docs/DEVELOPMENT-CREDENTIALS.md).
+- **SECURITY/OPS (Audit + Docker + Mongo):** Auditoría HTTP global (éxito y error) con saneamiento de campos sensibles (`password`, `token`, etc.), metadatos de `statusCode`/latencia y **TTL de 1 año** en la colección de auditoría. Compose actualizado a `mongo:8.0`, volumen persistente adicional para backups del backend (`backups_data:/app/backups`) y optimización del Dockerfile backend a build multi-stage para reducir tamaño y mejorar tiempos de despliegue.
+- **UI/UX (Admin):** Mejora visual del módulo de auditoría en frontend (columnas de severidad y usuario real, filtros alineados a método HTTP/entidad de auditoría) y corrección de caracteres corruptos en títulos de administración.
 
 ## [2.2.0] - 2026-05-05
 

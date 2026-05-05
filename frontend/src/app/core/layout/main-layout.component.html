@@ -62,7 +62,7 @@
           aria-labelledby="nav-admin-label"
         >
           <p class="app-nav__section-label" id="nav-admin-label">
-            Administracin
+            Administración
           </p>
           <mat-nav-list class="app-nav__list app-nav__list--nested" role="navigation">
             @if (authService.isAdmin()) {
@@ -102,7 +102,7 @@
                 routerLinkActive="app-nav__link--active"
               >
                 <mat-icon aria-hidden="true">history</mat-icon>
-                <span>Auditora</span>
+                <span>Auditoría</span>
               </a>
               <a
                 mat-list-item
@@ -173,7 +173,7 @@
           type="button"
           mat-icon-button
           [matMenuTriggerFor]="userMenu"
-          [attr.aria-label]="'Abrir men de cuenta: ' + userFullName()"
+          [attr.aria-label]="'Abrir menú de cuenta: ' + userFullName()"
         >
           <mat-icon aria-hidden="true">account_circle</mat-icon>
         </button>
@@ -184,7 +184,7 @@
           </button>
           <button type="button" mat-menu-item (click)="authService.logout()">
             <mat-icon aria-hidden="true">logout</mat-icon>
-            <span>Cerrar sesin</span>
+            <span>Cerrar sesión</span>
           </button>
         </mat-menu>
       </mat-toolbar>

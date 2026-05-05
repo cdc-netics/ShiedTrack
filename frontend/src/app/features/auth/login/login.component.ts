@@ -470,10 +470,27 @@ export class LoginComponent implements AfterViewInit {
           this.loading = false;
           // La navegación la maneja el servicio
         },
-        error: (err) => {
+        error: (err: unknown) => {
           this.loading = false;
-          this.error = err.error?.message || 'Error al iniciar sesión';
-        }
+          const http = err as {
+            status?: number;
+            message?: string;
+            error?: { message?: string } | string;
+          };
+          const body = http.error;
+          const bodyMsg =
+            typeof body === 'string'
+              ? body
+              : body && typeof body === 'object' && 'message' in body
+                ? String((body as { message?: string }).message)
+                : '';
+          this.error =
+            bodyMsg ||
+            http.message ||
+            (http.status === 0
+              ? 'No hay respuesta del servidor. Compruebe que el backend está en marcha (p. ej. Docker o puerto 3000).'
+              : `Error al iniciar sesión (${http.status ?? '?'})`);
+        },
       });
   }
 }
