@@ -32,16 +32,16 @@ export class TemplateService {
     currentUser: any,
   ): Promise<FindingTemplate> {
     // RBAC: Validar permisos según scope
-    if (dto.scope === "GLOBAL") {
+    if (dto.scope === "USER") {
+      dto.tenantId = undefined;
+    } else if (dto.scope === "GLOBAL") {
       if (!["OWNER", "PLATFORM_ADMIN"].includes(currentUser.role)) {
         throw new ForbiddenException(
           "Solo OWNER/PLATFORM_ADMIN pueden crear plantillas globales",
         );
       }
     } else if (dto.scope === "TENANT") {
-      if (
-        !["OWNER", "PLATFORM_ADMIN", "CLIENT_ADMIN"].includes(currentUser.role)
-      ) {
+      if (!["OWNER", "PLATFORM_ADMIN", "CLIENT_ADMIN", "AREA_ADMIN"].includes(currentUser.role)) {
         throw new ForbiddenException("Solo admins pueden crear plantillas");
       }
       // CLIENT_ADMIN solo puede crear plantillas de su cliente
@@ -82,6 +82,7 @@ export class TemplateService {
     // Multi-tenant: Mostrar plantillas GLOBAL + del cliente del usuario
     if (currentUser.role !== "OWNER" && currentUser.role !== "PLATFORM_ADMIN") {
       filter.$or = [
+        { scope: "USER", createdBy: currentUser.userId },
         { scope: "GLOBAL" },
         {
           scope: "TENANT",
@@ -97,7 +98,7 @@ export class TemplateService {
       // Buscar con score de relevancia
       const results = await this.templateModel
         .find(filter, { score: { $meta: "textScore" } })
-        .sort({ score: { $meta: "textScore" }, usageCount: -1 })
+        .sort({ score: { $meta: "textScore" }, usageCount: -1, createdAt: -1 })
         .limit(query.limit || 20)
         .lean();
 
@@ -105,11 +106,13 @@ export class TemplateService {
     }
 
     // Sin query: Mostrar las más usadas
-    return this.templateModel
+    const templates = await this.templateModel
       .find(filter)
       .sort({ usageCount: -1, createdAt: -1 })
       .limit(query.limit || 20)
       .lean();
+
+    return this.prioritizeUserTemplates(templates as any[], currentUser.userId);
   }
 
   /**
@@ -134,6 +137,13 @@ export class TemplateService {
 
       if (!canAccess) {
         throw new ForbiddenException("No tiene acceso a esta plantilla");
+      }
+    }
+    if (template.scope === "USER") {
+      const ownTemplate = template.createdBy?.toString() === currentUser.userId?.toString();
+      const isSuperAdmin = ["OWNER", "PLATFORM_ADMIN"].includes(currentUser.role);
+      if (!ownTemplate && !isSuperAdmin) {
+        throw new ForbiddenException("No tiene acceso a esta plantilla personal");
       }
     }
 
@@ -187,6 +197,7 @@ export class TemplateService {
     // Multi-tenant
     if (currentUser.role !== "OWNER" && currentUser.role !== "PLATFORM_ADMIN") {
       filter.$or = [
+        { scope: "USER", createdBy: currentUser.userId },
         { scope: "GLOBAL" },
         {
           scope: "TENANT",
@@ -195,11 +206,13 @@ export class TemplateService {
       ];
     }
 
-    return this.templateModel
+    const templates = await this.templateModel
       .find(filter)
       .populate("createdBy", "firstName lastName email")
       .sort({ usageCount: -1, createdAt: -1 })
       .lean();
+
+    return this.prioritizeUserTemplates(templates as any[], currentUser.userId);
   }
 
   /**
@@ -253,5 +266,21 @@ export class TemplateService {
     this.logger.log(
       `Plantilla desactivada: ${template.title} por ${currentUser.email}`,
     );
+  }
+
+  private prioritizeUserTemplates(
+    templates: any[],
+    userId: string,
+  ): FindingTemplate[] {
+    return templates.sort((a, b) => {
+      const aCreatedBy =
+        typeof a.createdBy === "object" ? a.createdBy?._id?.toString?.() : a.createdBy?.toString?.();
+      const bCreatedBy =
+        typeof b.createdBy === "object" ? b.createdBy?._id?.toString?.() : b.createdBy?.toString?.();
+      const aOwn = a.scope === "USER" && aCreatedBy === userId?.toString();
+      const bOwn = b.scope === "USER" && bCreatedBy === userId?.toString();
+      if (aOwn !== bOwn) return aOwn ? -1 : 1;
+      return 0;
+    }) as FindingTemplate[];
   }
 }

@@ -6,13 +6,18 @@
     opened
   >
     <mat-toolbar class="dynamic-primary app-shell__brand">
-      <img
-        class="app-shell__logo"
-        [src]="theme.currentLogo"
-        alt=""
-        width="28"
-        height="28"
-      />
+      @if (!logoLoadFailed) {
+        <img
+          class="app-shell__logo"
+          [src]="theme.currentLogo"
+          alt="Logo de ShieldTrack"
+          width="28"
+          height="28"
+          (error)="onLogoError()"
+        />
+      } @else {
+        <mat-icon class="app-shell__logo-fallback" aria-hidden="true">shield</mat-icon>
+      }
       <span class="app-shell__title">ShieldTrack</span>
     </mat-toolbar>
 
@@ -48,6 +53,15 @@
         <a
           mat-list-item
           class="app-nav__link"
+          routerLink="/templates"
+          routerLinkActive="app-nav__link--active"
+        >
+          <mat-icon aria-hidden="true">description</mat-icon>
+          <span>Plantillas</span>
+        </a>
+        <a
+          mat-list-item
+          class="app-nav__link"
           routerLink="/clients"
           routerLinkActive="app-nav__link--active"
         >
@@ -62,87 +76,38 @@
           aria-labelledby="nav-admin-label"
         >
           <p class="app-nav__section-label" id="nav-admin-label">
-            AdministraciÛn
+            Administraci&oacute;n
           </p>
           <mat-nav-list class="app-nav__list app-nav__list--nested" role="navigation">
-            @if (authService.isAdmin()) {
-              <a
-                mat-list-item
-                class="app-nav__link"
-                routerLink="/admin/users"
-                routerLinkActive="app-nav__link--active"
-              >
-                <mat-icon aria-hidden="true">people</mat-icon>
-                <span>Usuarios</span>
-              </a>
-              @if (environment.enableTenantSection) {
-                <a
-                  mat-list-item
-                  class="app-nav__link"
-                  routerLink="/admin/tenants"
-                  routerLinkActive="app-nav__link--active"
-                >
-                  <mat-icon aria-hidden="true">business</mat-icon>
-                  <span>Tenants</span>
-                </a>
+            <a
+              mat-list-item
+              class="app-nav__link"
+              routerLink="/admin"
+              routerLinkActive="app-nav__link--active"
+            >
+              <mat-icon aria-hidden="true">admin_panel_settings</mat-icon>
+              <span>Centro de administraci&oacute;n</span>
+            </a>
+            <mat-expansion-panel class="admin-accordion" [hideToggle]="false">
+              <mat-expansion-panel-header>
+                <mat-panel-title>
+                  <mat-icon aria-hidden="true">tune</mat-icon>
+                  <span>Accesos r&aacute;pidos</span>
+                </mat-panel-title>
+              </mat-expansion-panel-header>
+              @if (authService.isAdmin()) {
+                <a mat-list-item class="app-nav__link app-nav__link--nested-item" routerLink="/admin/users" routerLinkActive="app-nav__link--active"><mat-icon>people</mat-icon><span>Usuarios</span></a>
+                <a mat-list-item class="app-nav__link app-nav__link--nested-item" routerLink="/admin/areas" routerLinkActive="app-nav__link--active"><mat-icon>business</mat-icon><span>&Aacute;reas</span></a>
+                <a mat-list-item class="app-nav__link app-nav__link--nested-item" routerLink="/admin/templates" routerLinkActive="app-nav__link--active"><mat-icon>description</mat-icon><span>Plantillas</span></a>
+                <a mat-list-item class="app-nav__link app-nav__link--nested-item" routerLink="/admin/audit" routerLinkActive="app-nav__link--active"><mat-icon>history</mat-icon><span>Auditor&iacute;a</span></a>
+                <a mat-list-item class="app-nav__link app-nav__link--nested-item" routerLink="/admin/branding" routerLinkActive="app-nav__link--active"><mat-icon>palette</mat-icon><span>Marca</span></a>
+                <a mat-list-item class="app-nav__link app-nav__link--nested-item" routerLink="/admin/backup" routerLinkActive="app-nav__link--active"><mat-icon>backup</mat-icon><span>Backup</span></a>
+                <a mat-list-item class="app-nav__link app-nav__link--nested-item" routerLink="/admin/config" routerLinkActive="app-nav__link--active"><mat-icon>settings</mat-icon><span>Configuraci&oacute;n</span></a>
               }
-              <a
-                mat-list-item
-                class="app-nav__link"
-                routerLink="/admin/templates"
-                routerLinkActive="app-nav__link--active"
-              >
-                <mat-icon aria-hidden="true">description</mat-icon>
-                <span>Templates</span>
-              </a>
-              <a
-                mat-list-item
-                class="app-nav__link"
-                routerLink="/admin/audit"
-                routerLinkActive="app-nav__link--active"
-              >
-                <mat-icon aria-hidden="true">history</mat-icon>
-                <span>AuditorÌa</span>
-              </a>
-              <a
-                mat-list-item
-                class="app-nav__link"
-                routerLink="/admin/branding"
-                routerLinkActive="app-nav__link--active"
-              >
-                <mat-icon aria-hidden="true">palette</mat-icon>
-                <span>Branding</span>
-              </a>
-              <a
-                mat-list-item
-                class="app-nav__link"
-                routerLink="/admin/backup"
-                routerLinkActive="app-nav__link--active"
-              >
-                <mat-icon aria-hidden="true">backup</mat-icon>
-                <span>Backup</span>
-              </a>
-              <a
-                mat-list-item
-                class="app-nav__link"
-                routerLink="/admin/config"
-                routerLinkActive="app-nav__link--active"
-              >
-                <mat-icon aria-hidden="true">settings</mat-icon>
-                <span>Configuraciùn</span>
-              </a>
-            }
-            @if (canAccessNotifications()) {
-              <a
-                mat-list-item
-                class="app-nav__link"
-                routerLink="/admin/notifications"
-                routerLinkActive="app-nav__link--active"
-              >
-                <mat-icon aria-hidden="true">alternate_email</mat-icon>
-                <span>Notificaciones</span>
-              </a>
-            }
+              @if (canAccessNotifications()) {
+                <a mat-list-item class="app-nav__link app-nav__link--nested-item" routerLink="/admin/notifications" routerLinkActive="app-nav__link--active"><mat-icon>alternate_email</mat-icon><span>Notificaciones</span></a>
+              }
+            </mat-expansion-panel>
           </mat-nav-list>
         </section>
       }
@@ -173,9 +138,13 @@
           type="button"
           mat-icon-button
           [matMenuTriggerFor]="userMenu"
-          [attr.aria-label]="'Abrir men˙ de cuenta: ' + userFullName()"
+          [attr.aria-label]="'Abrir men&uacute; de cuenta: ' + userFullName()"
         >
-          <mat-icon aria-hidden="true">account_circle</mat-icon>
+          @if (authService.currentUser()?.avatarUrl) {
+            <img [src]="authService.currentUser()?.avatarUrl" class="app-shell__avatar" alt="Avatar" />
+          } @else {
+            <mat-icon aria-hidden="true">account_circle</mat-icon>
+          }
         </button>
         <mat-menu #userMenu="matMenu">
           <button type="button" mat-menu-item routerLink="/profile">
@@ -184,7 +153,7 @@
           </button>
           <button type="button" mat-menu-item (click)="authService.logout()">
             <mat-icon aria-hidden="true">logout</mat-icon>
-            <span>Cerrar sesiÛn</span>
+            <span>Cerrar sesi&oacute;n</span>
           </button>
         </mat-menu>
       </mat-toolbar>

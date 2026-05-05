@@ -58,7 +58,7 @@ export class TemplateController {
    */
   @Get()
   @ApiOperation({ summary: "Listar plantillas" })
-  @ApiQuery({ name: "scope", required: false, enum: ["GLOBAL", "TENANT"] })
+  @ApiQuery({ name: "scope", required: false, enum: ["USER", "GLOBAL", "TENANT"] })
   async listTemplates(
     @CurrentUser() user: any,
     @Query("scope") scope?: string,
@@ -72,7 +72,13 @@ export class TemplateController {
    * TENANT: CLIENT_ADMIN del cliente
    */
   @Post()
-  @Roles(UserRole.CLIENT_ADMIN, UserRole.PLATFORM_ADMIN, UserRole.OWNER)
+  @Roles(
+    UserRole.OWNER,
+    UserRole.PLATFORM_ADMIN,
+    UserRole.CLIENT_ADMIN,
+    UserRole.AREA_ADMIN,
+    UserRole.ANALYST,
+  )
   @ApiOperation({ summary: "Crear plantilla (admins)" })
   async createTemplate(
     @Body() dto: CreateTemplateDto,

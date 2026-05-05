@@ -11,10 +11,20 @@ html, body {
 }
 
 body {
-  font-family: Roboto, "Helvetica Neue", sans-serif;
+  font-family:
+    "Inter",
+    "Roboto",
+    "Segoe UI",
+    "Helvetica Neue",
+    Arial,
+    "Noto Sans",
+    sans-serif;
   font-size: 14px;
   color: #1a1a1a;
   background: #f5f5f5;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 /* Enlace “saltar al contenido”: WCAG 2.x bypass blocks */

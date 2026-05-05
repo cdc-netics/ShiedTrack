@@ -7,6 +7,8 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 ## [Unreleased]
 
+## [2.2.1] - 2026-05-06
+
 - **FIX (Docker — backend / 502):** `nest build` con la config previa podía dejar **solo `.d.ts`** en `dist` (sin `.js`), de modo que el entrypoint fallaba y nginx devolvía **502**. Se añade `nest-cli.json` (`builder: "tsc"`, `tsconfig.build.json`), `tsconfig.build.json` con `include`/`rootDir`/`incremental: false`, y `docker-entrypoint.sh` admite `dist/main.js` o `dist/src/main.js`.
 - **DOCKER (Mongo healthcheck):** El servicio `mongodb` podía quedar `unhealthy` con un volumen antiguo sin usuario root: el check solo autenticaba y Mongo devolvía `UserNotFound`. Ahora el healthcheck hace ping sin credenciales y, si hace falta, prueba con `MONGO_INITDB_ROOT_*`; más `start_period` y reintentos para arranques lentos.
 - **DOCS:** Reescritura y ampliación de [SETUP.md](SETUP.md), [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) y [README.md](README.md): dos `.env` (raíz vs `backend/`), puertos `MONGO_PORT` / `BACKEND_PORT` / `FRONTEND_PORT`, Mongo con credenciales, seeds con `docker compose exec`, URLs dinámicas; corrección de caracteres corruptos en DEPLOYMENT.
@@ -16,6 +18,17 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 - **CONFIG:** `CORS_ORIGINS` por defecto en Compose y `.env.example` incluye `http://localhost:4200` y `127.0.0.1:4200` para `ng serve`. Documentación en [docs/DEVELOPMENT-CREDENTIALS.md](docs/DEVELOPMENT-CREDENTIALS.md).
 - **SECURITY/OPS (Audit + Docker + Mongo):** Auditoría HTTP global (éxito y error) con saneamiento de campos sensibles (`password`, `token`, etc.), metadatos de `statusCode`/latencia y **TTL de 1 año** en la colección de auditoría. Compose actualizado a `mongo:8.0`, volumen persistente adicional para backups del backend (`backups_data:/app/backups`) y optimización del Dockerfile backend a build multi-stage para reducir tamaño y mejorar tiempos de despliegue.
 - **UI/UX (Admin):** Mejora visual del módulo de auditoría en frontend (columnas de severidad y usuario real, filtros alineados a método HTTP/entidad de auditoría) y corrección de caracteres corruptos en títulos de administración.
+- **AUDIT (Frontend — descripción legible + IDs con nombre):** `admin/audit` ahora enriquece los registros con catálogos (`clients`, `projects`, `findings`, `users`) para mostrar descripciones humanas en lugar de solo IDs crudos. En el detalle se prioriza el nombre de entidad (si existe) y se mantiene el ID para trazabilidad.
+- **AUDIT (Frontend — contexto técnico más claro):** línea de contexto normalizada a formato `METHOD · HTTP · /api/...` para reducir ruido en tabla y mantener foco en “qué hizo”.
+- **AUDIT (Frontend — refresco progresivo):** cuando llegan catálogos de entidades, los logs ya cargados se re-normalizan automáticamente para sustituir IDs por nombres sin recargar manualmente.
+- **TEMPLATES (Backend — plantillas personales de usuario):** se añade soporte formal de `scope: USER` en DTO y schema de plantillas (`FindingTemplate`). Para nuevos registros, el alcance por defecto pasa a `USER`.
+- **TEMPLATES (Backend — permisos y acceso):** creación habilitada para roles operativos además de admins (`AREA_ADMIN`, `ANALYST`); validación de acceso para plantillas personales (solo autor y super-admins).
+- **TEMPLATES (Backend — prioridad de UX):** en búsqueda y listado se priorizan “mis plantillas” (`scope=USER` creadas por el usuario actual) por encima de plantillas generales/tenant para acelerar uso diario.
+- **TEMPLATES (Frontend — contrato API corregido):** componentes de lista/diálogo alineados al backend (`title`, `cwe_id`, `cvss_score`, `scope`) y actualización vía `PATCH` para evitar incompatibilidades previas con campos legacy (`name`, `cweId`, `cvssScore`).
+- **TEMPLATES (Frontend — experiencia visual):** etiquetas de alcance en lista (`Mi plantilla`, `De mi área`, `General`) y bloqueo visual de edición/eliminación cuando el usuario no tiene permisos sobre la plantilla.
+- **NAV/ROUTES (Frontend):** nueva ruta pública autenticada `/templates` (además de `/admin/templates`) para que usuarios no admin puedan consultar/crear sus plantillas sin pasar por el centro de administración.
+- **NAV (Sidebar):** se agrega acceso principal `Plantillas` en el menú operativo para visibilidad directa del flujo de plantillas.
+- **FINDING WIZARD (Frontend):** búsqueda de plantillas en el wizard ahora considera `scope` y ordena con prioridad las plantillas personales del usuario sobre las generales.
 
 ## [2.2.0] - 2026-05-05
 

@@ -140,4 +140,19 @@ export class AuthService {
       })
     );
   }
+
+  updateProfile(payload: {
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    avatarUrl?: string;
+    currentPassword?: string;
+    newPassword?: string;
+  }) {
+    return this.http.patch<User>(`${this.API_URL}/profile`, payload).pipe(
+      tap((updatedUser) => {
+        this.currentUserSignal.set(updatedUser);
+      })
+    );
+  }
 }

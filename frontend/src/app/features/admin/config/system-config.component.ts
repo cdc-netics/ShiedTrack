@@ -80,59 +80,59 @@ import { environment } from '../../../../environments/environment';
           </mat-action-row>
         </mat-expansion-panel>
 
-        <!-- CONFIGURACIÓN DE TENANTS -->
+        <!-- CONFIGURACIÓN DE ÁREAS -->
         <mat-expansion-panel>
           <mat-expansion-panel-header>
             <mat-panel-title>
               <mat-icon>domain</mat-icon>
-              Tenants
+              Áreas
             </mat-panel-title>
             <mat-panel-description>
-              Gestión de tenants y configuración por tenant
+              Gestión de áreas y configuración por área
             </mat-panel-description>
           </mat-expansion-panel-header>
 
           <p class="info-text">
             <mat-icon class="info-icon">info</mat-icon>
-            Configura tu Tenant
+            Configura tu Área
           </p>
 
           <div class="form-field">
             <mat-slide-toggle [(ngModel)]="areaConfig().requireAreaPerProject">
-              Requerir tenant para cada proyecto
+              Requerir área para cada proyecto
             </mat-slide-toggle>
-            <p class="hint-text">Los proyectos deberán tener un tenant asignado</p>
+            <p class="hint-text">Los proyectos deberán tener un área asignada</p>
           </div>
 
           <div class="form-field">
             <mat-slide-toggle [(ngModel)]="areaConfig().autoCreateDefaultArea">
-              Crear tenant "General" automáticamente
+              Crear área "General" automáticamente
             </mat-slide-toggle>
-            <p class="hint-text">Para nuevos clientes sin tenants definidos</p>
+            <p class="hint-text">Para nuevos clientes sin áreas definidas</p>
           </div>
 
           <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Prefijo de código de tenant</mat-label>
+            <mat-label>Prefijo de código de área</mat-label>
             <input matInput [(ngModel)]="areaConfig().areaCodePrefix" placeholder="AREA">
-            <mat-hint>Se usará en reportes: TENANT-001, TENANT-002</mat-hint>
+            <mat-hint>Se usará en reportes: AREA-001, AREA-002</mat-hint>
           </mat-form-field>
 
           <mat-form-field appearance="outline" class="full-width">
             <mat-label>Niveles de jerarquía</mat-label>
             <mat-select [(ngModel)]="areaConfig().hierarchyLevels">
               <mat-option [value]="1">1 nivel (Cliente → Proyecto)</mat-option>
-              <mat-option [value]="2">2 niveles (Cliente → Tenant → Proyecto)</mat-option>
-              <mat-option [value]="3">3 niveles (Cliente → Tenant → Sub-tenant → Proyecto)</mat-option>
+              <mat-option [value]="2">2 niveles (Cliente → Área → Proyecto)</mat-option>
+              <mat-option [value]="3">3 niveles (Cliente → Área → Subárea → Proyecto)</mat-option>
             </mat-select>
           </mat-form-field>
 
           <mat-divider></mat-divider>
 
-          <!-- CONFIGURACIÓN DE TENANT/CLIENTE (Display Name, Favicon, Logo, Colores) -->
-          <h3 style="margin-top: 20px; margin-bottom: 10px;">Configuración de Tenant</h3>
+          <!-- CONFIGURACIÓN DE ÁREA/CLIENTE (Display Name, Favicon, Logo, Colores) -->
+          <h3 style="margin-top: 20px; margin-bottom: 10px;">Configuración de Área</h3>
 
           <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Nombre Mostrado del Tenant</mat-label>
+            <mat-label>Nombre Mostrado del Área</mat-label>
             <input matInput placeholder="ej: ACME" [(ngModel)]="tenantConfig().displayName">
             <mat-icon matSuffix>business</mat-icon>
             <mat-hint>Este nombre aparecerá en la interfaz del usuario</mat-hint>

@@ -25,6 +25,7 @@ import {
   ReplaceUserAreasDto,
   UpdateUserAssignmentsDto,
   UpdateUserDto,
+  UpdateProfileDto,
 } from "./dto/auth.dto";
 import { JwtAuthGuard } from "./guards/jwt-auth.guard";
 import { RolesGuard } from "./guards/roles.guard";
@@ -118,12 +119,28 @@ export class AuthController {
 
   @Patch("users/:id")
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.OWNER, UserRole.PLATFORM_ADMIN)
+  @Roles(UserRole.OWNER, UserRole.PLATFORM_ADMIN, UserRole.CLIENT_ADMIN)
   @ApiBearerAuth("JWT-auth")
   @ApiOperation({ summary: "Actualizar usuario" })
   @ApiResponse({ status: 200, description: "Usuario actualizado" })
-  async updateUser(@Param("id") id: string, @Body() dto: UpdateUserDto) {
-    return this.authService.updateUser(id, dto);
+  async updateUser(
+    @Param("id") id: string,
+    @Body() dto: UpdateUserDto,
+    @CurrentUser() currentUser: any,
+  ) {
+    return this.authService.updateUser(id, dto, currentUser);
+  }
+
+  @Patch("profile")
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth("JWT-auth")
+  @ApiOperation({ summary: "Actualizar perfil del usuario actual" })
+  @ApiResponse({ status: 200, description: "Perfil actualizado" })
+  async updateProfile(
+    @CurrentUser() user: any,
+    @Body() dto: UpdateProfileDto,
+  ) {
+    return this.authService.updateOwnProfile(user.userId, dto);
   }
 
   // ============================================

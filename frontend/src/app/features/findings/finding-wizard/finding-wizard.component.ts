@@ -29,6 +29,7 @@ interface Template {
   recommendation?: string;
   cvssScore?: number;
   cweId?: string;
+  scope?: string;
 }
 
 @Component({
@@ -694,10 +695,12 @@ export class FindingWizardComponent implements OnInit {
           recommendation: t.recommendation,
           cvssScore: t.cvss_score,
           cweId: t.cwe_id,
+          scope: t.scope,
         }));
 
-        this.templates.set(mapped.length ? mapped : this.templates());
-        this.filteredTemplates.set(mapped.length ? mapped : this.templates());
+        const sorted = mapped.sort((a, b) => (a.scope === 'USER' ? -1 : 0) - (b.scope === 'USER' ? -1 : 0));
+        this.templates.set(sorted.length ? sorted : this.templates());
+        this.filteredTemplates.set(sorted.length ? sorted : this.templates());
         this.templateLoading.set(false);
       },
       error: () => {

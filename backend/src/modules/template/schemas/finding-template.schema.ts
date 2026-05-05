@@ -86,14 +86,14 @@ export class FindingTemplate {
   tags: string[];
 
   @ApiProperty({
-    example: "GLOBAL",
+    example: "USER",
     description:
-      "Alcance: GLOBAL (todos los clientes) o TENANT (cliente específico)",
+      "Alcance: USER (personal), GLOBAL (todos los clientes) o TENANT (cliente específico)",
   })
   @Prop({
     required: true,
-    enum: ["GLOBAL", "TENANT"],
-    default: "GLOBAL",
+    enum: ["USER", "GLOBAL", "TENANT"],
+    default: "USER",
     index: true,
   })
   scope: string;

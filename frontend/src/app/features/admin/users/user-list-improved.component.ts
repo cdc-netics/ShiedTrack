@@ -19,6 +19,7 @@ import { HttpClient } from '@angular/common/http';
 import { User } from '../../../shared/models';
 import { environment } from '../../../../environments/environment';
 import { UserAssignmentDialogComponent } from './user-assignment-dialog.component';
+import { UserDialogComponent } from './user-dialog.component';
 
 /**
  * Lista mejorada de usuarios con acciones rápidas
@@ -396,8 +397,14 @@ export class UserListImprovedComponent implements OnInit {
   }
 
   editUser(user: User): void {
-    console.log('Editar:', user);
-    // TODO: Implementar dialog de edición
+    this.dialog.open(UserDialogComponent, {
+      width: '640px',
+      data: user,
+    }).afterClosed().subscribe((result) => {
+      if (result) {
+        this.loadUsers();
+      }
+    });
   }
 
   changeRole(user: User): void {

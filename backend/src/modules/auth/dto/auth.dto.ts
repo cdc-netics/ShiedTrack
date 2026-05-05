@@ -99,6 +99,11 @@ export class EnableMfaDto {
 export class UpdateUserDto {
   @ApiPropertyOptional()
   @IsOptional()
+  @IsEmail({}, { message: "Debe ser un email válido" })
+  email?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
   @IsString()
   firstName?: string;
 
@@ -127,6 +132,61 @@ export class UpdateUserDto {
   @IsArray()
   @IsMongoId({ each: true, message: "Cada areaId debe ser un ObjectId válido" })
   areaIds?: string[];
+
+  @ApiPropertyOptional({
+    description: "Nueva contraseña del usuario (mínimo 8 caracteres)",
+  })
+  @IsOptional()
+  @IsString()
+  @MinLength(8, { message: "La contraseña debe tener al menos 8 caracteres" })
+  password?: string;
+
+  @ApiPropertyOptional({
+    description: "URL de avatar del usuario",
+    example: "https://example.com/avatar.png",
+  })
+  @IsOptional()
+  @IsString()
+  avatarUrl?: string;
+}
+
+export class UpdateProfileDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsEmail({}, { message: "Debe ser un email válido" })
+  email?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  firstName?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  lastName?: string;
+
+  @ApiPropertyOptional({
+    description: "URL de avatar del usuario",
+  })
+  @IsOptional()
+  @IsString()
+  avatarUrl?: string;
+
+  @ApiPropertyOptional({
+    description: "Contraseña actual (requerida para cambiar contraseña)",
+  })
+  @IsOptional()
+  @IsString()
+  currentPassword?: string;
+
+  @ApiPropertyOptional({
+    description: "Nueva contraseña (mínimo 8 caracteres)",
+  })
+  @IsOptional()
+  @IsString()
+  @MinLength(8, { message: "La contraseña debe tener al menos 8 caracteres" })
+  newPassword?: string;
 }
 
 /**
