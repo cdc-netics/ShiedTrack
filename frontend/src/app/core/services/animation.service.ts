@@ -9,6 +9,21 @@ import anime from 'animejs';
   providedIn: 'root'
 })
 export class AnimationService {
+  /**
+   * Evita animaciones 3D sobre contenedores con entradas de texto.
+   */
+  private containsEditableContent(target: string | HTMLElement): boolean {
+    const element =
+      typeof target === "string"
+        ? (document.querySelector(target) as HTMLElement | null)
+        : target;
+
+    if (!element) {
+      return false;
+    }
+
+    return !!element.querySelector("input, textarea, [contenteditable='true']");
+  }
 
   /**
    * Anima la entrada de elementos con fade-in y translateY
@@ -129,6 +144,11 @@ export class AnimationService {
    * Flip horizontal para cambios de estado
    */
   flipX(target: string | HTMLElement): void {
+    if (this.containsEditableContent(target)) {
+      this.fadeInUp(target);
+      return;
+    }
+
     anime({
       targets: target,
       rotateY: [0, 180],
@@ -206,6 +226,11 @@ export class AnimationService {
    * Card entrance con flip y fade
    */
   cardEntrance(target: string): void {
+    if (this.containsEditableContent(target)) {
+      this.staggerFadeIn(target);
+      return;
+    }
+
     anime({
       targets: target,
       opacity: [0, 1],
@@ -219,7 +244,11 @@ export class AnimationService {
   /**
    * Morphing entre dos estados
    */
-  morph(target: string | HTMLElement, properties: any, duration = 500): void {
+  morph(
+    target: string | HTMLElement,
+    properties: Record<string, string | number>,
+    duration = 500,
+  ): void {
     anime({
       targets: target,
       ...properties,

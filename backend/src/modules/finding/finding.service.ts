@@ -4,23 +4,23 @@ import {
   Logger,
   BadRequestException,
   ForbiddenException,
-} from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
-import { Finding } from './schemas/finding.schema';
-import { FindingUpdate } from './schemas/finding-update.schema';
+} from "@nestjs/common";
+import { InjectModel } from "@nestjs/mongoose";
+import { Model, Types } from "mongoose";
+import { Finding } from "./schemas/finding.schema";
+import { FindingUpdate } from "./schemas/finding-update.schema";
 import {
   CreateFindingDto,
   UpdateFindingDto,
   CloseFindingDto,
-} from './dto/finding.dto';
-import { CreateFindingUpdateDto } from './dto/finding-update.dto';
-import { FindingStatus, FindingUpdateType } from '../../common/enums';
-import { Project } from '../project/schemas/project.schema';
-import { SystemConfig } from '../system-config/schemas/system-config.schema';
-import { Area } from '../area/schemas/area.schema';
-import { User } from '../auth/schemas/user.schema';
-import { EmailService } from '../email/email.service';
+} from "./dto/finding.dto";
+import { CreateFindingUpdateDto } from "./dto/finding-update.dto";
+import { FindingStatus, FindingUpdateType } from "../../common/enums";
+import { Project } from "../project/schemas/project.schema";
+import { SystemConfig } from "../system-config/schemas/system-config.schema";
+import { Area } from "../area/schemas/area.schema";
+import { User } from "../auth/schemas/user.schema";
+import { EmailService } from "../email/email.service";
 
 /**
  * Servicio de gestión de Hallazgos
@@ -55,7 +55,7 @@ export class FindingService {
   }
 
   private isRestrictedByArea(currentUser?: any): boolean {
-    return ['AREA_ADMIN', 'ANALYST', 'VIEWER'].includes(currentUser?.role);
+    return ["AREA_ADMIN", "ANALYST", "VIEWER"].includes(currentUser?.role);
   }
 
   private getUserAreaIds(currentUser?: any): string[] {
@@ -80,12 +80,12 @@ export class FindingService {
   }
 
   private getUserFullName(user: any): string {
-    const fullName = `${user?.firstName || ''} ${user?.lastName || ''}`.trim();
-    return fullName || user?.email || 'Usuario';
+    const fullName = `${user?.firstName || ""} ${user?.lastName || ""}`.trim();
+    return fullName || user?.email || "Usuario";
   }
 
   private getProjectName(project: any): string {
-    return project?.name || project?.projectName || 'Proyecto sin nombre';
+    return project?.name || project?.projectName || "Proyecto sin nombre";
   }
 
   private areObjectIdsEqual(a: any, b: any): boolean {
@@ -144,9 +144,22 @@ export class FindingService {
         finding.code || finding._id.toString(),
         finding.severity,
         this.getProjectName(project),
+        {
+          tenantId:
+            this.resolveFindingTenantId({
+              ...finding,
+              projectId: project || finding.projectId,
+            }) || project?.tenantId?.toString?.(),
+          projectId:
+            project?._id?.toString?.() ||
+            finding.projectId?._id?.toString?.() ||
+            finding.projectId?.toString?.(),
+        },
       );
 
-      this.logger.log(`Email de hallazgo asignado enviado a ${assignedUser.email}`);
+      this.logger.log(
+        `Email de hallazgo asignado enviado a ${assignedUser.email}`,
+      );
     } catch (emailError: any) {
       this.logger.warn(
         `No se pudo enviar email de hallazgo asignado: ${emailError?.message}`,
@@ -162,7 +175,9 @@ export class FindingService {
       const recipients = new Map<string, { email: string; name: string }>();
 
       if (finding.assignedTo) {
-        const assignedUser = await this.userModel.findById(finding.assignedTo).lean();
+        const assignedUser = await this.userModel
+          .findById(finding.assignedTo)
+          .lean();
         if (assignedUser?.email) {
           recipients.set(assignedUser.email, {
             email: assignedUser.email,
@@ -172,7 +187,9 @@ export class FindingService {
       }
 
       if (finding.createdBy) {
-        const createdByUser = await this.userModel.findById(finding.createdBy).lean();
+        const createdByUser = await this.userModel
+          .findById(finding.createdBy)
+          .lean();
         if (createdByUser?.email) {
           recipients.set(createdByUser.email, {
             email: createdByUser.email,
@@ -184,19 +201,31 @@ export class FindingService {
       const projectName =
         (finding.projectId as any)?.name ||
         (finding.projectId as any)?.projectName ||
-        'Proyecto sin nombre';
+        "Proyecto sin nombre";
+
+      if (recipients.size === 0) {
+        return;
+      }
+
+      await this.emailService.notifyFindingClosed(
+        Array.from(recipients.values()).map((recipient) => ({
+          email: recipient.email,
+          name: recipient.name,
+        })),
+        finding.title,
+        finding.code || finding._id.toString(),
+        closeReason,
+        projectName,
+        {
+          tenantId: this.resolveFindingTenantId(finding),
+          projectId:
+            (finding.projectId as any)?._id?.toString?.() ||
+            finding.projectId?.toString?.(),
+        },
+      );
 
       for (const recipient of recipients.values()) {
-        await this.emailService.notifyFindingClosed(
-          recipient.email,
-          recipient.name,
-          finding.title,
-          finding.code || finding._id.toString(),
-          closeReason,
-          projectName,
-        );
-
-        this.logger.log(`Email de cierre enviado a ${recipient.email}`);
+        this.logger.log(`Email de cierre procesado para ${recipient.email}`);
       }
     } catch (emailError: any) {
       this.logger.warn(
@@ -223,7 +252,7 @@ export class FindingService {
 
     if (!allowedAreas.length || !hasAccess) {
       throw new ForbiddenException(
-        'No tiene permisos para acceder a este recurso',
+        "No tiene permisos para acceder a este recurso",
       );
     }
   }
@@ -234,14 +263,12 @@ export class FindingService {
   ): Promise<Project> {
     const project = await this.projectModel
       .findById(projectId)
-      .populate('clientId')
-      .populate('areaId')
-      .populate('areaIds');
+      .populate("clientId")
+      .populate("areaId")
+      .populate("areaIds");
 
     if (!project) {
-      throw new NotFoundException(
-        `Proyecto con ID ${projectId} no encontrado`,
-      );
+      throw new NotFoundException(`Proyecto con ID ${projectId} no encontrado`);
     }
 
     const currentTenantId = this.getCurrentTenantId(currentUser);
@@ -249,13 +276,13 @@ export class FindingService {
 
     if (
       currentUser &&
-      !['OWNER', 'PLATFORM_ADMIN'].includes(currentUser.role) &&
+      !["OWNER", "PLATFORM_ADMIN"].includes(currentUser.role) &&
       currentTenantId &&
       projectTenantId &&
       currentTenantId !== projectTenantId
     ) {
       throw new ForbiddenException(
-        'No tiene permisos para acceder a este proyecto',
+        "No tiene permisos para acceder a este proyecto",
       );
     }
 
@@ -271,16 +298,16 @@ export class FindingService {
     const finding = await this.findingModel
       .findById(id)
       .populate({
-        path: 'projectId',
+        path: "projectId",
         populate: [
-          { path: 'clientId' },
-          { path: 'areaId' },
-          { path: 'areaIds' },
+          { path: "clientId" },
+          { path: "areaId" },
+          { path: "areaIds" },
         ],
       })
-      .populate('assignedTo', 'firstName lastName email')
-      .populate('createdBy', 'firstName lastName email')
-      .populate('closedBy', 'firstName lastName email');
+      .populate("assignedTo", "firstName lastName email")
+      .populate("createdBy", "firstName lastName email")
+      .populate("closedBy", "firstName lastName email");
 
     if (!finding) {
       throw new NotFoundException(`Hallazgo con ID ${id} no encontrado`);
@@ -291,13 +318,13 @@ export class FindingService {
 
     if (
       currentUser &&
-      !['OWNER', 'PLATFORM_ADMIN'].includes(currentUser.role) &&
+      !["OWNER", "PLATFORM_ADMIN"].includes(currentUser.role) &&
       currentTenantId &&
       findingTenantId &&
       currentTenantId !== findingTenantId
     ) {
       throw new ForbiddenException(
-        'No tiene permisos para acceder a este hallazgo',
+        "No tiene permisos para acceder a este hallazgo",
       );
     }
 
@@ -323,48 +350,23 @@ export class FindingService {
     );
 
     const currentTenantId =
-      this.getCurrentTenantId(currentUser) || this.resolveProjectTenantId(project);
+      this.getCurrentTenantId(currentUser) ||
+      this.resolveProjectTenantId(project);
 
     if (!currentTenantId) {
       throw new BadRequestException(
-        'No se pudo determinar el tenant del hallazgo',
+        "No se pudo determinar el tenant del hallazgo",
       );
     }
 
-    let prefix = 'VULN';
-
-    if (project.areaIds && project.areaIds.length > 0) {
-      const firstArea = project.areaIds[0] as any;
-      if (firstArea.findingCodePrefix) prefix = firstArea.findingCodePrefix;
-    } else if (project.areaId && (project.areaId as any).findingCodePrefix) {
-      prefix = (project.areaId as any).findingCodePrefix;
-    } else {
-      await this.systemConfigModel.findOne({ configKey: 'smtp_config' });
-    }
-
-    const regex = new RegExp(`^${prefix}-\\d+$`);
-    const lastFinding = await this.findingModel
-      .findOne({
-        tenantId: this.toObjectId(currentTenantId),
-        code: { $regex: regex },
-      })
-      .sort({ createdAt: -1 })
-      .select('code');
-
-    let nextNum = 1;
-    if (lastFinding && lastFinding.code) {
-      const parts = lastFinding.code.split('-');
-      const numPart = parts[parts.length - 1];
-      if (!isNaN(Number(numPart))) {
-        nextNum = Number(numPart) + 1;
-      }
-    }
-
-    const generatedCode = `${prefix}-${String(nextNum).padStart(6, '0')}`;
+    // El correlativo `code` lo asigna el hook pre-save del esquema (contador atómico).
+    const createPayload = {
+      ...(dto as unknown as Record<string, unknown>),
+    };
+    delete createPayload.code;
 
     const finding = new this.findingModel({
-      ...dto,
-      code: generatedCode,
+      ...(createPayload as unknown as CreateFindingDto),
       createdBy,
       status: FindingStatus.OPEN,
       tenantId: this.toObjectId(currentTenantId),
@@ -380,7 +382,11 @@ export class FindingService {
     await this.sendFindingCreatedNotification(finding, project, createdBy);
 
     if (finding.assignedTo) {
-      await this.sendFindingAssignedNotification(finding.assignedTo, finding, project);
+      await this.sendFindingAssignedNotification(
+        finding.assignedTo,
+        finding,
+        project,
+      );
     }
 
     return finding;
@@ -432,13 +438,15 @@ export class FindingService {
 
       const accessibleProjects = await this.projectModel
         .find({
-          ...(currentTenantId ? { tenantId: this.toObjectId(currentTenantId) } : {}),
+          ...(currentTenantId
+            ? { tenantId: this.toObjectId(currentTenantId) }
+            : {}),
           $or: [
             { areaIds: { $in: areaObjectIds } },
             { areaId: { $in: areaObjectIds } },
           ],
         })
-        .select('_id');
+        .select("_id");
 
       const projectIds = accessibleProjects.map((p: any) => p._id);
 
@@ -451,9 +459,9 @@ export class FindingService {
 
     return this.findingModel
       .find(query)
-      .populate('projectId', 'name code clientId tenantId areaId areaIds')
-      .populate('assignedTo', 'firstName lastName email')
-      .populate('createdBy', 'firstName lastName email')
+      .populate("projectId", "name code clientId tenantId areaId areaIds")
+      .populate("assignedTo", "firstName lastName email")
+      .populate("createdBy", "firstName lastName email")
       .sort({ createdAt: -1 });
   }
 
@@ -478,10 +486,12 @@ export class FindingService {
   ): Promise<Finding> {
     const finding = await this.findFindingOrFailWithAccess(id, currentUser);
     const currentTenantId =
-      this.getCurrentTenantId(currentUser) || this.resolveFindingTenantId(finding);
+      this.getCurrentTenantId(currentUser) ||
+      this.resolveFindingTenantId(finding);
 
     const previousAssignedTo = finding.assignedTo
-      ? (finding.assignedTo as any)?._id?.toString?.() || finding.assignedTo.toString()
+      ? (finding.assignedTo as any)?._id?.toString?.() ||
+        finding.assignedTo.toString()
       : undefined;
 
     const previousStatus = finding.status;
@@ -503,7 +513,7 @@ export class FindingService {
         currentTenantId !== targetProjectTenantId
       ) {
         throw new ForbiddenException(
-          'No puede mover el hallazgo a un proyecto de otro tenant',
+          "No puede mover el hallazgo a un proyecto de otro tenant",
         );
       }
 
@@ -545,11 +555,18 @@ export class FindingService {
 
     if (assignedChanged && finding.assignedTo) {
       const project = (finding.projectId as any) || undefined;
-      await this.sendFindingAssignedNotification(finding.assignedTo, finding, project);
+      await this.sendFindingAssignedNotification(
+        finding.assignedTo,
+        finding,
+        project,
+      );
     }
 
     if (statusChanged && dto.status === FindingStatus.CLOSED) {
-      await this.sendFindingClosedNotifications(finding, finding.closeReason || 'Cierre de hallazgo');
+      await this.sendFindingClosedNotifications(
+        finding,
+        finding.closeReason || "Cierre de hallazgo",
+      );
     }
 
     this.logger.log(`Hallazgo actualizado: ${finding.code} (ID: ${id})`);
@@ -563,7 +580,7 @@ export class FindingService {
     ids: string[],
     userId: string,
     currentUser?: any,
-    closeReason: string = 'Bulk Close',
+    closeReason: string = "Bulk Close",
   ): Promise<number> {
     if (!ids || ids.length === 0) return 0;
 
@@ -609,7 +626,7 @@ export class FindingService {
     const finding = await this.findFindingOrFailWithAccess(id, currentUser);
 
     if (finding.status === FindingStatus.CLOSED) {
-      throw new BadRequestException('El hallazgo ya está cerrado');
+      throw new BadRequestException("El hallazgo ya está cerrado");
     }
 
     const previousStatus = finding.status;
@@ -658,9 +675,7 @@ export class FindingService {
       query.tenantId = this.toObjectId(currentTenantId);
     }
 
-    return this.findingModel
-      .find(query)
-      .select('code title severity status');
+    return this.findingModel.find(query).select("code title severity status");
   }
 
   /**
@@ -699,8 +714,8 @@ export class FindingService {
 
     return this.updateModel
       .find({ findingId })
-      .populate('createdBy', 'firstName lastName email')
-      .populate('evidenceIds', 'filename mimeType size')
+      .populate("createdBy", "firstName lastName email")
+      .populate("evidenceIds", "filename mimeType size")
       .sort({ createdAt: -1 });
   }
 

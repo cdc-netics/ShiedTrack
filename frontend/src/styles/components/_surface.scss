@@ -1,0 +1,18 @@
+@use "../tokens/color" as c;
+@use "../tokens/radius" as r;
+@use "../tokens/spacing" as s;
+
+.ui-page {
+  padding: s.$space-5;
+}
+
+.ui-section {
+  margin-bottom: s.$space-5;
+}
+
+.ui-surface {
+  background: c.$color-surface-card;
+  border-radius: r.$radius-md;
+  padding: s.$space-4;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.08);
+}

@@ -3,14 +3,14 @@ import {
   Logger,
   ForbiddenException,
   BadRequestException,
-} from '@nestjs/common';
-import { InjectConnection } from '@nestjs/mongoose';
-import { Connection } from 'mongoose';
-import { Cron, CronExpression } from '@nestjs/schedule';
-import { exec } from 'child_process';
-import { promises as fs } from 'fs';
-import { existsSync, mkdirSync, createReadStream } from 'fs';
-import { join } from 'path';
+} from "@nestjs/common";
+import { InjectConnection } from "@nestjs/mongoose";
+import { Connection } from "mongoose";
+import { Cron, CronExpression } from "@nestjs/schedule";
+import { exec } from "child_process";
+import { promises as fs } from "fs";
+import { existsSync, mkdirSync, createReadStream } from "fs";
+import { join } from "path";
 
 /**
  * Servicio de Backup y Restauración
@@ -24,7 +24,7 @@ export class BackupService {
    * Ruta absoluta para evitar problemas según desde dónde se levante el backend.
    * process.cwd() normalmente será la carpeta actual del proceso Node.
    */
-  private readonly backupsDir = join(process.cwd(), 'backups');
+  private readonly backupsDir = join(process.cwd(), "backups");
 
   /**
    * Mantener últimos 30 backups
@@ -45,13 +45,13 @@ export class BackupService {
    */
   @Cron(CronExpression.EVERY_DAY_AT_2AM)
   async scheduledBackup() {
-    this.logger.log('Iniciando backup automático programado...');
+    this.logger.log("Iniciando backup automático programado...");
 
     try {
       const result = await this.createBackup({
-        userId: 'system',
-        role: 'OWNER',
-        email: 'system@shieldtrack.com',
+        userId: "system",
+        role: "OWNER",
+        email: "system@shieldtrack.com",
       });
 
       this.logger.log(`Backup automático completado: ${result.filename}`);
@@ -71,16 +71,16 @@ export class BackupService {
   async createBackup(
     currentUser: any,
   ): Promise<{ filename: string; size: number; path: string }> {
-    if (currentUser.role !== 'OWNER') {
+    if (currentUser.role !== "OWNER") {
       throw new ForbiddenException(
-        'Solo OWNER puede crear backups del sistema',
+        "Solo OWNER puede crear backups del sistema",
       );
     }
 
     const timestamp = new Date()
       .toISOString()
-      .replace(/:/g, '-')
-      .replace(/\./g, '-');
+      .replace(/:/g, "-")
+      .replace(/\./g, "-");
 
     const filename = `shieldtrack_backup_${timestamp}.tar.gz`;
     const fullPath = join(this.backupsDir, filename);
@@ -89,9 +89,9 @@ export class BackupService {
     this.logger.log(`Usuario: ${currentUser.email}`);
 
     const mongoUri =
-      process.env.MONGODB_URI || 'mongodb://localhost:27017/shieldtrack';
+      process.env.MONGODB_URI || "mongodb://localhost:27017/shieldtrack";
 
-    const mongodumpCmd = this.resolveMongoTool('mongodump');
+    const mongodumpCmd = this.resolveMongoTool("mongodump");
     const command = `${mongodumpCmd} --uri="${mongoUri}" --archive="${fullPath}" --gzip`;
 
     this.logger.log(`Ejecutando backup hacia: ${fullPath}`);
@@ -106,7 +106,7 @@ export class BackupService {
 
           return reject(
             new BadRequestException(
-              this.buildMongoToolErrorMessage('mongodump', error.message),
+              this.buildMongoToolErrorMessage("mongodump", error.message),
             ),
           );
         }
@@ -145,9 +145,9 @@ export class BackupService {
     filename: string,
     currentUser: any,
   ): Promise<{ success: boolean; message: string }> {
-    if (currentUser.role !== 'OWNER') {
+    if (currentUser.role !== "OWNER") {
       throw new ForbiddenException(
-        'Solo OWNER puede restaurar backups del sistema',
+        "Solo OWNER puede restaurar backups del sistema",
       );
     }
 
@@ -162,13 +162,13 @@ export class BackupService {
     this.logger.warn(`⚠️ INICIANDO RESTAURACIÓN DE BACKUP: ${filename}`);
     this.logger.warn(`Usuario: ${currentUser.email}`);
     this.logger.warn(
-      'Esta operación sobrescribirá TODA la base de datos actual',
+      "Esta operación sobrescribirá TODA la base de datos actual",
     );
 
     const mongoUri =
-      process.env.MONGODB_URI || 'mongodb://localhost:27017/shieldtrack';
+      process.env.MONGODB_URI || "mongodb://localhost:27017/shieldtrack";
 
-    const mongorestoreCmd = this.resolveMongoTool('mongorestore');
+    const mongorestoreCmd = this.resolveMongoTool("mongorestore");
     const command = `${mongorestoreCmd} --uri="${mongoUri}" --archive="${fullPath}" --gzip --drop`;
 
     return new Promise((resolve, reject) => {
@@ -181,10 +181,7 @@ export class BackupService {
 
           return reject(
             new BadRequestException(
-              this.buildMongoToolErrorMessage(
-                'mongorestore',
-                error.message,
-              ),
+              this.buildMongoToolErrorMessage("mongorestore", error.message),
             ),
           );
         }
@@ -216,8 +213,7 @@ export class BackupService {
       const files = await fs.readdir(this.backupsDir);
 
       const backupFiles = files.filter(
-        (f) =>
-          f.startsWith('shieldtrack_backup_') && f.endsWith('.tar.gz'),
+        (f) => f.startsWith("shieldtrack_backup_") && f.endsWith(".tar.gz"),
       );
 
       const backupsInfo = await Promise.all(
@@ -229,7 +225,7 @@ export class BackupService {
             filename,
             size: stats.size,
             created: stats.birthtime,
-            sizeMB: (stats.size / 1024 / 1024).toFixed(2) + ' MB',
+            sizeMB: (stats.size / 1024 / 1024).toFixed(2) + " MB",
           };
         }),
       );
@@ -250,8 +246,8 @@ export class BackupService {
     filename: string,
     currentUser: any,
   ): Promise<{ success: boolean; message: string }> {
-    if (currentUser.role !== 'OWNER') {
-      throw new ForbiddenException('Solo OWNER puede eliminar backups');
+    if (currentUser.role !== "OWNER") {
+      throw new ForbiddenException("Solo OWNER puede eliminar backups");
     }
 
     const fullPath = join(this.backupsDir, filename);
@@ -263,18 +259,16 @@ export class BackupService {
     }
 
     if (
-      !filename.startsWith('shieldtrack_backup_') ||
-      !filename.endsWith('.tar.gz')
+      !filename.startsWith("shieldtrack_backup_") ||
+      !filename.endsWith(".tar.gz")
     ) {
-      throw new BadRequestException('Nombre de archivo inválido');
+      throw new BadRequestException("Nombre de archivo inválido");
     }
 
     try {
       await fs.unlink(fullPath);
 
-      this.logger.log(
-        `Backup eliminado: ${filename} por ${currentUser.email}`,
-      );
+      this.logger.log(`Backup eliminado: ${filename} por ${currentUser.email}`);
 
       return {
         success: true,
@@ -294,8 +288,8 @@ export class BackupService {
     filename: string,
     currentUser: any,
   ): Promise<{ stream: any; filename: string; size: number }> {
-    if (currentUser.role !== 'OWNER') {
-      throw new ForbiddenException('Solo OWNER puede descargar backups');
+    if (currentUser.role !== "OWNER") {
+      throw new ForbiddenException("Solo OWNER puede descargar backups");
     }
 
     const fullPath = join(this.backupsDir, filename);
@@ -307,10 +301,10 @@ export class BackupService {
     }
 
     if (
-      !filename.startsWith('shieldtrack_backup_') ||
-      !filename.endsWith('.tar.gz')
+      !filename.startsWith("shieldtrack_backup_") ||
+      !filename.endsWith(".tar.gz")
     ) {
-      throw new BadRequestException('Nombre de archivo inválido');
+      throw new BadRequestException("Nombre de archivo inválido");
     }
 
     const stats = await fs.stat(fullPath);
@@ -340,11 +334,11 @@ export class BackupService {
     return {
       totalBackups: backups.length,
       totalSize,
-      totalSizeMB: (totalSize / 1024 / 1024).toFixed(2) + ' MB',
+      totalSizeMB: (totalSize / 1024 / 1024).toFixed(2) + " MB",
       oldestBackup:
         backups.length > 0 ? backups[backups.length - 1].created : null,
       latestBackup: backups.length > 0 ? backups[0].created : null,
-      nextScheduledBackup: '02:00 AM (diario)',
+      nextScheduledBackup: "02:00 AM (diario)",
     };
   }
 
@@ -369,9 +363,7 @@ export class BackupService {
         }
       }
     } catch (error: any) {
-      this.logger.error(
-        `Error limpiando backups antiguos: ${error.message}`,
-      );
+      this.logger.error(`Error limpiando backups antiguos: ${error.message}`);
     }
   }
 
@@ -380,15 +372,22 @@ export class BackupService {
    * Si no encuentra ruta conocida, devuelve el nombre del comando
    * para que el sistema lo busque por PATH.
    */
-  private resolveMongoTool(toolName: 'mongodump' | 'mongorestore'): string {
-    const exe = process.platform === 'win32' ? `${toolName}.exe` : toolName;
+  private resolveMongoTool(toolName: "mongodump" | "mongorestore"): string {
+    const exe = process.platform === "win32" ? `${toolName}.exe` : toolName;
 
-    if (process.platform === 'win32') {
+    if (process.platform === "win32") {
       const commonPaths = [
-        join('C:', 'Program Files', 'MongoDB', 'Tools', 'bin', exe),
-        join('C:', 'Program Files', 'MongoDB', 'Database Tools', 'bin', exe),
-        join('C:', 'Program Files (x86)', 'MongoDB', 'Tools', 'bin', exe),
-        join('C:', 'Program Files (x86)', 'MongoDB', 'Database Tools', 'bin', exe),
+        join("C:", "Program Files", "MongoDB", "Tools", "bin", exe),
+        join("C:", "Program Files", "MongoDB", "Database Tools", "bin", exe),
+        join("C:", "Program Files (x86)", "MongoDB", "Tools", "bin", exe),
+        join(
+          "C:",
+          "Program Files (x86)",
+          "MongoDB",
+          "Database Tools",
+          "bin",
+          exe,
+        ),
       ];
 
       for (const fullPath of commonPaths) {
@@ -406,15 +405,18 @@ export class BackupService {
    * Construye un mensaje más claro para errores típicos de mongodump/mongorestore.
    */
   private buildMongoToolErrorMessage(
-    toolName: 'mongodump' | 'mongorestore',
+    toolName: "mongodump" | "mongorestore",
     originalMessage: string,
   ): string {
-    const normalized = (originalMessage || '').toLowerCase();
+    const normalized = (originalMessage || "").toLowerCase();
 
     if (
-      normalized.includes('is not recognized') ||
-      normalized.includes('not recognized as an internal or external command') ||
-      normalized.includes('enoent')
+      normalized.includes("is not recognized") ||
+      normalized.includes(
+        "not recognized as an internal or external command",
+      ) ||
+      normalized.includes("enoent") ||
+      normalized.includes("not found")
     ) {
       return `No se pudo ejecutar ${toolName}. Verifica que MongoDB Database Tools esté instalado y disponible para el proceso del backend.`;
     }

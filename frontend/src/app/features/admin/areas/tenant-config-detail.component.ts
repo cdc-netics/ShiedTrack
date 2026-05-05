@@ -27,6 +27,7 @@ interface TenantConfig {
 }
 
 @Component({
+  standalone: true,
     selector: 'app-tenant-config-detail',
     imports: [
         CommonModule,
@@ -45,17 +46,17 @@ interface TenantConfig {
     <div class="config-detail-container">
       <!-- Header -->
       <div class="header">
-        <button mat-icon-button routerLink="/admin/tenants">
+        <button mat-icon-button routerLink="/admin/areas">
           <mat-icon>arrow_back</mat-icon>
         </button>
-        <h1>Configuración de Tenant: {{ tenantId() }}</h1>
+        <h1>Configuración de Área: {{ tenantId() }}</h1>
       </div>
 
       <mat-card class="config-card">
         <mat-card-header>
           <mat-card-title>
             <mat-icon>settings</mat-icon>
-            Configuración Completa del Tenant
+            Configuración Completa del Área
           </mat-card-title>
         </mat-card-header>
 
@@ -72,7 +73,7 @@ interface TenantConfig {
 
                 <mat-form-field appearance="outline" class="full-width">
                   <mat-label>Descripción</mat-label>
-                  <textarea matInput [(ngModel)]="config().description" placeholder="Descripción del tenant"></textarea>
+                  <textarea matInput [(ngModel)]="config().description" placeholder="Descripción del área"></textarea>
                   <mat-icon matSuffix>description</mat-icon>
                 </mat-form-field>
 
@@ -164,7 +165,7 @@ interface TenantConfig {
             <mat-tab label="Configuración Avanzada">
               <div class="tab-content">
                 <mat-form-field appearance="outline" class="full-width">
-                  <mat-label>ID del Tenant</mat-label>
+                  <mat-label>ID del Área</mat-label>
                   <input matInput [value]="config()._id" disabled>
                   <mat-icon matSuffix>vpn_key</mat-icon>
                 </mat-form-field>
@@ -390,7 +391,7 @@ export class TenantConfigDetailComponent implements OnInit {
     const id = this.tenantId();
     if (!id) return;
 
-    this.http.get<TenantConfig>(`${environment.apiUrl}/api/areas/${id}`).subscribe({
+    this.http.get<TenantConfig>(`${environment.apiUrl}/areas/${id}`).subscribe({
       next: (data) => {
         this.config.set(data);
       },
@@ -433,10 +434,10 @@ export class TenantConfigDetailComponent implements OnInit {
     const id = this.tenantId();
     if (!id) return;
 
-    console.log('Guardando configuración del tenant:', this.config());
+    console.log('Guardando configuración del área:', this.config());
     
     // En una implementación real, se enviaría al backend
-    this.http.put(`${environment.apiUrl}/api/areas/${id}`, this.config()).subscribe({
+    this.http.put(`${environment.apiUrl}/areas/${id}`, this.config()).subscribe({
       next: () => {
         this.snackBar.open('✅ Configuración guardada correctamente', 'Cerrar', { duration: 3000 });
       },
@@ -448,6 +449,6 @@ export class TenantConfigDetailComponent implements OnInit {
   }
 
   cancel(): void {
-    this.router.navigate(['/admin/tenants']);
+    this.router.navigate(['/admin/areas']);
   }
 }

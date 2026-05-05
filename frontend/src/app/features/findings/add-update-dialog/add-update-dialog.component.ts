@@ -27,6 +27,7 @@ export interface AddUpdateDialogResult {
  * Diálogo para agregar seguimiento/actualización a un hallazgo
  */
 @Component({
+  standalone: true,
     selector: 'app-add-update-dialog',
     imports: [
         CommonModule,

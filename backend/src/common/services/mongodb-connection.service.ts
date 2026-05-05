@@ -1,10 +1,10 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import * as mongoose from 'mongoose';
-import { spawn, exec } from 'child_process';
-import * as os from 'os';
-import * as fs from 'fs';
-import * as path from 'path';
+import { Injectable, Logger } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import * as mongoose from "mongoose";
+import { spawn, exec } from "child_process";
+import * as os from "os";
+import * as fs from "fs";
+import * as path from "path";
 
 /**
  * Servicio robusto para gestionar la conexión a MongoDB
@@ -23,13 +23,30 @@ export class MongoDBConnectionService {
   constructor(private configService: ConfigService) {}
 
   /**
+   * En Docker/Podman no debe ejecutarse diagnóstico ni intento de arrancar MongoDB en el SO:
+   * la base es otro servicio (Compose/Kubernetes) o externa.
+   */
+  private shouldSkipLocalMongoDiagnostics(): boolean {
+    if (process.env.SKIP_LOCAL_MONGO_DIAGNOSTICS === "true") {
+      return true;
+    }
+    try {
+      return (
+        fs.existsSync("/.dockerenv") || fs.existsSync("/run/.containerenv")
+      );
+    } catch {
+      return false;
+    }
+  }
+
+  /**
    * Intenta establecer conexión a MongoDB con reintentos automáticos
    * @returns Promise que se resuelve cuando la conexión es exitosa
    */
   async connectWithRetry(): Promise<void> {
     const mongoUri = this.configService.get<string>(
-      'MONGODB_URI',
-      'mongodb://localhost:27017/shieldtrack',
+      "MONGODB_URI",
+      "mongodb://localhost:27017/shieldtrack",
     );
 
     this.logger.log(`📦 Iniciando servicio de conexión a MongoDB`);
@@ -47,7 +64,7 @@ export class MongoDBConnectionService {
 
         await this.testMongoConnection(mongoUri);
         this.isMongoRunning = true;
-        this.logger.log('✅ Conexión a MongoDB establecida correctamente');
+        this.logger.log("✅ Conexión a MongoDB establecida correctamente");
         return;
       } catch (error) {
         this.connectionAttempts++;
@@ -55,15 +72,21 @@ export class MongoDBConnectionService {
         if (this.connectionAttempts < this.maxConnectionAttempts) {
           const delay = this.calculateBackoffDelay(this.connectionAttempts);
           this.logger.warn(`❌ Error al conectar a MongoDB: ${error.message}`);
-          this.logger.log(`🔄 Reintentando en ${delay}ms (intento ${this.connectionAttempts}/${this.maxConnectionAttempts})`);
+          this.logger.log(
+            `🔄 Reintentando en ${delay}ms (intento ${this.connectionAttempts}/${this.maxConnectionAttempts})`,
+          );
           await this.delay(delay);
         } else {
-          this.logger.error(`❌ No se pudo conectar a MongoDB después de ${this.maxConnectionAttempts} intentos`);
-          this.logger.error('💡 Diagnóstico:');
-          this.logger.error('   - Verifique que MongoDB esté instalado');
-          this.logger.error('   - Revise los logs del sistema');
-          this.logger.error('   - Intente iniciar MongoDB manualmente: mongod');
-          throw new Error(`MongoDB no disponible después de diagnosticar y reparar`);
+          this.logger.error(
+            `❌ No se pudo conectar a MongoDB después de ${this.maxConnectionAttempts} intentos`,
+          );
+          this.logger.error("💡 Diagnóstico:");
+          this.logger.error("   - Verifique que MongoDB esté instalado");
+          this.logger.error("   - Revise los logs del sistema");
+          this.logger.error("   - Intente iniciar MongoDB manualmente: mongod");
+          throw new Error(
+            `MongoDB no disponible después de diagnosticar y reparar`,
+          );
         }
       }
     }
@@ -73,7 +96,27 @@ export class MongoDBConnectionService {
    * Diagnostica y repara problemas comunes de MongoDB
    */
   private async diagnoseAndRepair(): Promise<void> {
-    this.logger.log('🔍 DIAGNOSTICANDO problemas de MongoDB...');
+    if (this.shouldSkipLocalMongoDiagnostics()) {
+      this.logger.log(
+        "🐳 Entorno contenedor (o SKIP_LOCAL_MONGO_DIAGNOSTICS): omitiendo diagnóstico e inicio local de MongoDB.",
+      );
+      return;
+    }
+
+    const mongoUri = this.configService.get<string>("MONGODB_URI", "");
+    const isExternalMongo =
+      mongoUri &&
+      !mongoUri.includes("localhost") &&
+      !mongoUri.includes("127.0.0.1");
+
+    if (isExternalMongo) {
+      this.logger.log(
+        "🌐 Detectada conexión a MongoDB externa. Saltando diagnóstico e inicio local.",
+      );
+      return;
+    }
+
+    this.logger.log("🔍 DIAGNOSTICANDO problemas de MongoDB...");
 
     // 1. Verificar si el puerto 27017 está ocupado
     await this.checkAndFixPort27017();
@@ -86,12 +129,12 @@ export class MongoDBConnectionService {
 
     // 4. Intentar iniciar MongoDB
     if (!this.mongoStarted) {
-      this.logger.log('🚀 Intentando iniciar MongoDB...');
+      this.logger.log("🚀 Intentando iniciar MongoDB...");
       await this.tryStartMongoDB();
       this.mongoStarted = true;
     }
 
-    this.logger.log('✅ Diagnóstico completado');
+    this.logger.log("✅ Diagnóstico completado");
   }
 
   /**
@@ -100,28 +143,30 @@ export class MongoDBConnectionService {
   private async checkAndFixPort27017(): Promise<void> {
     try {
       const platform = os.platform();
-      this.logger.log('🔍 Verificando puerto 27017...');
+      this.logger.log("🔍 Verificando puerto 27017...");
 
-      if (platform === 'win32') {
+      if (platform === "win32") {
         // Windows: netstat y taskkill
-        const { exec } = require('child_process');
-        const util = require('util');
+        const { exec } = require("child_process");
+        const util = require("util");
         const execPromise = util.promisify(exec);
 
         try {
-          const { stdout } = await execPromise('netstat -ano | findstr :27017');
+          const { stdout } = await execPromise("netstat -ano | findstr :27017");
           if (stdout) {
-            this.logger.warn('⚠️  Puerto 27017 ocupado');
+            this.logger.warn("⚠️  Puerto 27017 ocupado");
             // Extraer PIDs y matar procesos
-            const lines = stdout.split('\n');
+            const lines = stdout.split("\n");
             for (const line of lines) {
               const match = line.match(/LISTENING\s+(\d+)/);
               if (match) {
                 const pid = match[1];
-                this.logger.log(`🔨 Matando proceso en puerto 27017 (PID: ${pid})`);
+                this.logger.log(
+                  `🔨 Matando proceso en puerto 27017 (PID: ${pid})`,
+                );
                 try {
                   await execPromise(`taskkill /PID ${pid} /F`);
-                  this.logger.log('✅ Proceso terminado');
+                  this.logger.log("✅ Proceso terminado");
                   await this.delay(2000); // Esperar a que el puerto se libere
                 } catch (killError) {
                   this.logger.warn(`⚠️  No se pudo matar proceso ${pid}`);
@@ -129,11 +174,11 @@ export class MongoDBConnectionService {
               }
             }
           } else {
-            this.logger.log('✅ Puerto 27017 libre');
+            this.logger.log("✅ Puerto 27017 libre");
           }
         } catch (error) {
           // Puerto libre (netstat no encontró nada)
-          this.logger.log('✅ Puerto 27017 libre');
+          this.logger.log("✅ Puerto 27017 libre");
         }
 
         // Verificar si está en rango reservado de Hyper-V/WSL
@@ -149,40 +194,52 @@ export class MongoDBConnectionService {
    */
   private async checkHyperVReservedPorts(): Promise<void> {
     try {
-      const { exec } = require('child_process');
-      const util = require('util');
+      const { exec } = require("child_process");
+      const util = require("util");
       const execPromise = util.promisify(exec);
-      
-      const { stdout } = await execPromise('netsh interface ipv4 show excludedportrange protocol=tcp');
-      const lines = stdout.split('\n');
-      
+
+      const { stdout } = await execPromise(
+        "netsh interface ipv4 show excludedportrange protocol=tcp",
+      );
+      const lines = stdout.split("\n");
+
       for (const line of lines) {
         const match = line.match(/\s*(\d+)\s+(\d+)\s+\*/);
         if (match) {
           const start = parseInt(match[1]);
           const end = parseInt(match[2]);
-          
+
           if (27017 >= start && 27017 <= end) {
-            this.logger.error(`❌ PUERTO 27017 RESERVADO POR HYPER-V (rango ${start}-${end})`);
-            this.logger.error('');
-            this.logger.error('📝 SOLUCIÓN: Ejecuta PowerShell como ADMINISTRADOR y ejecuta:');
-            this.logger.error('   1. net stop winnat');
-            this.logger.error('   2. netsh int ipv4 add excludedportrange protocol=tcp startport=27017 numberofports=1');
-            this.logger.error('   3. net start winnat');
-            this.logger.error('');
-            this.logger.error('O TEMPORALMENTE ejecuta Backend como Administrador');
-            throw new Error('Puerto 27017 reservado por Hyper-V');
+            this.logger.error(
+              `❌ PUERTO 27017 RESERVADO POR HYPER-V (rango ${start}-${end})`,
+            );
+            this.logger.error("");
+            this.logger.error(
+              "📝 SOLUCIÓN: Ejecuta PowerShell como ADMINISTRADOR y ejecuta:",
+            );
+            this.logger.error("   1. net stop winnat");
+            this.logger.error(
+              "   2. netsh int ipv4 add excludedportrange protocol=tcp startport=27017 numberofports=1",
+            );
+            this.logger.error("   3. net start winnat");
+            this.logger.error("");
+            this.logger.error(
+              "O TEMPORALMENTE ejecuta Backend como Administrador",
+            );
+            throw new Error("Puerto 27017 reservado por Hyper-V");
           }
         }
       }
-      
-      this.logger.log('✅ Puerto 27017 NO está reservado por Hyper-V');
+
+      this.logger.log("✅ Puerto 27017 NO está reservado por Hyper-V");
     } catch (error) {
-      if (error.message === 'Puerto 27017 reservado por Hyper-V') {
+      if (error.message === "Puerto 27017 reservado por Hyper-V") {
         throw error;
       }
       // Si falla el comando netsh, continuar (puede no tener permisos)
-      this.logger.warn('⚠️  No se pudo verificar puertos reservados (ejecutar como Admin para verificar)');
+      this.logger.warn(
+        "⚠️  No se pudo verificar puertos reservados (ejecutar como Admin para verificar)",
+      );
     }
   }
 
@@ -191,22 +248,22 @@ export class MongoDBConnectionService {
    */
   private async ensureDataDirectory(): Promise<void> {
     try {
-      this.logger.log('🔍 Verificando directorio de datos...');
+      this.logger.log("🔍 Verificando directorio de datos...");
       const platform = os.platform();
       let dataPath: string;
 
-      if (platform === 'win32') {
-        dataPath = path.join(process.cwd(), '..', 'data', 'db');
+      if (platform === "win32") {
+        dataPath = path.join(process.cwd(), "..", "data", "db");
       } else {
-        dataPath = '/data/db';
+        dataPath = "/data/db";
       }
 
       if (!fs.existsSync(dataPath)) {
         this.logger.log(`📁 Creando directorio: ${dataPath}`);
         fs.mkdirSync(dataPath, { recursive: true });
-        this.logger.log('✅ Directorio creado');
+        this.logger.log("✅ Directorio creado");
       } else {
-        this.logger.log('✅ Directorio de datos existe');
+        this.logger.log("✅ Directorio de datos existe");
       }
     } catch (error) {
       this.logger.warn(`⚠️  Error con directorio de datos: ${error.message}`);
@@ -218,17 +275,17 @@ export class MongoDBConnectionService {
    */
   private async cleanMongoLocks(): Promise<void> {
     try {
-      this.logger.log('🔍 Verificando locks de MongoDB...');
+      this.logger.log("🔍 Verificando locks de MongoDB...");
       const platform = os.platform();
       let lockPaths: string[] = [];
 
-      if (platform === 'win32') {
+      if (platform === "win32") {
         lockPaths = [
-          path.join(process.cwd(), '..', 'data', 'db', 'mongod.lock'),
-          'C:\\data\\db\\mongod.lock',
+          path.join(process.cwd(), "..", "data", "db", "mongod.lock"),
+          "C:\\data\\db\\mongod.lock",
         ];
       } else {
-        lockPaths = ['/data/db/mongod.lock'];
+        lockPaths = ["/data/db/mongod.lock"];
       }
 
       let lockFound = false;
@@ -241,9 +298,9 @@ export class MongoDBConnectionService {
       }
 
       if (lockFound) {
-        this.logger.log('✅ Locks limpiados');
+        this.logger.log("✅ Locks limpiados");
       } else {
-        this.logger.log('✅ No hay locks que limpiar');
+        this.logger.log("✅ No hay locks que limpiar");
       }
     } catch (error) {
       this.logger.warn(`⚠️  Error limpiando locks: ${error.message}`);
@@ -272,22 +329,24 @@ export class MongoDBConnectionService {
     try {
       const platform = os.platform();
 
-      if (platform === 'win32') {
+      if (platform === "win32") {
         await this.startMongoDBWindows();
-      } else if (platform === 'darwin') {
+      } else if (platform === "darwin") {
         await this.startMongoDBMac();
-      } else if (platform === 'linux') {
+      } else if (platform === "linux") {
         await this.startMongoDBLinux();
       }
 
-      this.logger.log('✅ Servicio MongoDB iniciado correctamente');
+      this.logger.log("✅ Servicio MongoDB iniciado correctamente");
       // Esperar hasta que MongoDB esté listo (máximo 30 segundos)
       await this.waitForMongoDBReady(30);
     } catch (error) {
       this.logger.warn(
         `⚠️  No se pudo iniciar MongoDB automáticamente: ${error.message}`,
       );
-      this.logger.log('💡 Asegúrese de que MongoDB está instalado y disponible en el PATH');
+      this.logger.log(
+        "💡 Asegúrese de que MongoDB está instalado y disponible en el PATH",
+      );
     }
   }
 
@@ -296,7 +355,9 @@ export class MongoDBConnectionService {
    * @param maxWaitSeconds Segundos máximos a esperar
    */
   private async waitForMongoDBReady(maxWaitSeconds: number): Promise<void> {
-    this.logger.log(`⏱️  Esperando hasta ${maxWaitSeconds}s a que MongoDB esté listo...`);
+    this.logger.log(
+      `⏱️  Esperando hasta ${maxWaitSeconds}s a que MongoDB esté listo...`,
+    );
     const startTime = Date.now();
     const maxWaitMs = maxWaitSeconds * 1000;
     let attempts = 0;
@@ -305,11 +366,11 @@ export class MongoDBConnectionService {
       attempts++;
       try {
         // Intentar conexión rápida
-        const mongoose = require('mongoose');
+        const mongoose = require("mongoose");
         const connection = await mongoose.connect(
           this.configService.get<string>(
-            'MONGODB_URI',
-            'mongodb://localhost:27017/shieldtrack',
+            "MONGODB_URI",
+            "mongodb://localhost:27017/shieldtrack",
           ),
           {
             serverSelectionTimeoutMS: 1000,
@@ -317,7 +378,9 @@ export class MongoDBConnectionService {
           },
         );
         await connection.disconnect();
-        this.logger.log(`✅ MongoDB listo después de ${attempts} verificaciones`);
+        this.logger.log(
+          `✅ MongoDB listo después de ${attempts} verificaciones`,
+        );
         return;
       } catch (error) {
         // Esperar 1 segundo antes del próximo intento
@@ -333,26 +396,31 @@ export class MongoDBConnectionService {
    */
   private async startMongoDBWindows(): Promise<void> {
     return new Promise((resolve, reject) => {
-      const { exec } = require('child_process');
-      
+      const { exec } = require("child_process");
+
       // PRIMERO: Intentar iniciar servicio de Windows si existe
-      this.logger.log('🔍 Verificando servicio MongoDB de Windows...');
-      exec('sc query MongoDB', (queryError: Error, queryStdout: string) => {
-        if (!queryError && queryStdout.includes('MongoDB')) {
+      this.logger.log("🔍 Verificando servicio MongoDB de Windows...");
+      exec("sc query MongoDB", (queryError: Error, queryStdout: string) => {
+        if (!queryError && queryStdout.includes("MongoDB")) {
           // Servicio existe, intentar iniciarlo
-          this.logger.log('✅ Servicio MongoDB encontrado, iniciando...');
-          exec('net start MongoDB', (startError: Error, startStdout: string) => {
-            if (!startError || startStdout.includes('ya se ha iniciado')) {
-              this.logger.log('✅ Servicio MongoDB iniciado/corriendo');
-              resolve();
-            } else {
-              this.logger.warn('⚠️  Error iniciando servicio, intentando modo manual...');
-              this.startMongoDBManual().then(resolve).catch(reject);
-            }
-          });
+          this.logger.log("✅ Servicio MongoDB encontrado, iniciando...");
+          exec(
+            "net start MongoDB",
+            (startError: Error, startStdout: string) => {
+              if (!startError || startStdout.includes("ya se ha iniciado")) {
+                this.logger.log("✅ Servicio MongoDB iniciado/corriendo");
+                resolve();
+              } else {
+                this.logger.warn(
+                  "⚠️  Error iniciando servicio, intentando modo manual...",
+                );
+                this.startMongoDBManual().then(resolve).catch(reject);
+              }
+            },
+          );
         } else {
           // Servicio no existe, modo manual
-          this.logger.log('📝 Servicio no instalado, usando modo manual');
+          this.logger.log("📝 Servicio no instalado, usando modo manual");
           this.startMongoDBManual().then(resolve).catch(reject);
         }
       });
@@ -364,19 +432,19 @@ export class MongoDBConnectionService {
    */
   private async startMongoDBManual(): Promise<void> {
     return new Promise((resolve, reject) => {
-      const { exec } = require('child_process');
-      
+      const { exec } = require("child_process");
+
       // Buscar mongod en ubicaciones comunes
       const possiblePaths = [
-        'C:\\Program Files\\MongoDB\\Server\\8.2\\bin\\mongod.exe',
-        'C:\\Program Files\\MongoDB\\Server\\7.0\\bin\\mongod.exe',
-        'C:\\Program Files\\MongoDB\\Server\\6.0\\bin\\mongod.exe',
-        'C:\\Program Files (x86)\\MongoDB\\Server\\8.2\\bin\\mongod.exe',
-        'C:\\Program Files (x86)\\MongoDB\\Server\\7.0\\bin\\mongod.exe',
+        "C:\\Program Files\\MongoDB\\Server\\8.2\\bin\\mongod.exe",
+        "C:\\Program Files\\MongoDB\\Server\\7.0\\bin\\mongod.exe",
+        "C:\\Program Files\\MongoDB\\Server\\6.0\\bin\\mongod.exe",
+        "C:\\Program Files (x86)\\MongoDB\\Server\\8.2\\bin\\mongod.exe",
+        "C:\\Program Files (x86)\\MongoDB\\Server\\7.0\\bin\\mongod.exe",
       ];
 
       let mongodPath = null;
-      
+
       for (const p of possiblePaths) {
         if (fs.existsSync(p)) {
           mongodPath = p;
@@ -386,55 +454,65 @@ export class MongoDBConnectionService {
       }
 
       if (!mongodPath) {
-        this.logger.error('❌ MongoDB no encontrado');
-        this.logger.error('');
-        this.logger.error('📝 SOLUCIÓN: Instala MongoDB como servicio ejecutando:');
-        this.logger.error('   .\\install-mongodb-service.ps1');
-        this.logger.error('');
-        reject(new Error('MongoDB no encontrado'));
+        this.logger.error("❌ MongoDB no encontrado");
+        this.logger.error("");
+        this.logger.error(
+          "📝 SOLUCIÓN: Instala MongoDB como servicio ejecutando:",
+        );
+        this.logger.error("   .\\install-mongodb-service.ps1");
+        this.logger.error("");
+        reject(new Error("MongoDB no encontrado"));
         return;
       }
 
-      const dataPath = path.join(process.cwd(), '..', 'data', 'db');
-      
+      const dataPath = path.join(process.cwd(), "..", "data", "db");
+
       this.logger.log(`🚀 Ejecutando: ${mongodPath} --dbpath "${dataPath}"`);
 
       // Intentar iniciar con START para que corra en ventana separada
       const command = `start "MongoDB" "${mongodPath}" --dbpath "${dataPath}" --bind_ip 127.0.0.1`;
-      
+
       exec(command, (error: Error) => {
         if (error) {
-          this.logger.warn(`⚠️  Error iniciando MongoDB sin admin: ${error.message}`);
-          
+          this.logger.warn(
+            `⚠️  Error iniciando MongoDB sin admin: ${error.message}`,
+          );
+
           // PLAN B: Ejecutar script PowerShell con privilegios de admin
-          this.logger.log('🔄 Intentando con privilegios de Administrador...');
-          const scriptPath = path.join(process.cwd(), '..', 'start-mongo-admin.ps1');
-          
+          this.logger.log("🔄 Intentando con privilegios de Administrador...");
+          const scriptPath = path.join(
+            process.cwd(),
+            "..",
+            "start-mongo-admin.ps1",
+          );
+
           if (fs.existsSync(scriptPath)) {
             const adminCommand = `powershell -ExecutionPolicy Bypass -File "${scriptPath}"`;
             exec(adminCommand, (adminError: Error) => {
               if (adminError) {
-                this.logger.error('❌ Error ejecutando script de admin');
-                this.logger.error('');
-                this.logger.error('📝 SOLUCIÓN DEFINITIVA: Instala como servicio:');
-                this.logger.error('   .\\install-mongodb-service.ps1');
-                this.logger.error('');
+                this.logger.error("❌ Error ejecutando script de admin");
+                this.logger.error("");
+                this.logger.error(
+                  "📝 SOLUCIÓN DEFINITIVA: Instala como servicio:",
+                );
+                this.logger.error("   .\\install-mongodb-service.ps1");
+                this.logger.error("");
                 reject(adminError);
               } else {
-                this.logger.log('✅ Script de administrador ejecutado');
+                this.logger.log("✅ Script de administrador ejecutado");
                 resolve();
               }
             });
           } else {
-            this.logger.error('❌ No se pudo iniciar MongoDB');
-            this.logger.error('');
-            this.logger.error('📝 SOLUCIÓN: Instala MongoDB como servicio:');
-            this.logger.error('   .\\install-mongodb-service.ps1');
-            this.logger.error('');
+            this.logger.error("❌ No se pudo iniciar MongoDB");
+            this.logger.error("");
+            this.logger.error("📝 SOLUCIÓN: Instala MongoDB como servicio:");
+            this.logger.error("   .\\install-mongodb-service.ps1");
+            this.logger.error("");
             reject(error);
           }
         } else {
-          this.logger.log('✅ MongoDB iniciado sin necesidad de admin');
+          this.logger.log("✅ MongoDB iniciado sin necesidad de admin");
           resolve();
         }
       });
@@ -449,29 +527,28 @@ export class MongoDBConnectionService {
    */
   private async startMongoDBMac(): Promise<void> {
     return new Promise((resolve, reject) => {
-      exec(
-        'brew services start mongodb-community',
-        (error) => {
-          if (!error) {
-            this.logger.log('✅ MongoDB iniciado en macOS con Homebrew');
+      exec("brew services start mongodb-community", (error) => {
+        if (!error) {
+          this.logger.log("✅ MongoDB iniciado en macOS con Homebrew");
+          resolve();
+        } else {
+          // Intentar iniciar mongod directamente
+          const mongodProcess = spawn("mongod", {
+            detached: true,
+            stdio: "ignore",
+          });
+
+          if (mongodProcess.pid) {
+            this.logger.log(
+              "✅ MongoDB iniciado como proceso directo en macOS",
+            );
+            mongodProcess.unref();
             resolve();
           } else {
-            // Intentar iniciar mongod directamente
-            const mongodProcess = spawn('mongod', {
-              detached: true,
-              stdio: 'ignore',
-            });
-
-            if (mongodProcess.pid) {
-              this.logger.log('✅ MongoDB iniciado como proceso directo en macOS');
-              mongodProcess.unref();
-              resolve();
-            } else {
-              reject(new Error('No se pudo iniciar MongoDB en macOS'));
-            }
+            reject(new Error("No se pudo iniciar MongoDB en macOS"));
           }
-        },
-      );
+        }
+      });
 
       setTimeout(() => {
         resolve();
@@ -485,33 +562,37 @@ export class MongoDBConnectionService {
   private async startMongoDBLinux(): Promise<void> {
     return new Promise((resolve, reject) => {
       // Intentar iniciar con systemctl primero
-      exec('sudo systemctl start mongod', (error) => {
+      exec("sudo systemctl start mongod", (error) => {
         if (!error) {
-          this.logger.log('✅ MongoDB iniciado en Linux con systemctl');
+          this.logger.log("✅ MongoDB iniciado en Linux con systemctl");
           resolve();
           return;
         }
 
         // Si falla, intentar con systemctl para mongodb
-        exec('sudo systemctl start mongodb', (error2) => {
+        exec("sudo systemctl start mongodb", (error2) => {
           if (!error2) {
-            this.logger.log('✅ MongoDB iniciado en Linux con systemctl (mongodb)');
+            this.logger.log(
+              "✅ MongoDB iniciado en Linux con systemctl (mongodb)",
+            );
             resolve();
             return;
           }
 
           // Último intento: mongod directo
-          const mongodProcess = spawn('mongod', {
+          const mongodProcess = spawn("mongod", {
             detached: true,
-            stdio: 'ignore',
+            stdio: "ignore",
           });
 
           if (mongodProcess.pid) {
-            this.logger.log('✅ MongoDB iniciado como proceso directo en Linux');
+            this.logger.log(
+              "✅ MongoDB iniciado como proceso directo en Linux",
+            );
             mongodProcess.unref();
             resolve();
           } else {
-            reject(new Error('No se pudo iniciar MongoDB en Linux'));
+            reject(new Error("No se pudo iniciar MongoDB en Linux"));
           }
         });
       });

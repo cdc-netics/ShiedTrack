@@ -1,5 +1,5 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document } from 'mongoose';
+import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
+import { Document } from "mongoose";
 
 /**
  * Schema para configuración de branding del sistema
@@ -7,7 +7,7 @@ import { Document } from 'mongoose';
  */
 @Schema({ timestamps: true })
 export class SystemBranding extends Document {
-  @Prop({ required: true, default: 'ShieldTrack' })
+  @Prop({ required: true, default: "ShieldTrack" })
   appName: string;
 
   @Prop()
@@ -16,10 +16,10 @@ export class SystemBranding extends Document {
   @Prop()
   logoUrl?: string;
 
-  @Prop({ default: '#1976d2' })
+  @Prop({ default: "#1976d2" })
   primaryColor: string;
 
-  @Prop({ default: '#424242' })
+  @Prop({ default: "#424242" })
   secondaryColor: string;
 
   @Prop({ default: true })
@@ -29,4 +29,5 @@ export class SystemBranding extends Document {
   lastModifiedBy?: string;
 }
 
-export const SystemBrandingSchema = SchemaFactory.createForClass(SystemBranding);
+export const SystemBrandingSchema =
+  SchemaFactory.createForClass(SystemBranding);

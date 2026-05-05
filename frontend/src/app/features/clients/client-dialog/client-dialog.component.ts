@@ -14,6 +14,7 @@ import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../environments/environment';
 
 @Component({
+  standalone: true,
     selector: 'app-client-dialog',
     imports: [
         CommonModule,

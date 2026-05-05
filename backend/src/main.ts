@@ -1,17 +1,17 @@
-import { NestFactory } from '@nestjs/core';
-import { ValidationPipe, Logger } from '@nestjs/common';
-import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
-import { ConfigService } from '@nestjs/config';
-import * as multer from 'multer';
-import * as mongoose from 'mongoose';
-import { AppModule } from './app.module';
-import { HttpExceptionFilter } from './common/filters/http-exception.filter';
-import { AuditInterceptor } from './modules/audit/audit.interceptor';
-import { AuditService } from './modules/audit/audit.service';
-import { MongoDBConnectionService } from './common/services/mongodb-connection.service';
-import { tenantPlugin } from './common/plugins/tenant-plugin';
+import { NestFactory } from "@nestjs/core";
+import { ValidationPipe, Logger } from "@nestjs/common";
+import { SwaggerModule, DocumentBuilder } from "@nestjs/swagger";
+import { ConfigService } from "@nestjs/config";
+import * as mongoose from "mongoose";
+import type { CorsOptions } from "@nestjs/common/interfaces/external/cors-options.interface";
+import { AppModule } from "./app.module";
+import { HttpExceptionFilter } from "./common/filters/http-exception.filter";
+import { AuditInterceptor } from "./modules/audit/audit.interceptor";
+import { AuditService } from "./modules/audit/audit.service";
+import { MongoDBConnectionService } from "./common/services/mongodb-connection.service";
+import { tenantPlugin } from "./common/plugins/tenant-plugin";
 
-const logger = new Logger('Bootstrap');
+const logger = new Logger("Bootstrap");
 
 /**
  * Punto de entrada de la aplicación ShieldTrack
@@ -21,22 +21,20 @@ const logger = new Logger('Bootstrap');
 async function bootstrap() {
   // Crear instancia de MongoDBConnectionService directamente
 
-  console.log('✅ MAIN.TS CARGADO - VERSION MAIN_V1');
-
   const configService = new ConfigService();
   const mongoConnectionService = new MongoDBConnectionService(configService);
 
   // Establecer conexión a MongoDB con reintentos automáticos
   try {
-    logger.log('📦 Iniciando servicio de conexión a MongoDB');
+    logger.log("📦 Iniciando servicio de conexión a MongoDB");
     await mongoConnectionService.connectWithRetry();
-    logger.log('✅ MongoDB conectado correctamente');
+    logger.log("✅ MongoDB conectado correctamente");
   } catch (error) {
     logger.error(
       `❌ No se pudo establecer conexión a MongoDB: ${error.message}`,
     );
     logger.error(
-      '💡 Por favor, asegúrese de que MongoDB está instalado y ejecutándose',
+      "💡 Por favor, asegúrese de que MongoDB está instalado y ejecutándose",
     );
     process.exit(1);
   }
@@ -44,8 +42,10 @@ async function bootstrap() {
   // Ahora crear la aplicación principal
   const app = await NestFactory.create(AppModule);
 
-  console.log('✅ MAIN.TS CARGADO - ShieldTrack backend arrancando...');
-
+  // Configuración de prefijo global para la API
+  app.setGlobalPrefix("api", {
+    exclude: ["/", "favicon.ico"],
+  });
 
   // Registrar plugin global de Mongoose para filtro por tenant
   mongoose.plugin(tenantPlugin);
@@ -53,8 +53,8 @@ async function bootstrap() {
   // Configuración global de validación - OBLIGATORIO según requisitos
   app.useGlobalPipes(
     new ValidationPipe({
-      whitelist: false, // Elimina propiedades no definidas en DTO
-      forbidNonWhitelisted: false, // Lanza error si hay propiedades no permitidas
+      whitelist: true,
+      forbidNonWhitelisted: true,
       transform: true, // Transforma payloads a instancias de DTO
       transformOptions: {
         enableImplicitConversion: true, // Convierte tipos automáticamente
@@ -69,48 +69,82 @@ async function bootstrap() {
   const auditService = app.get(AuditService);
   app.useGlobalInterceptors(new AuditInterceptor(auditService));
 
-  // SECURITY FIX M3: Límite de tamaño de archivo global (50MB)
-  const uploadLimits = {
-    fileSize: 50 * 1024 * 1024, // 50MB en bytes
-  };
+  // Configuración CORS robusta
+  const isProduction = process.env.NODE_ENV === "production";
+  const configuredOrigins = (
+    process.env.CORS_ORIGINS ||
+    process.env.FRONTEND_URL ||
+    ""
+  )
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean);
 
-  // Configuración CORS para permitir frontend en desarrollo
   app.enableCors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:4200',
+    origin: (
+      origin: string | undefined,
+      callback: (err: Error | null, allow?: boolean) => void,
+    ) => {
+      // Peticiones sin cabecera Origin: mismo origen (p. ej. front en :80 y /api por nginx),
+      // herramientas o algunos navegadores; antes fallaban en NODE_ENV=production.
+      if (!origin) {
+        callback(null, true);
+        return;
+      }
+
+      if (configuredOrigins.includes(origin)) {
+        callback(null, true);
+        return;
+      }
+
+      if (!isProduction) {
+        callback(null, true);
+        return;
+      }
+
+      callback(new Error("Origen no permitido por política CORS"));
+    },
+    methods: "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS",
     credentials: true,
-  });
+    allowedHeaders:
+      "Content-Type, Accept, Authorization, X-Requested-With, X-Tenant-Id",
+  } as CorsOptions);
 
   // Configuración de Swagger para documentación de API
   const config = new DocumentBuilder()
-    .setTitle('ShieldTrack API')
-    .setDescription('Sistema de gestión de hallazgos de ciberseguridad - API Documentation')
-    .setVersion('1.0')
+    .setTitle("ShieldTrack API")
+    .setDescription(
+      "Sistema de gestión de hallazgos de ciberseguridad - API Documentation",
+    )
+    .setVersion("1.0")
     .addBearerAuth(
       {
-        type: 'http',
-        scheme: 'bearer',
-        bearerFormat: 'JWT',
-        description: 'Ingrese el token JWT',
-        in: 'header',
+        type: "http",
+        scheme: "bearer",
+        bearerFormat: "JWT",
+        description: "Ingrese el token JWT",
+        in: "header",
       },
-      'JWT-auth',
+      "JWT-auth",
     )
-    .addTag('Auth', 'Autenticación y gestión de usuarios')
-    .addTag('Clients', 'Gestión de clientes (Tenants)')
-    .addTag('Areas', 'Gestión de áreas')
-    .addTag('Projects', 'Gestión de proyectos')
-    .addTag('Findings', 'Gestión de hallazgos')
-    .addTag('Evidence', 'Gestión de evidencias')
+    .addTag("Auth", "Autenticación y gestión de usuarios")
+    .addTag("Clients", "Gestión de clientes (Tenants)")
+    .addTag("Areas", "Gestión de áreas")
+    .addTag("Projects", "Gestión de proyectos")
+    .addTag("Findings", "Gestión de hallazgos")
+    .addTag("Evidence", "Gestión de evidencias")
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api/docs', app, document);
+  SwaggerModule.setup("api/docs", app, document);
 
   const port = process.env.PORT || 3000;
   await app.listen(port);
 
-  console.log(`🚀 ShieldTrack Backend corriendo en: http://localhost:${port}`);
-  console.log(`📚 Documentación Swagger disponible en: http://localhost:${port}/api/docs`);
+  logger.log(`ShieldTrack Backend corriendo en: http://localhost:${port}`);
+  logger.log(
+    `📚 Documentación Swagger disponible en: http://localhost:${port}/api/docs`,
+  );
 }
 
 bootstrap();

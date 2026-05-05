@@ -16,36 +16,43 @@ El sistema funciona en lo básico, pero hay problemas de navegación, branding, 
 
 ## Estado general (tabla de control)
 
-| ID | Sección | Tarea | Estado | Notas |
+| ID | Estado | Sección | Tarea | Notas |
 | --- | --- | --- | --- | --- |
-| P0 | Actualización Angular 20 | Plan general de actualización | ✅ Completado | Actualizado a v20.3.16 |
-| F0-1 | Fase 0 (Preparación) | Crear rama aislada | ✅ Completado | Rama feature creada |
-| F0-2 | Fase 0 (Preparación) | Limpieza del entorno | ✅ Completado | Entorno limpio |
-| F0-3 | Fase 0 (Preparación) | Verificar pruebas | ✅ Completado | Tests documentados |
-| F1-1 | Fase 1 (Upgrade) | Subir `@angular/core` y `@angular/cli` | ✅ Completado | Angular 20.3.16 |
-| F1-2 | Fase 1 (Upgrade) | Subir `@angular/material` + `@angular/cdk` | ✅ Completado | Material 20.2.14 |
-| F1-3 | Fase 1 (Upgrade) | Alinear TypeScript/RxJS/Zone | ✅ Completado | TypeScript 5.9.3 |
-| F1-4 | Fase 1 (Upgrade) | Arreglar breaking changes | ✅ Completado | Build limpio |
-| F1-5 | Fase 1 (Upgrade) | Validar librerías externas | ✅ Completado | Librerías compatibles |
-| B1a | Bugs - Evidencias | Evidencias no se ven / previews fallan | ✅ Completado | Sistema de evidencias funciona |
-| B1b | Bugs - Evidencias | Wizard no sube archivos | ✅ Completado | Wizard maneja archivos correctamente |
-| B2a | Bugs - Navegación | Proyectos no llevan a hallazgos | ✅ Completado | Hay columna y navegación |
-| B2b | Bugs - Navegación | Clientes redirige a dashboard | Pendiente | Ruta `/clients/:id` no existe |
-| B2c | Bugs - Navegación | Botón “Nuevo Proyecto” va a `/projects/new` (ruta no existe) | Pendiente | Redirige mal |
-| B2d | Bugs - Navegación | Botón “Nuevo Cliente” va a `/clients/new` (ruta no existe) | Pendiente | Redirige mal |
-| B3a | Bugs - Branding | Logo/Favicon no se aplica | ✅ Completado | BrandingService funciona correctamente |
-| B3b | Bugs - Branding | Archivos de branding no se sirven públicamente | ✅ Completado | Sistema de branding implementado |
-| B4a | Bugs - Backup | `mongodump` no está en PATH | ⚠️ Parcial | UI funciona, requiere MongoDB Tools |
-| B5a | Bugs - Auditoría | UI mock / endpoint no `/api` | Pendiente | Auditoría no usable |
-| B5b | Bugs - Asignaciones | Endpoint `/assignments` no existe | ⚠️ Parcial | Existe en `/auth/users/:userId/assignments` |
-| B6a | Bugs - Export | URLs hardcodeadas a localhost | Pendiente | 20+ archivos con `http://localhost:3000` |
-| B6b | Bugs - API | Clients usa API hardcodeada a localhost | Pendiente | Debe usar `environment.apiUrl` |
-| M1 | Mejoras | SMTP test falla (Outlook 535) | Pendiente | Falta guía |
-| M2 | Mejoras | Multi‑tenancy inconsistente | Pendiente | CLS vs AsyncLocalStorage |
-| M3 | Mejoras | Permisos de lectura por proyecto para clientes | Pendiente | Asignar proyectos visibles por admin |
-| M4 | Mejoras | Exceso de scripts / duplicidad | Pendiente | Revisar y consolidar scripts |
-| M5 | Mejoras | Gestión avanzada de notificaciones por correo | Pendiente | Configurar reglas y plantillas |
-| M6 | Mejoras | Métricas/estadísticas exportables para BI | Pendiente | Integración con Metabase/PowerBI |
+| P0 | ✅ Completado | Actualización Angular 20 | Plan general de actualización | Actualizado a v20.3.16 |
+| F0-1 | ✅ Completado | Fase 0 (Preparación) | Crear rama aislada | Rama feature creada |
+| F0-2 | ✅ Completado | Fase 0 (Preparación) | Limpieza del entorno | Entorno limpio |
+| F0-3 | ✅ Completado | Fase 0 (Preparación) | Verificar pruebas | Tests documentados |
+| F1-1 | ✅ Completado | Fase 1 (Upgrade) | Subir `@angular/core` y `@angular/cli` | Angular 20.3.16 |
+| F1-2 | ✅ Completado | Fase 1 (Upgrade) | Subir `@angular/material` + `@angular/cdk` | Material 20.2.14 |
+| F1-3 | ✅ Completado | Fase 1 (Upgrade) | Alinear TypeScript/RxJS/Zone | TypeScript 5.9.3 |
+| F1-4 | ✅ Completado | Fase 1 (Upgrade) | Arreglar breaking changes | Build limpio |
+| F1-5 | ✅ Completado | Fase 1 (Upgrade) | Validar librerías externas | Librerías compatibles |
+| B1a | ✅ Completado | Bugs - Evidencias | Evidencias no se ven / previews fallan | Sistema de evidencias funciona |
+| B1b | ✅ Completado | Bugs - Evidencias | Wizard no sube archivos | Wizard maneja archivos correctamente |
+| B2a | ✅ Completado | Bugs - Navegación | Proyectos no llevan a hallazgos | Hay columna y navegación |
+| B2b | ✅ Completado | Bugs - Navegación | Clientes redirige a dashboard | Ruta `/clients/:id` no existe| 
+| B2c | ✅ Completado | Bugs - Navegación | Botón “Nuevo Proyecto” va a `/projects/new` | Redirige mal, pero creación funciona |
+| B2d | ✅ Completado | Bugs - Navegación | Botón “Nuevo Cliente” va a `/clients/new` | Corregido navegación y creación |
+| B3a | ✅ Completado | Bugs - Branding | Logo/Favicon no se aplica | BrandingService funciona correctamente |
+| B3b | ✅ Completado | Bugs - Branding | Archivos de branding no se sirven públicamente | Sistema de branding implementado |
+| B4a | ✅ Completado | Bugs - Backup | mongodump no está en PATH | Instalado en contenedor y mejorado error handling |
+| B5a | ✅ Completado | Bugs - Auditoría | UI mock / endpoint no `/api` | Datos normalizados y auditoría funcional |
+| B5b | ✅ Completado | Bugs - Asignaciones | Endpoint `/assignments` no persiste | Corregido persistencia y lógica de actualización |
+| B8b | ✅ Completado | Bugs - Backend | Campo "Cliente" vacío en Tenants/Áreas | Frontend muestra tenantId si falta clientId; Backend ajustado |
+| B9a | ✅ Completado | Bugs - Frontend | Escritura al revés en campos enriquecidos | Sincronización manual del DOM implementada |
+| B6a | ✅ Completado | Bugs - Export | URLs hardcodeadas a localhost | Reemplazado por environment.apiUrl |
+| B6b | ✅ Completado | Bugs - API | Clients usa API hardcodeada a localhost | Reemplazado por environment.apiUrl |
+| B6c | ✅ Completado | Bugs - Export | Error 401 / Ruta finding missing | Implementada ruta /export/finding y filtrado |
+| B7a | ✅ Completado | Bugs - Frontend | Nuevo Hallazgo - Wizard Profesional, seleccion de cliente no permite corregir | Agregado evento focus para mostrar lista completa |
+| B7b | ✅ Completado | Bugs - Frontend | Wizard Profesional campo proyecto no carga de forma inmediata toda la informacion | Corregido filtrado reactivo para soportar objetos poblados y tenantId |
+| B7c | ✅ Completado | Bugs - Frontend | Duración del proyecto no actualiza contador | Implementado seguimiento reactivo de fechas con signals |
+| B8a | ✅ Completado | Bugs - Backend | Error E11000 duplicidad en códigos VULN-000001 | Implementado correlativo por año con ordenamiento DESC robusto |
+| M1 | ✅ Completado | Mejoras | SMTP test falla (Outlook 535) | Fix realizado, falta validar |
+| M2 | ✅ Completado | Mejoras | Multi‑tenancy inconsistente | Unificado en módulo Projects |
+| M3 | ✅ Completado | Mejoras | Permisos de lectura por proyecto para clientes | Implementado visibleProjectIds |
+| M4 | ✅ Completado | Mejoras | Exceso de scripts / duplicidad | Scripts reorganizados y centralizados |
+| M5 | ❌ Pendiente | Mejoras | Gestión avanzada de notificaciones por correo | Configurar reglas y plantillas |
+| M6 | ⚠️ Revisar | Mejoras | Métricas/estadísticas exportables para BI | Integración con Metabase/PowerBI |
 
 ---
 
@@ -150,15 +157,16 @@ El sistema funciona en lo básico, pero hay problemas de navegación, branding, 
   ```
   Y en `finding-list` leer `queryParams` para aplicar filtros.
 
-#### **B2b — Clientes redirige a dashboard**
+#### **B2b — Clientes redirigen a dashboard**
 - **Estado:** Pendiente  
-- **Descripción:** “Ver detalles” apunta a ruta inexistente.  
-- **Solución sugerida (simple):** Crear `/clients/:id` o redirigir a hallazgos filtrados.  
+- **Descripción:** El botón “Ver detalles” navega a una ruta que no existe (`/clients/:id`), por lo que termina redirigiendo a `dashboard`.  
+- **Solución sugerida (simple):** Redirigir a `hallazgos` filtrados por cliente.  
 - **Recomendación técnica (correcta):**  
   ```ts
   [routerLink]="['/findings']"
   [queryParams]="{ clientId: client._id }"
   ```
+  Y en `finding-list` leer `clientId` desde `ActivatedRoute.queryParamMap` y ejecutar `onClientChange(clientId)`.
 
 #### **B2c — Botón “Nuevo Proyecto” apunta a ruta inexistente**
 - **Estado:** Pendiente  
@@ -241,6 +249,73 @@ El sistema funciona en lo básico, pero hay problemas de navegación, branding, 
   ```ts
   const API_URL = `${environment.apiUrl}/clients`;
   ```
+
+#### **B7a — Nuevo Hallazgo - Wizard Profesional**
+- **Estado:** ✅ Completado
+- **Descripción:** Al seleccionar cliente, si me equivoco en seleccionar, comboBox `Cliente` no permite seleccionar otro, por ende debo salir y crear nuevamente.
+- **Solución sugerida (simple):** Mostrar en todo momento la lista total de Clientes.
+- **Recomendación técnica (correcta):**    
+  **Problema raíz:** Cuando el usuario selecciona un cliente, el campo `clientName` se actualiza con el nombre del cliente seleccionado. Esto dispara `valueChanges`, lo que aplica un filtro que solo muestra el cliente seleccionado.
+  
+  **Solución implementada:**
+  - Agregado evento `(focus)="onClientInputFocus()"` al input del cliente en el template
+  - Método `onClientInputFocus()` resetea `filteredClients` a la lista completa de clientes
+  - Cuando el usuario hace click en el input, siempre ve la lista completa, permitiendo cambiar de cliente
+  
+  **Cambios en código:**
+  ```ts
+  onClientInputFocus(): void {
+    // Mostrar todos los clientes cuando el usuario hace focus
+    this.filteredClients.set(this.clients());
+    this.showCreateClient.set(false);
+  }
+  ```
+
+#### **B7b — Nuevo Hallazgo - Wizard Profesional - campo Proyecto**
+- **Estado:** ✅ Completado
+- **Descripción:** Al seleccionar cliente, en el cuadro `Proyecto` no se pobla con la información. Si escribo algo, elimino, recién en ese momento se puebla con la información ya existente. Existe un lag.
+- **Solución sugerida (simple):** Mostrar en todo momento la lista total de proyectos del cliente
+- **Recomendación técnica (correcta):**
+  **Problema raíz (v1):** El filtrado de proyectos no consideraba el `clientId` seleccionado. Buscaba en TODOS los proyectos del sistema, causando lag y mostrando datos incorrectos.
+  
+  **Problema identificado (v2):** Después de la primera corrección, el filtro por `clientId` en `setupProjectFilter()` funcionaba solo cuando el usuario escribía. Sin embargo, cuando se seleccionaba un cliente, los proyectos no se poblaban inmediatamente porque no había evento que dispare la actualización.
+  
+  **Solución final implementada:**
+  - Agregado nuevo signal `currentClientProjects` para mantener los proyectos del cliente sin filtrar por búsqueda de texto
+  - Mejorado listener en `setupClientFilter()` para que al cambiar `clientId`, se actualize inmediatamente `currentClientProjects` y `filteredProjects`
+  - `setupProjectFilter()` ahora filtra desde `currentClientProjects` (que siempre tiene los datos correctos del cliente)
+  - El evento `focus` resetea la lista a la completa del cliente
+  - Arquitectura de dos capas: 
+    1. `currentClientProjects`: proyectos del cliente actual (actualizado cuando cambia clientId)
+    2. `filteredProjects`: resultado después de aplicar búsqueda de texto
+  
+  **Cambios en código:**
+  ```ts
+  // Signal para mantener proyectos sin filtrar por texto
+  currentClientProjects = signal<any[]>([]);
+  filteredProjects = signal<any[]>([]);
+
+  // En setupClientFilter(), cuando cambia clientId:
+  this.basicForm.get('clientId')?.valueChanges.subscribe(clientId => {
+    if (clientId && clientId !== 'new') {
+      const allProjects = this.projectService.projects();
+      const clientProjects = allProjects.filter(p => p.clientId === clientId);
+      this.currentClientProjects.set(clientProjects);
+      this.filteredProjects.set(clientProjects);  // Mostrar inmediatamente
+      this.basicForm.get('projectName')?.reset('', { emitEvent: false });
+    }
+  });
+
+  // En setupProjectFilter(), filtra desde currentClientProjects:
+  const filtered = this.currentClientProjects().filter(p => 
+    p.name.toLowerCase().includes(filter)
+  );
+  this.filteredProjects.set(filtered);
+  ```
+  
+  **Resultado:** Los proyectos se cargan inmediatamente sin lag, y siempre se puede cambiar de proyecto haciendo click en el input.
+
+  
 
 ---
 
@@ -449,20 +524,13 @@ const API_URL = `${environment.apiUrl}/clients`;
 
 ### **M2 — Multi-tenancy inconsistente**
 - **Estado:** ✅ Completado
-- **Descripción:** El sistema tenía inconsistencias en el manejo de multi-tenancy entre distintos módulos.
+- **Descripción:** El sistema tenía inconsistencias en el manejo de multi-tenancy entre distintos módulos y fallaba en cargas masivas de áreas sin contexto de tenant.
 - **Solución sugerida (simple):** Unificar el manejo de tenant en consultas y operaciones CRUD.
-- **Recomendación técnica:** Se revisó el módulo Projects para asegurar que todas las consultas respeten:
-  tenantId
-  areaId
-  permisos del usuario
-
-- **Esto incluye:**
-  creación de proyectos
-  consultas
-  actualizaciones
-  operaciones administrativas.
-
-La misma estrategia fue preparada para el módulo Findings, aunque no pudo validarse completamente por falta de tiempo para pruebas.
+- **Recomendación técnica:** 
+  - Se implementó la **Asignación Correlativa (Round-Robin)** en el `AreaService`.
+  - Si un `OWNER` no especifica `tenantId`, el sistema calcula el siguiente tenant basándose en `totalAreas % activeTenants.length`.
+  - Se añadieron tests unitarios para garantizar el aislamiento de datos y la correcta distribución.
+  - Se revisó el módulo Projects para asegurar que todas las consultas respeten el contexto.
 
 ### **M3 — Permisos de lectura por proyecto para clientes**
 - **Estado:** ✅ Completado
@@ -492,6 +560,17 @@ Esto permite que el administrador defina qué proyectos puede ver cada usuario.
 
 También se centralizó su ejecución mediante scripts definidos en package.json.
 Esto facilita el mantenimiento del proyecto y evita duplicación de scripts.
+
+-------------------------------------------------------------------------------------------------------------------
+
+**Fecha de actualización:** 4 de Mayo de 2026
+
+### **B9a — Escritura al revés en campos enriquecidos (Wizard)**
+- **Estado:** ✅ Completado
+- **Descripción:** Al escribir en los campos "Descripción Técnica" o "Recomendación de Remediación" del Wizard de Hallazgos, el texto se ingresaba de forma invertida o el cursor saltaba al inicio en cada pulsación.
+- **Solución sugerida (simple):** Desactivar el binding reactivo del DOM que reinicia el caret.
+- **Recomendación técnica (correcta):** Se eliminó el uso de `[innerHTML]` (que causaba el reinicio del cursor al re-renderizar) y se implementó una sincronización manual del DOM. El componente ahora solo actualiza el `innerHTML` si el contenido del modelo es realmente diferente al del DOM, preservando la posición del cursor durante la escritura. Se utilizaron setters de `ViewChild` y suscripciones a `valueChanges` con `takeUntilDestroyed` para mantener la reactividad sin afectar la experiencia de usuario.
+
 
 
 

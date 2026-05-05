@@ -1,12 +1,12 @@
-# Arquitectura ShieldTrack - Alineación con prompt.txt
+# Arquitectura ShieldTrack
 
 ## Modelo de Datos Multi-Tenant
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
-│                     Cliente (Tenant)                             │
-│  - ID, nombre, industria, isActive                               │
-│  - Multi-tenant lógico (NO database-per-tenant)                  │
+│                     Cliente (Tenant comercial)                    │
+│  - ID, nombre, industria, isActive                                │
+│  - Multi-tenant lógico (una sola base de datos)                  │
 └────────────────────┬─────────────────────────────────────────────┘
                      │ 1:N
                      │
@@ -15,10 +15,10 @@
         │                           │
 ┌───────▼──────────┐       ┌────────▼──────────┐
 │      Área        │       │     Proyecto      │
-│  - clientId (FK) │       │  - clientId (FK)  │
-│  - nombre        │◄──────┤  - areaId (FK)    │
-└──────────────────┘  1:N  │  - serviceArch    │
-                            │  - projectStatus  │
+│  - tenantId (FK) │       │  - clientId (FK)  │
+│  - clientId leg. │       │  - areaId (FK)    │
+│  - nombre        │◄──────┤  - serviceArch    │
+└──────────────────┘  1:N  │  - projectStatus  │
                             │  - retestPolicy   │
                             └────────┬──────────┘
                                      │ 1:N
@@ -71,21 +71,20 @@
 ### 2. Área
 **Archivo:** `backend/src/modules/area/schemas/area.schema.ts`
 
-**Propósito:** Subdivisión organizacional dentro de un Cliente (ej: TI, Legal, Operaciones).
+**Propósito:** Subdivisión organizacional dentro del modelo (ej: TI, Legal, Operaciones). En UI se presenta como **Área**; en datos el aislamiento fuerte se apoya en **`tenantId`**.
 
 **Campos clave:**
-- `clientId`: Referencia al Cliente (OBLIGATORIO)
-- `name`: Nombre del área
-- `description`: Descripción opcional
+- `tenantId`: Referencia al **Tenant** (obligatorio, indexado) — frontera principal de multi-tenancy en el schema actual
+- `clientId`: Referencia al Cliente (**legacy**, opcional; mantener mientras existan integraciones antiguas)
+- `name`, `code`, `description`: Identificación y metadatos
+- `findingCodePrefix`, `nextFindingNumber`: Numeración de hallazgos por área
 
-**Índices:**
-- `{ clientId: 1 }` - Filtrado por cliente
-- `{ clientId: 1, name: 1 }` - Unicidad de nombre por cliente
+**Índices (orientativos):**
+- `{ tenantId: 1, name: 1 }`, `{ tenantId: 1, code: 1 }` (único por tenant), etc.
 
 **Regla de negocio:**
-- Un área pertenece a un solo cliente.
-- Los proyectos se asignan a áreas específicas.
-- Usuarios con rol AREA_ADMIN tienen scope limitado a su área.
+- Un área queda anclada a un tenant; los proyectos se asocian al área (`areaId`).
+- Usuarios **AREA_ADMIN** tienen alcance acotado a sus áreas asignadas.
 
 ---
 
@@ -258,7 +257,7 @@
 - `{ email: 1 }` - Único, para login
 - `{ clientId: 1, role: 1 }` - Filtrado multi-tenant
 
-**Roles y permisos:** Ver `docs/rbac.md`
+**Roles y permisos:** Ver decoradores y guards en `backend/src/modules/auth/` (`Roles`, `JwtAuthGuard`, `RolesGuard`, aislamiento por área según servicio).
 
 ---
 
@@ -434,7 +433,7 @@ await this.auditService.log({
 
 ### Backend
 - **Framework:** NestJS 10.x (modular, inyección de dependencias, decoradores)
-- **Database:** MongoDB 8.x con Mongoose (TypeScript strict mode)
+- **Database:** MongoDB 6.x–8.x con Mongoose (TypeScript strict mode)
 - **Autenticación:** JWT con estrategia Passport
 - **Validación:** class-validator + class-transformer (obligatorio en todos los DTOs)
 - **Scheduler:** @nestjs/schedule (cron nativo)
@@ -451,9 +450,9 @@ await this.auditService.log({
 ### Decisiones Clave
 
 1. **Multi-tenant lógico vs físico:**
-   - Decisión: Lógico (un solo DB, filtrado por clientId)
+   - Decisión: Lógico (una sola base de datos; filtrado por `tenantId` y, donde aún exista, `clientId` legacy)
    - Razón: Simplifica operaciones, backups y mantenimiento
-   - Trade-off: Requiere validación estricta en TODOS los queries
+   - Trade-off: Validación estricta en servidor en todas las consultas y contexto de tenant activo
 
 2. **Retest a nivel proyecto vs hallazgo:**
    - Decisión: A nivel proyecto (según prompt.txt)
@@ -477,10 +476,53 @@ await this.auditService.log({
 
 ---
 
-## Próximos Pasos
+---
 
-1. Implementar transacciones MongoDB en cierre de proyecto
-2. Completar validación de extensiones de archivo
-3. Agregar tests unitarios para servicios críticos
-4. Documentar API completa en `docs/api.md`
-5. Crear migration script para FindingStatus (PENDING_RETEST → RETEST_REQUIRED)
+## 🛠️ Guía de Desarrollo
+
+### Agregar un Nuevo Módulo en el Backend
+
+1. **Crear carpeta** en `backend/src/modules/nombre-modulo/`.
+2. **Generar archivos base**:
+   - `nombre-modulo.module.ts`: Definición del módulo.
+   - `nombre-modulo.service.ts`: Lógica de negocio.
+   - `nombre-modulo.controller.ts`: Endpoints de la API.
+   - `schemas/`: Para modelos de Mongoose (si aplica).
+   - `dto/`: Para validación de datos (usando `class-validator`).
+
+3. **Registrar en AppModule**: Importar el nuevo módulo en `backend/src/app.module.ts`.
+
+### Crear un Nuevo Componente en el Frontend
+
+1. **Usar Standalone Components**: Todos los componentes nuevos deben ser `standalone: true`.
+2. **Estado con Signals**: Utilizar `signal()`, `computed()` y `effect()` para la gestión de estado.
+3. **Servicios**: Inyectar servicios mediante el constructor o `inject()`.
+
+```typescript
+// Ejemplo de componente con Signals
+@Component({
+  standalone: true,
+  imports: [CommonModule, MatCardModule],
+  template: `<div>{{ count() }}</div>`
+})
+export class MiComponente {
+  count = signal(0);
+}
+```
+
+---
+
+## 🔐 Seguridad y Cumplimiento
+
+### Autenticación y Autorización
+- **JWT**: Firma de tokens con 8h de expiración.
+- **RBAC**: Guardias de seguridad (`RolesGuard`) aplicados a nivel de controlador o método.
+- **MFA**: Implementado con `speakeasy` y códigos QR para el login inicial del Owner.
+
+### Protección de Datos
+- **Aislamiento Multi-Tenant**: Las consultas deben respetar el contexto de tenant (`tenantId` en schemas que lo usan) y las reglas de rol; no basar el aislamiento solo en el cliente.
+- **Evidencias**: Almacenamiento fuera de la raíz pública (`/uploads`) y descarga protegida por token.
+
+---
+
+📖 Para volver al inicio, consulta el **[README.md](../README.md)**.
