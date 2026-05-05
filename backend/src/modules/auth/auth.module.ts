@@ -40,7 +40,8 @@ import { EmailModule } from "../email/email.module";
           configService.get<string>("JWT_SECRET") ||
           "shieldtrack-secret-key-change-in-production",
         signOptions: {
-          expiresIn: configService.get<string>("JWT_EXPIRES_IN") || "8h",
+          expiresIn: (configService.get<string>("JWT_EXPIRES_IN") ||
+            "8h") as any,
         },
       }),
       inject: [ConfigService],
