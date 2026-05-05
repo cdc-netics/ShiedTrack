@@ -2,7 +2,7 @@
 
 ## 📋 Prerequisitos
 
-- Node.js 18+ y npm instalados
+- Node.js 24.x (o la versión indicada en el proyecto) y npm
 - MongoDB corriendo en `localhost:27017`
 - Backend ShieldTrack compilado
 - Postman instalado (o Newman para CLI)
@@ -155,30 +155,17 @@ docker run -d -p 27017:27017 mongo:8
 - Verificar que tokens se generan en paso "Login Users"
 - Revisar logs: `backend/logs/app.log`
 
-### Finding de otro cliente SÍ es accesible (CRITICAL)
+### Finding de otro tenant/cliente es accesible (CRITICAL)
 
-**🔴 BLOCKER - NO DEPLOY**
+**🔴 BLOCKER — no desplegar**
 
-Revisar:
-```typescript
-// finding.service.ts línea ~87
-const query: any = {};
-if (currentUser && currentUser.clientId) {
-  query.clientId = currentUser.clientId; // Debe estar presente
-}
-```
+Revisar filtros por contexto de tenant/área en `finding.service.ts`, guards y asignación de usuario. Corregir en código y añadir prueba de regresión; no depender de números de línea fijos.
 
 ### Scheduler envía correos a proyectos cerrados
 
-**🔴 BLOCKER - NO DEPLOY**
+**🔴 BLOCKER — no desplegar**
 
-Revisar:
-```typescript
-// project.service.ts línea ~105
-if (isBeingClosed) {
-  project.retestPolicy.enabled = false; // Debe ejecutarse
-}
-```
+Revisar el cierre de proyecto en `project.service.ts` (p. ej. `retestPolicy.enabled = false` al pasar a cerrado) y el job en `retest-scheduler.service.ts`.
 
 ---
 
@@ -235,15 +222,11 @@ newman run docs/ShieldTrack-P0-Tests.postman_collection.json ...
 
 ---
 
-## 📞 Soporte
+## 📞 Referencias
 
-Problemas con la suite QA:
-- Revisar [docs/qa-plan-p0.md](qa-plan-p0.md) para detalles de cada test
-- Validar contra [Promp.txt](../Promp.txt) (fuente de verdad)
-- Logs en `backend/logs/`
+- Especificación funcional maestra: [archive/Promp.txt](archive/Promp.txt)
+- Arquitectura y multi-tenant: [architecture.md](architecture.md), [MULTI-TENANCY.md](MULTI-TENANCY.md)
 
 ---
 
-**Última actualización:** 21 Diciembre 2025  
-**Versión:** 1.0.0  
-**Autor:** QA Senior SOC/MSSP
+**Última actualización:** 2026-05-04

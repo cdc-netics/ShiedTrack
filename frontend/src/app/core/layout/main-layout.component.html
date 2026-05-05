@@ -1,0 +1,197 @@
+<mat-sidenav-container class="app-shell">
+  <mat-sidenav
+    class="app-shell__sidenav"
+    fixedInViewport
+    mode="side"
+    opened
+  >
+    <mat-toolbar class="dynamic-primary app-shell__brand">
+      <img
+        class="app-shell__logo"
+        [src]="theme.currentLogo"
+        alt=""
+        width="28"
+        height="28"
+      />
+      <span class="app-shell__title">ShieldTrack</span>
+    </mat-toolbar>
+
+    <nav class="app-nav" aria-label="Secciones principales">
+      <mat-nav-list class="app-nav__list">
+        <a
+          mat-list-item
+          class="app-nav__link"
+          routerLink="/dashboard"
+          routerLinkActive="app-nav__link--active"
+        >
+          <mat-icon aria-hidden="true">dashboard</mat-icon>
+          <span>Dashboard</span>
+        </a>
+        <a
+          mat-list-item
+          class="app-nav__link"
+          routerLink="/projects"
+          routerLinkActive="app-nav__link--active"
+        >
+          <mat-icon aria-hidden="true">folder</mat-icon>
+          <span>Proyectos</span>
+        </a>
+        <a
+          mat-list-item
+          class="app-nav__link"
+          routerLink="/findings"
+          routerLinkActive="app-nav__link--active"
+        >
+          <mat-icon aria-hidden="true">bug_report</mat-icon>
+          <span>Hallazgos</span>
+        </a>
+        <a
+          mat-list-item
+          class="app-nav__link"
+          routerLink="/clients"
+          routerLinkActive="app-nav__link--active"
+        >
+          <mat-icon aria-hidden="true">business</mat-icon>
+          <span>Clientes</span>
+        </a>
+      </mat-nav-list>
+
+      @if (authService.isAdmin() || canAccessNotifications()) {
+        <section
+          class="app-nav__section"
+          aria-labelledby="nav-admin-label"
+        >
+          <p class="app-nav__section-label" id="nav-admin-label">
+            Administraciùn
+          </p>
+          <mat-nav-list class="app-nav__list app-nav__list--nested" role="navigation">
+            @if (authService.isAdmin()) {
+              <a
+                mat-list-item
+                class="app-nav__link"
+                routerLink="/admin/users"
+                routerLinkActive="app-nav__link--active"
+              >
+                <mat-icon aria-hidden="true">people</mat-icon>
+                <span>Usuarios</span>
+              </a>
+              @if (environment.enableTenantSection) {
+                <a
+                  mat-list-item
+                  class="app-nav__link"
+                  routerLink="/admin/tenants"
+                  routerLinkActive="app-nav__link--active"
+                >
+                  <mat-icon aria-hidden="true">business</mat-icon>
+                  <span>Tenants</span>
+                </a>
+              }
+              <a
+                mat-list-item
+                class="app-nav__link"
+                routerLink="/admin/templates"
+                routerLinkActive="app-nav__link--active"
+              >
+                <mat-icon aria-hidden="true">description</mat-icon>
+                <span>Templates</span>
+              </a>
+              <a
+                mat-list-item
+                class="app-nav__link"
+                routerLink="/admin/audit"
+                routerLinkActive="app-nav__link--active"
+              >
+                <mat-icon aria-hidden="true">history</mat-icon>
+                <span>Auditorùa</span>
+              </a>
+              <a
+                mat-list-item
+                class="app-nav__link"
+                routerLink="/admin/branding"
+                routerLinkActive="app-nav__link--active"
+              >
+                <mat-icon aria-hidden="true">palette</mat-icon>
+                <span>Branding</span>
+              </a>
+              <a
+                mat-list-item
+                class="app-nav__link"
+                routerLink="/admin/backup"
+                routerLinkActive="app-nav__link--active"
+              >
+                <mat-icon aria-hidden="true">backup</mat-icon>
+                <span>Backup</span>
+              </a>
+              <a
+                mat-list-item
+                class="app-nav__link"
+                routerLink="/admin/config"
+                routerLinkActive="app-nav__link--active"
+              >
+                <mat-icon aria-hidden="true">settings</mat-icon>
+                <span>Configuraciùn</span>
+              </a>
+            }
+            @if (canAccessNotifications()) {
+              <a
+                mat-list-item
+                class="app-nav__link"
+                routerLink="/admin/notifications"
+                routerLinkActive="app-nav__link--active"
+              >
+                <mat-icon aria-hidden="true">alternate_email</mat-icon>
+                <span>Notificaciones</span>
+              </a>
+            }
+          </mat-nav-list>
+        </section>
+      }
+    </nav>
+  </mat-sidenav>
+
+  <mat-sidenav-content class="app-shell__main-column">
+    <header class="app-shell__header">
+      <mat-toolbar class="dynamic-primary" role="toolbar">
+        @if (currentTenant) {
+          <mat-chip-set class="app-shell__tenant" aria-label="Cliente actual">
+            <mat-chip [matTooltip]="tenantTooltip()">
+              <mat-icon matChipAvatar aria-hidden="true">business</mat-icon>
+              <span class="app-shell__tenant-text">{{ tenantDisplayName() }}</span>
+            </mat-chip>
+          </mat-chip-set>
+        }
+
+        <span class="app-shell__toolbar-spacer"></span>
+
+        <span
+          class="app-shell__user"
+          [attr.title]="userFullName()"
+        >
+          {{ userFullName() }}
+        </span>
+        <button
+          type="button"
+          mat-icon-button
+          [matMenuTriggerFor]="userMenu"
+          [attr.aria-label]="'Abrir menù de cuenta: ' + userFullName()"
+        >
+          <mat-icon aria-hidden="true">account_circle</mat-icon>
+        </button>
+        <mat-menu #userMenu="matMenu">
+          <button type="button" mat-menu-item routerLink="/profile">
+            <mat-icon aria-hidden="true">person</mat-icon>
+            <span>Perfil</span>
+          </button>
+          <button type="button" mat-menu-item (click)="authService.logout()">
+            <mat-icon aria-hidden="true">logout</mat-icon>
+            <span>Cerrar sesiùn</span>
+          </button>
+        </mat-menu>
+      </mat-toolbar>
+    </header>
+
+    <main id="app-main-content" class="app-main" tabindex="-1">
+      <router-outlet></router-outlet>
+    </main>
+  </mat-sidenav-content>
+</mat-sidenav-container>

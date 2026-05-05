@@ -1,11 +1,17 @@
+# Variables: copie .env.example a .env en la raíz del repo (Compose las inyecta automáticamente).
+# Documentación: docs/DEVELOPMENT-CREDENTIALS.md, docs/DEPLOYMENT.md
+
 services:
   mongodb:
-    image: mongo:latest
+    image: mongo:7.0
     container_name: shieldtrack-db
+    restart: unless-stopped
     ports:
-      - "27017:27017"
+      - "${MONGO_PORT:-27017}:27017"
     volumes:
       - mongodb_data:/data/db
+    # Sin credenciales por defecto (solo desarrollo). Para Mongo con usuario/clave,
+    # use un override (p. ej. docker-compose.override.yml) o Atlas; véase .env.example.
     healthcheck:
       test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
       interval: 10s
@@ -19,12 +25,18 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: shieldtrack-backend
+    restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "${BACKEND_PORT:-3000}:3000"
     environment:
-      - MONGODB_URI=mongodb://mongodb:27017/shieldtrack
-      - JWT_SECRET=change-this-to-a-secure-secret-in-production
-      - PORT=3000
+      MONGODB_URI: ${MONGODB_URI:-mongodb://mongodb:27017/shieldtrack}
+      JWT_SECRET: ${JWT_SECRET:-change-this-to-a-secure-secret-in-production}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-8h}
+      PORT: ${PORT:-3000}
+      NODE_ENV: ${NODE_ENV:-production}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost,http://127.0.0.1}
+      SKIP_LOCAL_MONGO_DIAGNOSTICS: "true"
     depends_on:
       mongodb:
         condition: service_healthy
@@ -36,8 +48,9 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
     container_name: shieldtrack-frontend
+    restart: unless-stopped
     ports:
-      - "80:80"
+      - "${FRONTEND_PORT:-80}:80"
     depends_on:
       - backend
     networks:

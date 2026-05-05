@@ -19,13 +19,6 @@ import {
  */
 export class CreateFindingDto {
   @ApiProperty({
-    example: "FIND-2024-001",
-    description: "Código identificador del hallazgo",
-  })
-  @IsString()
-  code: string;
-
-  @ApiProperty({
     example: "CAT-HIGH-001",
     description: "Código interno de categorización",
   })

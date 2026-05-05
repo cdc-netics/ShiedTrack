@@ -3,6 +3,7 @@ import { MongooseModule } from "@nestjs/mongoose";
 import { FindingService } from "./finding.service";
 import { FindingController } from "./finding.controller";
 import { Finding, FindingSchema } from "./schemas/finding.schema";
+import { Counter, CounterSchema } from "./schemas/counter.schema";
 import {
   FindingUpdate,
   FindingUpdateSchema,
@@ -19,6 +20,7 @@ import { User, UserSchema } from "../auth/schemas/user.schema";
 @Module({
   imports: [
     MongooseModule.forFeature([
+      { name: Counter.name, schema: CounterSchema },
       { name: Finding.name, schema: FindingSchema },
       { name: FindingUpdate.name, schema: FindingUpdateSchema },
       { name: Project.name, schema: ProjectSchema },
