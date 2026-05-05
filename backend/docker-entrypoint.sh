@@ -1,10 +1,10 @@
 #!/bin/sh
+set -e
 
-echo "⏳ Esperando a que el Backend esté compilado..."
-# Esperar a que exista el archivo principal del build
-while [ ! -f dist/main.js ]; do
-  sleep 2
-done
+if [ ! -f dist/main.js ]; then
+  echo "❌ No se encontró dist/main.js. Revise que la imagen se construyó correctamente (npm run build)."
+  exit 1
+fi
 
 echo "🌱 Ejecutando carga de datos iniciales (Seeds)..."
 # Ejecutamos los scripts de seed definidos en tu package.json

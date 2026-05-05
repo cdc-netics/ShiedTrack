@@ -51,7 +51,6 @@ import { environment } from '../../../../environments/environment';
         MatInputModule,
         MatFormFieldModule,
         MatSelectModule,
-        MatCardModule,
         MatTooltipModule,
         MatProgressSpinnerModule,
         MatMenuModule,
@@ -62,31 +61,28 @@ import { environment } from '../../../../environments/environment';
         MatBadgeModule
     ],
     template: `
-    <div class="finding-list-container">
-      <mat-card class="header-card">
-        <mat-card-header>
-          <mat-card-title>
-            <mat-icon>bug_report</mat-icon>
-            Gestión de Hallazgos
-          </mat-card-title>
-        </mat-card-header>
-        <mat-card-content>
-          <div class="actions-bar">
-            <div class="buttons">
-              <button mat-raised-button color="primary" routerLink="/findings/new">
-                <mat-icon>add</mat-icon>
-                Nuevo Hallazgo
+    <div class="list-page ui-stack">
+      <header class="ui-screen-toolbar">
+        <h1 class="ui-screen-title">Hallazgos</h1>
+      </header>
+
+      <section class="ui-data-panel" aria-label="Filtros y resumen">
+          <div class="finding-toolbar ui-cluster ui-cluster--between">
+            <div class="ui-cluster">
+              <button mat-raised-button color="primary" type="button" routerLink="/findings/new">
+                <mat-icon aria-hidden="true">add</mat-icon>
+                Nuevo hallazgo
               </button>
 
               @if (selection.hasValue()) {
-                <button mat-raised-button color="warn" (click)="bulkClose()">
-                  <mat-icon>done_all</mat-icon>
+                <button mat-raised-button color="warn" type="button" (click)="bulkClose()">
+                  <mat-icon aria-hidden="true">done_all</mat-icon>
                   Cerrar ({{ selection.selected.length }})
                 </button>
               }
             </div>
             
-            <div class="filters">
+            <div class="finding-filters ui-cluster">
               <mat-form-field appearance="outline" class="filter-field">
                 <mat-label>Buscar</mat-label>
                 <input matInput [ngModel]="searchTerm()" 
@@ -138,12 +134,12 @@ import { environment } from '../../../../environments/environment';
                 </mat-select>
               </mat-form-field>
               
-              <button mat-icon-button (click)="loadFindings()" matTooltip="Actualizar">
-                <mat-icon>refresh</mat-icon>
+              <button mat-icon-button type="button" (click)="loadFindings()" matTooltip="Actualizar lista" aria-label="Actualizar lista">
+                <mat-icon aria-hidden="true">refresh</mat-icon>
               </button>
 
-              <button mat-icon-button [matMenuTriggerFor]="exportMenu" matTooltip="Exportar" [disabled]="!clientFilter() && !projectFilter()">
-                <mat-icon>download</mat-icon>
+              <button mat-icon-button type="button" [matMenuTriggerFor]="exportMenu" matTooltip="Exportar" [disabled]="!clientFilter() && !projectFilter()" aria-label="Exportar datos">
+                <mat-icon aria-hidden="true">download</mat-icon>
               </button>
               <mat-menu #exportMenu="matMenu">
                 @if (projectFilter()) {
@@ -165,45 +161,45 @@ import { environment } from '../../../../environments/environment';
             </div>
           </div>
           
-          <!-- Resumen de estadísticas -->
-          <div class="stats-summary">
-            <div class="stat-item critical">
-              <span class="count">{{ getCountBySeverity('CRITICAL') }}</span>
-              <span class="label">Críticos</span>
+          <div class="ui-stat-strip" aria-label="Conteo por severidad">
+            <div class="ui-stat-pill ui-stat-pill--critical">
+              <span class="ui-stat-pill__count">{{ getCountBySeverity('CRITICAL') }}</span>
+              <span class="ui-stat-pill__label">Críticos</span>
             </div>
-            <div class="stat-item high">
-              <span class="count">{{ getCountBySeverity('HIGH') }}</span>
-              <span class="label">Altos</span>
+            <div class="ui-stat-pill ui-stat-pill--high">
+              <span class="ui-stat-pill__count">{{ getCountBySeverity('HIGH') }}</span>
+              <span class="ui-stat-pill__label">Altos</span>
             </div>
-            <div class="stat-item medium">
-              <span class="count">{{ getCountBySeverity('MEDIUM') }}</span>
-              <span class="label">Medios</span>
+            <div class="ui-stat-pill ui-stat-pill--medium">
+              <span class="ui-stat-pill__count">{{ getCountBySeverity('MEDIUM') }}</span>
+              <span class="ui-stat-pill__label">Medios</span>
             </div>
-            <div class="stat-item low">
-              <span class="count">{{ getCountBySeverity('LOW') }}</span>
-              <span class="label">Bajos</span>
+            <div class="ui-stat-pill ui-stat-pill--low">
+              <span class="ui-stat-pill__count">{{ getCountBySeverity('LOW') }}</span>
+              <span class="ui-stat-pill__label">Bajos</span>
             </div>
           </div>
-        </mat-card-content>
-      </mat-card>
+      </section>
 
-      <mat-card class="table-card">
+      <section class="ui-data-panel" aria-labelledby="findings-table-heading">
+        <h2 id="findings-table-heading" class="sr-only">Tabla de hallazgos</h2>
         @if (findingService.loading()) {
-          <div class="loading-container">
-            <mat-spinner></mat-spinner>
-            <p>Cargando hallazgos...</p>
+          <div class="ui-loading-block">
+            <mat-spinner aria-label="Cargando hallazgos"></mat-spinner>
+            <p>Cargando hallazgos…</p>
           </div>
         } @else if (filteredFindings().length === 0) {
-          <div class="empty-state">
-            <mat-icon>search_off</mat-icon>
-            <h3>No se encontraron hallazgos</h3>
-            <p>Intenta ajustar los filtros o crear un nuevo hallazgo</p>
-            <button mat-raised-button color="primary" routerLink="/findings/new">
-              <mat-icon>add</mat-icon>
-              Crear Hallazgo
+          <div class="ui-empty-state">
+            <mat-icon aria-hidden="true">search_off</mat-icon>
+            <p class="ui-empty-state__title">No se encontraron hallazgos</p>
+            <p>Ajusta los filtros o crea un nuevo hallazgo.</p>
+            <button mat-raised-button color="primary" type="button" routerLink="/findings/new">
+              <mat-icon aria-hidden="true">add</mat-icon>
+              Crear hallazgo
             </button>
           </div>
         } @else {
+          <div class="ui-table-scroll">
           <table mat-table [dataSource]="filteredFindings()" class="findings-table">
             
             <!-- Checkbox Column -->
@@ -318,81 +314,35 @@ import { environment } from '../../../../environments/environment';
             <tr mat-row *matRowDef="let row; columns: displayedColumns;" 
                 [class.row-critical]="row.severity === 'CRITICAL'"></tr>
           </table>
+          </div>
         }
-      </mat-card>
+      </section>
     </div>
   `,
     styles: [`
-    .finding-list-container {
-      padding: 24px;
-      max-width: 1800px;
-      margin: 0 auto;
+    .finding-toolbar {
+      align-items: flex-start;
+      gap: 1rem;
     }
 
-    .header-card {
-      margin-bottom: 24px;
-    }
-
-    .actions-bar {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 16px;
-      margin-top: 16px;
-    }
-
-    .filters {
-      display: flex;
-      gap: 16px;
-      align-items: center;
+    .finding-filters {
+      flex-wrap: wrap;
+      max-width: 100%;
     }
 
     .filter-field {
-      width: 180px;
-    }
-
-    .stats-summary {
-      display: flex;
-      gap: 24px;
-      margin-top: 24px;
-      padding: 16px;
-      background: #f5f5f5;
-      border-radius: 8px;
-    }
-
-    .stat-item {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 12px 24px;
-      border-radius: 8px;
-      background: white;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-
-    .stat-item .count {
-      font-size: 32px;
-      font-weight: 700;
-      line-height: 1;
-    }
-
-    .stat-item .label {
-      font-size: 12px;
-      color: #757575;
-      margin-top: 4px;
-    }
-
-    .stat-item.critical .count { color: #d32f2f; }
-    .stat-item.high .count { color: #f57c00; }
-    .stat-item.medium .count { color: #fbc02d; }
-    .stat-item.low .count { color: #388e3c; }
-
-    .table-card {
-      overflow-x: auto;
+      width: 160px;
     }
 
     .findings-table {
       width: 100%;
+    }
+
+    .ui-empty-state__title {
+      margin: 0;
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: #1f2937;
     }
 
     .row-critical {
@@ -524,37 +474,6 @@ import { environment } from '../../../../environments/environment';
       color: white;
     }
 
-    .loading-container {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 48px;
-      gap: 16px;
-    }
-
-    .empty-state {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 64px;
-      text-align: center;
-      gap: 16px;
-    }
-
-    .empty-state mat-icon {
-      font-size: 64px;
-      width: 64px;
-      height: 64px;
-      color: #bdbdbd;
-    }
-
-    mat-card-title {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
   `]
 })
 export class FindingListComponent implements OnInit {

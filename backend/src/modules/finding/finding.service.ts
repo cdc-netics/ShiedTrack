@@ -359,42 +359,14 @@ export class FindingService {
       );
     }
 
-    let prefix = "VULN";
-
-    if (project.areaIds && project.areaIds.length > 0) {
-      const firstArea = project.areaIds[0] as any;
-      if (firstArea.findingCodePrefix) prefix = firstArea.findingCodePrefix;
-    } else if (project.areaId && (project.areaId as any).findingCodePrefix) {
-      prefix = (project.areaId as any).findingCodePrefix;
-    }
-
-    const year = new Date().getFullYear();
-    const codePrefix = `${prefix}-${year}-`;
-    const regex = new RegExp(`^${codePrefix}\\d+$`);
-
-    // Buscar el último código usando el prefijo con año y ordenando por código DESC
-    const lastFinding = await this.findingModel
-      .findOne({
-        tenantId: this.toObjectId(currentTenantId),
-        code: { $regex: regex },
-      })
-      .sort({ code: -1 })
-      .select("code");
-
-    let nextNum = 1;
-    if (lastFinding && lastFinding.code) {
-      const parts = lastFinding.code.split("-");
-      const numPart = parts[parts.length - 1];
-      if (!isNaN(Number(numPart))) {
-        nextNum = Number(numPart) + 1;
-      }
-    }
-
-    const generatedCode = `${codePrefix}${String(nextNum).padStart(6, "0")}`;
+    // El correlativo `code` lo asigna el hook pre-save del esquema (contador atómico).
+    const createPayload = {
+      ...(dto as unknown as Record<string, unknown>),
+    };
+    delete createPayload.code;
 
     const finding = new this.findingModel({
-      ...dto,
-      code: dto.code || generatedCode,
+      ...(createPayload as unknown as CreateFindingDto),
       createdBy,
       status: FindingStatus.OPEN,
       tenantId: this.toObjectId(currentTenantId),

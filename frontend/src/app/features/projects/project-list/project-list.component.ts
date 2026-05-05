@@ -14,7 +14,6 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
-import { MatCardModule } from '@angular/material/card';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
@@ -46,72 +45,65 @@ import { UserRole } from '../../../shared/enums';
         MatInputModule,
         MatFormFieldModule,
         MatSelectModule,
-        MatCardModule,
         MatTooltipModule,
         MatProgressSpinnerModule,
         MatDialogModule,
         MatSnackBarModule
     ],
     template: `
-    <div class="project-list-container">
-      <mat-card class="header-card">
-        <mat-card-header>
-          <mat-card-title>
-            <mat-icon>folder</mat-icon>
-            Gestión de Proyectos
-          </mat-card-title>
-        </mat-card-header>
-        <mat-card-content>
-          <div class="actions-bar">
-            <button mat-raised-button color="primary" routerLink="/projects/new">
-              <mat-icon>add</mat-icon>
-              Nuevo Proyecto
-            </button>
-            
-            <div class="filters">
-              <mat-form-field appearance="outline" class="filter-field">
-                <mat-label>Buscar</mat-label>
-                <input matInput [ngModel]="searchTerm()" 
-                       (ngModelChange)="searchTerm.set($event); applyFilters()"
-                       placeholder="Nombre o código...">
-                <mat-icon matSuffix>search</mat-icon>
-              </mat-form-field>
-              
-              <mat-form-field appearance="outline" class="filter-field">
-                <mat-label>Estado</mat-label>
-                <mat-select [ngModel]="statusFilter()" (ngModelChange)="statusFilter.set($event); applyFilters()">
-                  <mat-option value="">Todos</mat-option>
-                  <mat-option value="ACTIVE">Activo</mat-option>
-                  <mat-option value="CLOSED">Cerrado</mat-option>
-                  <mat-option value="ARCHIVED">Archivado</mat-option>
-                </mat-select>
-              </mat-form-field>
-              
-              <button mat-icon-button (click)="loadProjects()" matTooltip="Actualizar">
-                <mat-icon>refresh</mat-icon>
-              </button>
-            </div>
-          </div>
-        </mat-card-content>
-      </mat-card>
+    <div class="list-page list-page--narrow ui-stack">
+      <header class="ui-screen-toolbar">
+        <h1 class="ui-screen-title">Proyectos</h1>
+      </header>
 
-      <mat-card class="table-card">
+      <section class="ui-cluster ui-cluster--between" aria-label="Filtros y acciones">
+        <button mat-raised-button color="primary" type="button" routerLink="/projects/new">
+          <mat-icon aria-hidden="true">add</mat-icon>
+          Nuevo proyecto
+        </button>
+        <div class="ui-cluster">
+          <mat-form-field appearance="outline" class="filter-field">
+            <mat-label>Buscar</mat-label>
+            <input matInput [ngModel]="searchTerm()" 
+                   (ngModelChange)="searchTerm.set($event); applyFilters()"
+                   placeholder="Nombre o código…"
+                   aria-label="Filtrar proyectos">
+            <mat-icon matSuffix aria-hidden="true">search</mat-icon>
+          </mat-form-field>
+          <mat-form-field appearance="outline" class="filter-field filter-field--status">
+            <mat-label>Estado</mat-label>
+            <mat-select [ngModel]="statusFilter()" (ngModelChange)="statusFilter.set($event); applyFilters()">
+              <mat-option value="">Todos</mat-option>
+              <mat-option value="ACTIVE">Activo</mat-option>
+              <mat-option value="CLOSED">Cerrado</mat-option>
+              <mat-option value="ARCHIVED">Archivado</mat-option>
+            </mat-select>
+          </mat-form-field>
+          <button mat-icon-button type="button" (click)="loadProjects()" matTooltip="Actualizar lista" aria-label="Actualizar lista">
+            <mat-icon aria-hidden="true">refresh</mat-icon>
+          </button>
+        </div>
+      </section>
+
+      <section class="ui-data-panel" aria-labelledby="projects-table-heading">
+        <h2 id="projects-table-heading" class="sr-only">Listado de proyectos</h2>
         @if (projectService.loading()) {
-          <div class="loading-container">
-            <mat-spinner></mat-spinner>
-            <p>Cargando proyectos...</p>
+          <div class="ui-loading-block">
+            <mat-spinner aria-label="Cargando proyectos"></mat-spinner>
+            <p>Cargando proyectos…</p>
           </div>
         } @else if (filteredProjects().length === 0) {
-          <div class="empty-state">
-            <mat-icon>folder_off</mat-icon>
-            <h3>No hay proyectos</h3>
-            <p>Crea tu primer proyecto para comenzar</p>
-            <button mat-raised-button color="primary" routerLink="/projects/new">
-              <mat-icon>add</mat-icon>
-              Crear Proyecto
+          <div class="ui-empty-state">
+            <mat-icon aria-hidden="true">folder_off</mat-icon>
+            <p class="ui-empty-state__title">No hay proyectos</p>
+            <p>Crea tu primer proyecto para comenzar.</p>
+            <button mat-raised-button color="primary" type="button" routerLink="/projects/new">
+              <mat-icon aria-hidden="true">add</mat-icon>
+              Crear proyecto
             </button>
           </div>
         } @else {
+          <div class="ui-table-scroll">
           <table mat-table [dataSource]="filteredProjects()" class="projects-table">
             <!-- Columna Código -->
             <ng-container matColumnDef="code">
@@ -216,41 +208,18 @@ import { UserRole } from '../../../shared/enums';
             <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
             <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
           </table>
+          </div>
         }
-      </mat-card>
+      </section>
     </div>
   `,
     styles: [`
-    .project-list-container {
-      padding: 24px;
-      max-width: 1600px;
-      margin: 0 auto;
-    }
-
-    .header-card {
-      margin-bottom: 24px;
-    }
-
-    .actions-bar {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 16px;
-      margin-top: 16px;
-    }
-
-    .filters {
-      display: flex;
-      gap: 16px;
-      align-items: center;
-    }
-
     .filter-field {
-      width: 200px;
+      width: min(100%, 220px);
     }
 
-    .table-card {
-      overflow-x: auto;
+    .filter-field--status {
+      width: min(100%, 160px);
     }
 
     .projects-table {
@@ -321,46 +290,11 @@ import { UserRole } from '../../../shared/enums';
       color: #757575;
     }
 
-    .loading-container {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 48px;
-      gap: 16px;
-    }
-
-    .empty-state {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 64px;
-      text-align: center;
-      gap: 16px;
-    }
-
-    .empty-state mat-icon {
-      font-size: 64px;
-      width: 64px;
-      height: 64px;
-      color: #bdbdbd;
-    }
-
-    .empty-state h3 {
+    .ui-empty-state__title {
       margin: 0;
-      color: #757575;
-    }
-
-    .empty-state p {
-      color: #9e9e9e;
-      margin: 0;
-    }
-
-    mat-card-title {
-      display: flex;
-      align-items: center;
-      gap: 12px;
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: #1f2937;
     }
 
     .closed-icon {

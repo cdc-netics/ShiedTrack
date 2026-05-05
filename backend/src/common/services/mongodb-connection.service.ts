@@ -23,6 +23,23 @@ export class MongoDBConnectionService {
   constructor(private configService: ConfigService) {}
 
   /**
+   * En Docker/Podman no debe ejecutarse diagnóstico ni intento de arrancar MongoDB en el SO:
+   * la base es otro servicio (Compose/Kubernetes) o externa.
+   */
+  private shouldSkipLocalMongoDiagnostics(): boolean {
+    if (process.env.SKIP_LOCAL_MONGO_DIAGNOSTICS === "true") {
+      return true;
+    }
+    try {
+      return (
+        fs.existsSync("/.dockerenv") || fs.existsSync("/run/.containerenv")
+      );
+    } catch {
+      return false;
+    }
+  }
+
+  /**
    * Intenta establecer conexión a MongoDB con reintentos automáticos
    * @returns Promise que se resuelve cuando la conexión es exitosa
    */
@@ -79,6 +96,13 @@ export class MongoDBConnectionService {
    * Diagnostica y repara problemas comunes de MongoDB
    */
   private async diagnoseAndRepair(): Promise<void> {
+    if (this.shouldSkipLocalMongoDiagnostics()) {
+      this.logger.log(
+        "🐳 Entorno contenedor (o SKIP_LOCAL_MONGO_DIAGNOSTICS): omitiendo diagnóstico e inicio local de MongoDB.",
+      );
+      return;
+    }
+
     const mongoUri = this.configService.get<string>("MONGODB_URI", "");
     const isExternalMongo =
       mongoUri &&

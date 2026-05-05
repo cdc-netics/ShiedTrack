@@ -6,9 +6,65 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 ## [Unreleased]
-### 🎯 Resumen de Cambios
 
-- **FIX (Frontend):** Corregido bug de "escritura al revés" en los campos de texto enriquecido (Descripción Técnica y Recomendación) del Wizard de Hallazgos. Se implementó sincronización manual del DOM para evitar el reinicio de la posición del cursor (caret) durante la edición.
+_(Vacío: próximos cambios irán aquí.)_
+
+## [2.2.0] - 2026-05-05
+
+### Resumen
+
+Versión que agrupa endurecimiento de API y datos (DTOs, CORS, correlativos atómicos de hallazgos), experiencia de escritura en el wizard, refactor UX/UI en layout y pantallas principales, operativa Docker/Compose con variables desde `.env`, y documentación ampliada (despliegue, API, multi-tenant, credenciales de desarrollo).
+
+### Docker, Compose y variables de entorno
+
+- **[`.env.example`](.env.example)** en la raíz del repositorio para Compose: `JWT_SECRET`, `MONGODB_URI`, `CORS_ORIGINS`, `FRONTEND_URL`, `NODE_ENV`, puertos opcionales (`MONGO_PORT`, `BACKEND_PORT`, `FRONTEND_PORT`), opciones documentadas para Mongo con usuario (`MONGO_INITDB_*`). El archivo **`.env`** real no se versiona (`.gitignore`); cada entorno lo crea a partir del ejemplo.
+- **[`docker-compose.yml`](docker-compose.yml):** sustitución de variables desde `.env`; puertos parametrizados; backend con `SKIP_LOCAL_MONGO_DIAGNOSTICS=true`; sin secretos fijos en texto plano en el YAML.
+- **Scripts npm (raíz):** `npm start` → `docker compose up --build`; `npm run start:detached` / `npm run stop`; desarrollo sin Docker: `start:local:win` / `start:local:unix`.
+- **Imagen** `mongo:7.0`, `restart: unless-stopped`. **Frontend** en Docker: `npm ci` en el Dockerfile para builds reproducibles.
+- **`MongoDBConnectionService`:** en contenedor (`.dockerenv` / Podman o variable explícita) no ejecuta diagnóstico ni intento de iniciar Mongo en el sistema operativo host.
+- **`backend/docker-entrypoint.sh`:** error claro si falta `dist/main.js`.
+- **MongoDB en desarrollo local:** por defecto sin usuario/contraseña en la red interna de Compose; orientación para producción y Atlas en [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) y `.env.example`.
+
+### Credenciales de desarrollo (documentación)
+
+- **Nuevo:** [docs/DEVELOPMENT-CREDENTIALS.md](docs/DEVELOPMENT-CREDENTIALS.md) — usuarios de prueba (emails, roles, contraseñas), relación con el seed [backend/scripts/seeds/seed-test-data.js](backend/scripts/seeds/seed-test-data.js) y con el selector de desarrollo del login.
+
+### UX / UI (frontend)
+
+- **Sistema global** [frontend/src/styles/components/_layout.scss](frontend/src/styles/components/_layout.scss) (`ui-stack`, `ui-cluster`, `ui-data-panel`, `ui-kpi-grid`, `ui-stat-strip`, `list-page`, estados vacíos/carga, etc.) integrado en [frontend/src/styles/index.scss](frontend/src/styles/index.scss).
+- **Main layout:** `main-layout.component.html` / `.scss`; HTML semántico (`nav`, `main`, `section`); skip link y mejoras de accesibilidad en [frontend/src/index.html](frontend/src/index.html) y [frontend/src/styles.css](frontend/src/styles.css) (`.sr-only`, foco visible, `prefers-reduced-motion`).
+- **Dashboard:** plantilla y estilos separados; menos dependencia de `mat-card` para contexto y KPIs.
+- **Login:** landmark `<main>`, jerarquía de encabezados y mejoras de formulario/alertas.
+- **Listas** (clientes, proyectos, hallazgos): secciones con utilidades `ui-*`, una sola área de datos en lugar de doble tarjeta encabezado/tabla; resumen por severidad en franja en hallazgos.
+- **Pendiente** aplicar la misma línea en: admin, wizard completo, detalle, diálogos.
+
+### FIX (frontend — wizard y animación)
+
+- Escritura “al revés” en rich text del wizard (caret); sincronización DOM donde aplica.
+- **`AnimationService`:** no aplicar animaciones `rotateY` sobre contenedores con campos editables; respaldo 2D.
+- **`styles.css`:** `direction` / `unicode-bidi` en editables.
+
+### Hardening (API, datos y tooling)
+
+- **`main.ts`:** `ValidationPipe` global con `whitelist` y `forbidNonWhitelisted`.
+- **CORS:** orígenes explícitos (`CORS_ORIGINS` / `FRONTEND_URL`).
+- **DTOs y controladores:** validación en auth, system-config, merge de proyectos, bulk-close de hallazgos; `UpdateFindingDto` sin `projectId: any`.
+- **Frontend:** tokens SCSS, `OnPush` en vistas pesadas listadas en el historial de trabajo.
+- **Backend:** contratos e2e con Jest + Supertest ([backend/test/contracts.e2e-spec.ts](backend/test/contracts.e2e-spec.ts)).
+- **`backend/.env.example`:** CORS y Docker.
+- **ESLint** backend operativo ([backend/.eslintrc.js](backend/.eslintrc.js)).
+
+### Correlativos de hallazgos (`code`)
+
+- Patrón **Counters** en MongoDB e incremento atómico en hook `pre('save')` ([finding.schema.ts](backend/src/modules/finding/schemas/finding.schema.ts), [counter.schema.ts](backend/src/modules/finding/schemas/counter.schema.ts)).
+- API sin `code` en creación desde cliente; wizard sin envío de correlativo generado en cliente.
+- Colección Postman P0 actualizada para creación sin `code`.
+
+### Documentación
+
+- **Nuevos / actualizados:** [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md), [docs/API.md](docs/API.md), [docs/MULTI-TENANCY.md](docs/MULTI-TENANCY.md), [docs/architecture.md](docs/architecture.md), [README.md](README.md), [SETUP.md](SETUP.md), [docs/TESTING-GUIDE.md](docs/TESTING-GUIDE.md), [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
+- **Docker Compose / CORS** por defecto para front en `http://localhost` (puerto 80) documentado.
+- **Limpieza** de `docs/archive/` salvo [docs/archive/Promp.txt](docs/archive/Promp.txt); eliminados planes multi-tenant duplicados obsoletos.
 
 ## [2.1.4] - 2026-04-29
 ### 🎯 Resumen de Cambios

@@ -166,11 +166,11 @@ interface Template {
                 </div>
 
                 <div class="form-row">
-                  <mat-form-field appearance="outline">
-                    <mat-label>Código (Auto-generado)</mat-label>
-                    <input matInput formControlName="code" readonly>
+                  <mat-form-field appearance="outline" class="code-readonly-hint">
+                    <mat-label>Código operativo</mat-label>
+                    <input matInput readonly value="Se asigna al guardar (servidor)">
                     <mat-icon matPrefix class="code-icon">lock</mat-icon>
-                    <mat-hint>🤖 Irrepetible</mat-hint>
+                    <mat-hint>Correlativo único generado en el backend; no se envía desde el navegador.</mat-hint>
                   </mat-form-field>
 
                   <mat-form-field appearance="outline" [class.severity-border]="basicForm.get('severity')?.value">
@@ -595,7 +595,6 @@ export class FindingWizardComponent implements OnInit {
     this.initForms();
     this.loadClients();
     this.projectService.loadProjects({}).subscribe();
-    this.generateCode();
     this.setupClientFilter();
     this.setupProjectFilter();
     this.setupEditorSync();
@@ -633,7 +632,6 @@ export class FindingWizardComponent implements OnInit {
       clientId: [''],
       projectName: ['', Validators.required],
       projectId: [''],
-      code: [{ value: '', disabled: true }],
       title: ['', Validators.required],
       description: ['', Validators.required],
       severity: ['', Validators.required],
@@ -756,13 +754,6 @@ export class FindingWizardComponent implements OnInit {
   }
 
 
-  generateCode(): void {
-    // Genera un codigo de hallazgo simple basado en timestamp
-    const timestamp = Date.now().toString().slice(-8);
-    const code = `VULN-${timestamp}`;
-    this.basicForm.patchValue({ code });
-  }
-
   applyTemplate(template: Template): void {
     // Copia datos de la plantilla a los formularios
     this.basicForm.patchValue({
@@ -869,7 +860,7 @@ export class FindingWizardComponent implements OnInit {
   submitFinding(): void {
     // Orquesta la creacion del hallazgo (y proyecto si aplica)
     if (!this.basicForm.valid) {
-      alert('⚠️ Completa los campos obligatorios: Cliente, Proyecto, Código, Título, Descripción y Severidad');
+      alert('⚠️ Completa los campos obligatorios: Cliente, Proyecto, Título, Descripción y Severidad');
       return;
     }
 
@@ -958,7 +949,6 @@ export class FindingWizardComponent implements OnInit {
     const internalCode = `${severityPrefix}-${Date.now().toString().slice(-6)}`;
     
     const data = {
-      code: basicData.code,
       internal_code: internalCode,
       title: basicData.title,
       description: basicData.description,

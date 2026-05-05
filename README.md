@@ -25,36 +25,54 @@ ShieldTrack centraliza el ciclo completo de gestión de hallazgos: registro, asi
 
 ## 📚 Mapa de Documentación
 
-Para una navegación eficiente, consulta los documentos especializados:
-
 | Documento | Contenido |
 | :--- | :--- |
-| 🚀 **[SETUP.md](SETUP.md)** | Guía de instalación rápida y solución de problemas. |
-| 🏗️ **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** | Detalles técnicos, modelos y guías de desarrollo. |
-| 🐛 **[ISSUES.md](ISSUES.md)** | Estado de bugs, mejoras pendientes y backlog técnico. |
-| 📝 **[CHANGELOG.md](CHANGELOG.md)** | Historial detallado de cambios y versiones. |
+| 🚀 **[SETUP.md](SETUP.md)** | Instalación en desarrollo y problemas frecuentes. |
+| 🚢 **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)** | Docker, variables de entorno, CORS y checklist de producción. |
+| 🔐 **[docs/DEVELOPMENT-CREDENTIALS.md](docs/DEVELOPMENT-CREDENTIALS.md)** | Usuarios y contraseñas de prueba (seed / login dev); no usar en producción. |
+| 🌐 **[docs/API.md](docs/API.md)** | Prefijo `/api`, Swagger, JWT, validación y cabeceras. |
+| 🏢 **[docs/MULTI-TENANCY.md](docs/MULTI-TENANCY.md)** | Tenant, áreas y compatibilidad legacy (fuente canónica). |
+| 🏗️ **[docs/architecture.md](docs/architecture.md)** | Modelo de datos, flujos y decisiones técnicas. |
+| 🧪 **[docs/TESTING-GUIDE.md](docs/TESTING-GUIDE.md)** | Suite P0, Postman/Newman y validación manual. |
+| 📜 **[docs/archive/Promp.txt](docs/archive/Promp.txt)** | Especificación funcional maestra (único archivo en `docs/archive/`). |
+| 🐛 **[ISSUES.md](ISSUES.md)** | Bugs, mejoras y backlog. |
+| 📝 **[CHANGELOG.md](CHANGELOG.md)** | Historial de versiones. |
 
 ---
 
-## 🚀 Inicio Rápido
+## 🚀 Inicio rápido (Docker — recomendado)
+
+Requisitos: **Docker** y **Docker Compose** instalados. Copie **`.env.example`** a **`.env`** en la raíz y configure `JWT_SECRET` (y el resto según [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)). Usuarios de prueba: [docs/DEVELOPMENT-CREDENTIALS.md](docs/DEVELOPMENT-CREDENTIALS.md).
 
 ```bash
-# Iniciar todo el sistema (Windows)
+# Primera vez o tras cambios en Dockerfile
 npm start
 
-# Iniciar todo el sistema (Linux/Mac)
-npm run start:linux
+# Segundo plano
+npm run start:detached
+
+# Detener
+npm run stop
 ```
 
+- **Frontend:** http://localhost (puerto 80 del contenedor)
+- **API:** http://localhost:3000 — Swagger: http://localhost:3000/api/docs
 
+En producción configure `JWT_SECRET`, `CORS_ORIGINS` (o `FRONTEND_URL`) y el resto de variables según [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
-## 🚀 Inicio con docket compose
+### Desarrollo en el host (sin Docker)
+
+Si necesita Node y Mongo instalados localmente:
 
 ```bash
-# Iniciar todo el sistema con docker
-docker-compose up --build -d
+# Windows (PowerShell)
+npm run start:local:win
 
+# Linux / macOS
+npm run start:local:unix
 ```
+
+Detalle y variables: [SETUP.md](SETUP.md).
 
 
 
@@ -64,7 +82,7 @@ docker-compose up --build -d
 
 - **Backend**: NestJS + MongoDB (Mongoose) + JWT Auth + MFA.
 - **Frontend**: Angular 20 (Standalone Components) + Signals (State Management).
-- **Scripts**: Automatización disponible vía PowerShell (`.ps1`) y Bash (`.sh`).
+- **Arranque**: Compose como flujo principal; scripts opcionales `.ps1` / `.sh` solo para desarrollo local sin contenedores.
 
 ---
 
