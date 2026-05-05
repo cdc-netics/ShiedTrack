@@ -1,7 +1,7 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
-import { AuditLog } from './schemas/audit-log.schema';
+import { Injectable, Logger } from "@nestjs/common";
+import { InjectModel } from "@nestjs/mongoose";
+import { Model } from "mongoose";
+import { AuditLog } from "./schemas/audit-log.schema";
 
 /**
  * Servicio de Auditoría
@@ -11,7 +11,9 @@ import { AuditLog } from './schemas/audit-log.schema';
 export class AuditService {
   private readonly logger = new Logger(AuditService.name);
 
-  constructor(@InjectModel(AuditLog.name) private auditModel: Model<AuditLog>) {}
+  constructor(
+    @InjectModel(AuditLog.name) private auditModel: Model<AuditLog>,
+  ) {}
 
   /**
    * Registra una acción de auditoría
@@ -28,23 +30,30 @@ export class AuditService {
     ip?: string;
     userAgent?: string;
     severity?: string;
+    method?: string;
+    path?: string;
+    statusCode?: number;
+    durationMs?: number;
   }): Promise<void> {
     try {
       const audit = new this.auditModel({
         ...data,
-        severity: data.severity || 'INFO',
+        severity: data.severity || "INFO",
       });
       await audit.save();
-      
+
       // Log adicional para casos CRITICAL
-      if (data.severity === 'CRITICAL') {
+      if (data.severity === "CRITICAL") {
         this.logger.warn(
           `[AUDIT CRITICAL] ${data.action} on ${data.entityType}:${data.entityId} by ${data.performedBy}`,
         );
       }
     } catch (error) {
       // No bloquear operación si falla auditoría, pero logear
-      this.logger.error(`Error registrando auditoría: ${error.message}`, error.stack);
+      this.logger.error(
+        `Error registrando auditoría: ${error.message}`,
+        error.stack,
+      );
     }
   }
 
@@ -60,13 +69,26 @@ export class AuditService {
     startDate?: Date;
     endDate?: Date;
     limit?: number;
-  }): Promise<AuditLog[]> {
+  }): Promise<any[]> {
     const query: any = {};
 
     if (filters.performedBy) query.performedBy = filters.performedBy;
     if (filters.entityType) query.entityType = filters.entityType;
     if (filters.entityId) query.entityId = filters.entityId;
-    if (filters.action) query.action = filters.action;
+    if (filters.action) {
+      const upperAction = filters.action.toUpperCase();
+      const isHttpMethod = ["GET", "POST", "PUT", "PATCH", "DELETE"].includes(
+        upperAction,
+      );
+      if (isHttpMethod) {
+        query.$or = [
+          { method: upperAction },
+          { action: { $regex: `^${upperAction}\\s`, $options: "i" } },
+        ];
+      } else {
+        query.action = filters.action;
+      }
+    }
     if (filters.severity) query.severity = filters.severity;
 
     if (filters.startDate || filters.endDate) {
@@ -77,8 +99,9 @@ export class AuditService {
 
     return this.auditModel
       .find(query)
-      //.populate('performedBy', 'email firstName lastName')
+      .populate("performedBy", "email firstName lastName")
       .sort({ createdAt: -1 })
-      .limit(filters.limit || 100);
+      .limit(filters.limit || 1000)
+      .lean();
   }
 }

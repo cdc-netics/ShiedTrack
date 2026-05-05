@@ -29,6 +29,7 @@ interface Area {
 }
 
 @Component({
+  standalone: true,
     selector: 'app-area-list',
     imports: [
         CommonModule,
@@ -106,9 +107,9 @@ interface Area {
 
         @if (isOwner()) {
           <ng-container matColumnDef="client">
-            <th mat-header-cell *matHeaderCellDef>Cliente</th>
+            <th mat-header-cell *matHeaderCellDef>Cliente / Área</th>
             <td mat-cell *matCellDef="let area">
-              {{ area.clientId?.name || 'N/A' }}
+              {{ area.clientId?.name || area.tenantId?.name || 'N/A' }}
             </td>
           </ng-container>
         }
@@ -143,7 +144,7 @@ interface Area {
                 <span class="no-admins">Sin administradores</span>
               }
               <div class="action-buttons">
-                <button mat-icon-button [routerLink]="['/admin/tenants', area._id]" matTooltip="Configurar tenant">
+                <button mat-icon-button [routerLink]="['/admin/areas', area._id]" matTooltip="Configurar área">
                   <mat-icon>settings</mat-icon>
                 </button>
                 <button mat-icon-button (click)="openAreaDialog(area)" matTooltip="Editar área">

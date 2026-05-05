@@ -7,6 +7,127 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 ## [Unreleased]
 
+## [2.2.1] - 2026-05-05
+
+- **FIX (Docker — backend / 502):** `nest build` con la config previa podía dejar **solo `.d.ts`** en `dist` (sin `.js`), de modo que el entrypoint fallaba y nginx devolvía **502**. Se añade `nest-cli.json` (`builder: "tsc"`, `tsconfig.build.json`), `tsconfig.build.json` con `include`/`rootDir`/`incremental: false`, y `docker-entrypoint.sh` admite `dist/main.js` o `dist/src/main.js`.
+- **DOCKER (Mongo healthcheck):** El servicio `mongodb` podía quedar `unhealthy` con un volumen antiguo sin usuario root: el check solo autenticaba y Mongo devolvía `UserNotFound`. Ahora el healthcheck hace ping sin credenciales y, si hace falta, prueba con `MONGO_INITDB_ROOT_*`; más `start_period` y reintentos para arranques lentos.
+- **DOCS:** Reescritura y ampliación de [SETUP.md](SETUP.md), [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) y [README.md](README.md): dos `.env` (raíz vs `backend/`), puertos `MONGO_PORT` / `BACKEND_PORT` / `FRONTEND_PORT`, Mongo con credenciales, seeds con `docker compose exec`, URLs dinámicas; corrección de caracteres corruptos en DEPLOYMENT.
+- **CONFIG / Docker + Mongo + DX:** `MONGO_INITDB_ROOT_USERNAME` y `MONGO_INITDB_ROOT_PASSWORD` en `.env` / `.env.example` (valores de ejemplo) y `MONGODB_URI` con `authSource=admin`. `docker-compose.yml` aplica credenciales al servicio `mongodb`, healthcheck con `mongosh` autenticado, `MONGODB_URI` por defecto alineada en el backend. Puertos en `.env`; `NODE_ENV` por defecto `development`. Documentacion: [SETUP.md](SETUP.md), [docs/DEVELOPMENT-CREDENTIALS.md](docs/DEVELOPMENT-CREDENTIALS.md), [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md), `.env.example`; seeds manuales con `docker compose exec backend npm run seed:owner` / `seed:test`.
+- **FIX (Backend — CORS):** En `main.ts`, las peticiones **sin** cabecera `Origin` (mismo host detrás de nginx o algunos navegadores) ya no quedan bloqueadas cuando `NODE_ENV=production`. Antes el login desde el front en Docker podía fallar de forma silenciosa en el cliente.
+- **FIX (Frontend — Login):** Mensajes de error más explícitos si no hay respuesta del servidor o hay código HTTP.
+- **CONFIG:** `CORS_ORIGINS` por defecto en Compose y `.env.example` incluye `http://localhost:4200` y `127.0.0.1:4200` para `ng serve`. Documentación en [docs/DEVELOPMENT-CREDENTIALS.md](docs/DEVELOPMENT-CREDENTIALS.md).
+- **SECURITY/OPS (Audit + Docker + Mongo):** Auditoría HTTP global (éxito y error) con saneamiento de campos sensibles (`password`, `token`, etc.), metadatos de `statusCode`/latencia y **TTL de 1 año** en la colección de auditoría. Compose actualizado a `mongo:8.0`, volumen persistente adicional para backups del backend (`backups_data:/app/backups`) y optimización del Dockerfile backend a build multi-stage para reducir tamaño y mejorar tiempos de despliegue.
+- **UI/UX (Admin):** Mejora visual del módulo de auditoría en frontend (columnas de severidad y usuario real, filtros alineados a método HTTP/entidad de auditoría) y corrección de caracteres corruptos en títulos de administración.
+- **AUDIT (Frontend — descripción legible + IDs con nombre):** `admin/audit` ahora enriquece los registros con catálogos (`clients`, `projects`, `findings`, `users`) para mostrar descripciones humanas en lugar de solo IDs crudos. En el detalle se prioriza el nombre de entidad (si existe) y se mantiene el ID para trazabilidad.
+- **AUDIT (Frontend — contexto técnico más claro):** línea de contexto normalizada a formato `METHOD · HTTP · /api/...` para reducir ruido en tabla y mantener foco en “qué hizo”.
+- **AUDIT (Frontend — refresco progresivo):** cuando llegan catálogos de entidades, los logs ya cargados se re-normalizan automáticamente para sustituir IDs por nombres sin recargar manualmente.
+- **TEMPLATES (Backend — plantillas personales de usuario):** se añade soporte formal de `scope: USER` en DTO y schema de plantillas (`FindingTemplate`). Para nuevos registros, el alcance por defecto pasa a `USER`.
+- **TEMPLATES (Backend — permisos y acceso):** creación habilitada para roles operativos además de admins (`AREA_ADMIN`, `ANALYST`); validación de acceso para plantillas personales (solo autor y super-admins).
+- **TEMPLATES (Backend — prioridad de UX):** en búsqueda y listado se priorizan “mis plantillas” (`scope=USER` creadas por el usuario actual) por encima de plantillas generales/tenant para acelerar uso diario.
+- **TEMPLATES (Frontend — contrato API corregido):** componentes de lista/diálogo alineados al backend (`title`, `cwe_id`, `cvss_score`, `scope`) y actualización vía `PATCH` para evitar incompatibilidades previas con campos legacy (`name`, `cweId`, `cvssScore`).
+- **TEMPLATES (Frontend — experiencia visual):** etiquetas de alcance en lista (`Mi plantilla`, `De mi área`, `General`) y bloqueo visual de edición/eliminación cuando el usuario no tiene permisos sobre la plantilla.
+- **NAV/ROUTES (Frontend):** nueva ruta pública autenticada `/templates` (además de `/admin/templates`) para que usuarios no admin puedan consultar/crear sus plantillas sin pasar por el centro de administración.
+- **NAV (Sidebar):** se agrega acceso principal `Plantillas` en el menú operativo para visibilidad directa del flujo de plantillas.
+- **FINDING WIZARD (Frontend):** búsqueda de plantillas en el wizard ahora considera `scope` y ordena con prioridad las plantillas personales del usuario sobre las generales.
+- **PERFIL DE USUARIO (Frontend):** configuración de cuenta reforzada en `/profile`: edición de nombre/apellido/email, actualización de avatar por URL **o** carga de imagen local (preview inmediata, validación de tipo y tamaño), y flujo de cambio de contraseña con confirmación de nueva contraseña.
+
+## [2.2.0] - 2026-05-04
+
+### Resumen
+
+Versión que agrupa endurecimiento de API y datos (DTOs, CORS, correlativos atómicos de hallazgos), experiencia de escritura en el wizard, refactor UX/UI en layout y pantallas principales, operativa Docker/Compose con variables desde `.env`, y documentación ampliada (despliegue, API, multi-tenant, credenciales de desarrollo).
+
+### Docker, Compose y variables de entorno
+
+- **[`.env.example`](.env.example)** en la raíz del repositorio para Compose: `JWT_SECRET`, `MONGODB_URI`, `CORS_ORIGINS`, `FRONTEND_URL`, `NODE_ENV`, puertos opcionales (`MONGO_PORT`, `BACKEND_PORT`, `FRONTEND_PORT`), opciones documentadas para Mongo con usuario (`MONGO_INITDB_*`). El archivo **`.env`** real no se versiona (`.gitignore`); cada entorno lo crea a partir del ejemplo.
+- **[`docker-compose.yml`](docker-compose.yml):** sustitución de variables desde `.env`; puertos parametrizados; backend con `SKIP_LOCAL_MONGO_DIAGNOSTICS=true`; sin secretos fijos en texto plano en el YAML.
+- **Scripts npm (raíz):** `npm start` → `docker compose up --build`; `npm run start:detached` / `npm run stop`; desarrollo sin Docker: `start:local:win` / `start:local:unix`.
+- **Imagen** `mongo:7.0`, `restart: unless-stopped`. **Frontend** en Docker: `npm ci` en el Dockerfile para builds reproducibles.
+- **`MongoDBConnectionService`:** en contenedor (`.dockerenv` / Podman o variable explícita) no ejecuta diagnóstico ni intento de iniciar Mongo en el sistema operativo host.
+- **`backend/docker-entrypoint.sh`:** error claro si falta `dist/main.js`.
+- **MongoDB en desarrollo local:** por defecto sin usuario/contraseña en la red interna de Compose; orientación para producción y Atlas en [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) y `.env.example`.
+
+### Credenciales de desarrollo (documentación)
+
+- **Nuevo:** [docs/DEVELOPMENT-CREDENTIALS.md](docs/DEVELOPMENT-CREDENTIALS.md) — usuarios de prueba (emails, roles, contraseñas), relación con el seed [backend/scripts/seeds/seed-test-data.js](backend/scripts/seeds/seed-test-data.js) y con el selector de desarrollo del login.
+
+### UX / UI (frontend)
+
+- **Sistema global** [frontend/src/styles/components/_layout.scss](frontend/src/styles/components/_layout.scss) (`ui-stack`, `ui-cluster`, `ui-data-panel`, `ui-kpi-grid`, `ui-stat-strip`, `list-page`, estados vacíos/carga, etc.) integrado en [frontend/src/styles/index.scss](frontend/src/styles/index.scss).
+- **Main layout:** `main-layout.component.html` / `.scss`; HTML semántico (`nav`, `main`, `section`); skip link y mejoras de accesibilidad en [frontend/src/index.html](frontend/src/index.html) y [frontend/src/styles.css](frontend/src/styles.css) (`.sr-only`, foco visible, `prefers-reduced-motion`).
+- **Dashboard:** plantilla y estilos separados; menos dependencia de `mat-card` para contexto y KPIs.
+- **Login:** landmark `<main>`, jerarquía de encabezados y mejoras de formulario/alertas.
+- **Listas** (clientes, proyectos, hallazgos): secciones con utilidades `ui-*`, una sola área de datos en lugar de doble tarjeta encabezado/tabla; resumen por severidad en franja en hallazgos.
+- **Pendiente** aplicar la misma línea en: admin, wizard completo, detalle, diálogos.
+
+### FIX (frontend — wizard y animación)
+
+- Escritura “al revés” en rich text del wizard (caret); sincronización DOM donde aplica.
+- **`AnimationService`:** no aplicar animaciones `rotateY` sobre contenedores con campos editables; respaldo 2D.
+- **`styles.css`:** `direction` / `unicode-bidi` en editables.
+
+### Hardening (API, datos y tooling)
+
+- **`main.ts`:** `ValidationPipe` global con `whitelist` y `forbidNonWhitelisted`.
+- **CORS:** orígenes explícitos (`CORS_ORIGINS` / `FRONTEND_URL`).
+- **DTOs y controladores:** validación en auth, system-config, merge de proyectos, bulk-close de hallazgos; `UpdateFindingDto` sin `projectId: any`.
+- **Frontend:** tokens SCSS, `OnPush` en vistas pesadas listadas en el historial de trabajo.
+- **Backend:** contratos e2e con Jest + Supertest ([backend/test/contracts.e2e-spec.ts](backend/test/contracts.e2e-spec.ts)).
+- **`backend/.env.example`:** CORS y Docker.
+- **ESLint** backend operativo ([backend/.eslintrc.js](backend/.eslintrc.js)).
+
+### Correlativos de hallazgos (`code`)
+
+- Patrón **Counters** en MongoDB e incremento atómico en hook `pre('save')` ([finding.schema.ts](backend/src/modules/finding/schemas/finding.schema.ts), [counter.schema.ts](backend/src/modules/finding/schemas/counter.schema.ts)).
+- API sin `code` en creación desde cliente; wizard sin envío de correlativo generado en cliente.
+- Colección Postman P0 actualizada para creación sin `code`.
+
+### Documentación
+
+- **Nuevos / actualizados:** [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md), [docs/API.md](docs/API.md), [docs/MULTI-TENANCY.md](docs/MULTI-TENANCY.md), [docs/architecture.md](docs/architecture.md), [README.md](README.md), [SETUP.md](SETUP.md), [docs/TESTING-GUIDE.md](docs/TESTING-GUIDE.md), [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
+- **Docker Compose / CORS** por defecto para front en `http://localhost` (puerto 80) documentado.
+- **Limpieza** de `docs/archive/` salvo [docs/archive/Promp.txt](docs/archive/Promp.txt); eliminados planes multi-tenant duplicados obsoletos.
+
+## [2.1.4] - 2026-04-29
+### 🎯 Resumen de Cambios
+
+- **FIX (Backend):** Corregido error en la funcionalidad de Backup. El problema era la ausencia del paquete `mongodb-tools` en el contenedor Docker. Actualizado `backend/Dockerfile` para incluir las herramientas necesarias (`mongodump`, `mongorestore`).
+- **FIX (Backend):** Mejorado el manejo de errores en `BackupService`. Ahora se detecta explícitamente cuando las herramientas de MongoDB no están instaladas (error "not found") para ofrecer un mensaje descriptivo al usuario.
+- **FIX (Frontend):** Corregido campo "Cliente" vacío en el listado de Áreas (Tenants). Se actualizó el componente `AreaListComponent` para mostrar el nombre del `tenantId` en caso de que el `clientId` (legacy) no esté presente, manteniendo la consistencia visual en la nueva arquitectura multi-tenant.
+- **FIX (Backend):** Ajustado `AreaService.findByClient` para asegurar que el filtrado de áreas considere correctamente tanto el modelo nuevo (`tenantId`) como el legacy (`clientId`).
+
+## [2.1.3] - 2026-04-29
+### 🎯 Resumen de Cambios
+
+- **FEAT (Backend):** Implementada asignación correlativa de `tenantId` (Round-Robin) en la creación de Áreas. Ahora, cuando un usuario `OWNER` o `PLATFORM_ADMIN` crea un área sin especificar un `tenantId`, el sistema la asigna automáticamente al siguiente tenant activo basado en la carga actual de áreas.
+- **FIX (Backend):** Corregido error `400 Bad Request` que ocurría al intentar crear áreas desde herramientas externas (o carga masiva) sin enviar el header `X-Tenant-Id`.
+- **TEST (Backend):** Añadida suite de pruebas unitarias (`area.service.spec.ts`) para validar la lógica de asignación correlativa, la protección de roles y la prioridad del `tenantId` manual.
+
+## [2.1.2] - 2026-04-28
+### 🎯 Resumen de Cambios
+
+- **FIX (Backend):** Corregido error de clave duplicada (`E11000`) en la creación de hallazgos. Se implementó una nueva lógica de generación de códigos que incluye el año actual (ej. `VULN-2026-000001`) y asegura el correlativo más alto mediante ordenamiento descendente.
+- **FIX (Frontend):** Corregido fallo en el Wizard de Hallazgos donde la lista de proyectos no se cargaba tras seleccionar un cliente debido a una discrepancia en los tipos de datos (objeto vs string) del `clientId`.
+- **FIX (Frontend):** Corregido el bug en el detalle del proyecto donde el contador de "Duración del proyecto" no se actualizaba al cambiar las fechas de inicio y fin. Se implementaron signals reactivos para el seguimiento de cambios en el formulario.
+- **MEJORA (Backend):** Actualizado el endpoint de listado de proyectos para soportar filtrado explícito por `clientId`, mejorando la integración con los buscadores reactivos del frontend.
+
+## [2.1.1] - 2026-04-22
+### 🎯 Resumen de Cambios
+
+- FIX en api de authenticacion
+- Actualizacion de ISSUES/BUG
+
+
+## [2.1.0] - 2026-04-24
+### 🎯 Resumen de Cambios
+
+- Finalizacion de ISSUES
+- Generacion de Docker Files
+- Generacion de Compose
+- Actualizacion de CHANGELOG y Readme
+
+
+
 ## [2.0.0] - 2026-02-05
 
 ### 🎯 Resumen de Cambios
@@ -450,11 +571,6 @@ Creado nuevo archivo de referencia:
 - Actualizado estado del proyecto a **🚧 EN DESARROLLO**.
 - Reorganización de documentación: reportes antiguos movidos a `docs/archive/`.
 - Actualizado `README.md` con instrucciones de instalación consolidadas.
-
-### 🐛 Correcciones
-- Solucionado error 500 en asignación masiva de áreas.
-- Limpieza de datos de prueba y basura en base de datos.
-- Corregida visibilidad de áreas para usuarios sin cliente asignado.
 
 ## [1.0.0] - 2025-12-22
 

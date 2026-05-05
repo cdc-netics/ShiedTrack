@@ -1,0 +1,78 @@
+# Requiere archivo .env en esta carpeta (copiar desde .env.example).
+# Puertos: MONGO_PORT, BACKEND_PORT, FRONTEND_PORT en .env
+# Documentación: docs/DEVELOPMENT-CREDENTIALS.md, docs/DEPLOYMENT.md, SETUP.md
+
+services:
+  mongodb:
+    image: mongo:8.0
+    container_name: shieldtrack-db
+    restart: unless-stopped
+    ports:
+      - "${MONGO_PORT:-27017}:27017"
+    volumes:
+      - mongodb_data:/data/db
+    environment:
+      # Credenciales root (solo en primera inicialización del volumen /data/db).
+      # Deben coincidir con user/pass dentro de MONGODB_URI del backend.
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME:-shieldtrack}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD:-shieldtrack_dev}
+    healthcheck:
+      # 1) Ping sin credenciales: cubre primera subida sin usuarios / excepción localhost cuando aún no existen usuarios.
+      # 2) Fallback con SCRAM cuando el volumen ya tiene el root creado (excepción localhost suele estar desactivada).
+      test:
+        [
+          "CMD-SHELL",
+          'mongosh --quiet --eval "db.adminCommand({ ping: 1 })" || mongosh -u "$$MONGO_INITDB_ROOT_USERNAME" -p "$$MONGO_INITDB_ROOT_PASSWORD" --authenticationDatabase admin --quiet --eval "db.adminCommand({ ping: 1 })"',
+        ]
+      start_period: 45s
+      interval: 10s
+      timeout: 10s
+      retries: 12
+    networks:
+      - shieldtrack-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: shieldtrack-backend
+    restart: unless-stopped
+    ports:
+      - "${BACKEND_PORT:-3000}:3000"
+    environment:
+      MONGODB_URI: ${MONGODB_URI:-mongodb://shieldtrack:shieldtrack_dev@mongodb:27017/shieldtrack?authSource=admin}
+      JWT_SECRET: ${JWT_SECRET:-change-this-to-a-secure-secret-in-production}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-8h}
+      PORT: ${PORT:-3000}
+      NODE_ENV: ${NODE_ENV:-development}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost,http://127.0.0.1,http://localhost:4200,http://127.0.0.1:4200}
+      SKIP_LOCAL_MONGO_DIAGNOSTICS: "true"
+    volumes:
+      - backups_data:/app/backups
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - shieldtrack-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: shieldtrack-frontend
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-80}:80"
+    depends_on:
+      - backend
+    networks:
+      - shieldtrack-network
+
+volumes:
+  mongodb_data:
+  backups_data:
+
+networks:
+  shieldtrack-network:
+    driver: bridge

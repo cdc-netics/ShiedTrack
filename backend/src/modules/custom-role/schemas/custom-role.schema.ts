@@ -1,5 +1,5 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document, Schema as MongooseSchema } from 'mongoose';
+import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
+import { Document, Schema as MongooseSchema } from "mongoose";
 
 /**
  * Permisos granulares del sistema
@@ -24,7 +24,7 @@ export class CustomRole extends Document {
   @Prop()
   description: string;
 
-  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'Client', required: false })
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: "Client", required: false })
   clientId?: MongooseSchema.Types.ObjectId; // null = rol global, si tiene valor = rol específico del tenant
 
   @Prop({ type: [Object], required: true })
@@ -36,10 +36,10 @@ export class CustomRole extends Document {
   @Prop({ default: false })
   isSystem: boolean; // Roles del sistema (OWNER, ADMIN, etc.) no se pueden eliminar
 
-  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User', required: true })
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: "User", required: true })
   createdBy: MongooseSchema.Types.ObjectId;
 
-  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User' })
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: "User" })
   updatedBy?: MongooseSchema.Types.ObjectId;
 }
 

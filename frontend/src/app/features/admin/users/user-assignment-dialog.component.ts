@@ -14,6 +14,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { HttpClient } from '@angular/common/http';
+import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 
 export interface AssignmentData {
@@ -26,11 +27,29 @@ export interface AssignmentData {
   };
 }
 
+interface CatalogItem {
+  _id: string;
+  name: string;
+  displayName?: string;
+  description?: string;
+  clientId?: string;
+}
+
+interface AssignmentResponse {
+  clients?: string[];
+  clientIds?: string[];
+  projects?: string[];
+  projectIds?: string[];
+  areas?: string[];
+  areaIds?: string[];
+}
+
 /**
  * Diálogo centralizado para asignar usuarios a clientes, proyectos y áreas
  * Permite multi-selección y gestión granular de permisos
  */
 @Component({
+  standalone: true,
   selector: 'app-user-assignment-dialog',
   imports: [
     CommonModule,
@@ -235,9 +254,9 @@ export class UserAssignmentDialogComponent implements OnInit {
 
   loading = signal(false);
 
-  clients = signal<any[]>([]);
-  projects = signal<any[]>([]);
-  areas = signal<any[]>([]);
+  clients = signal<CatalogItem[]>([]);
+  projects = signal<CatalogItem[]>([]);
+  areas = signal<CatalogItem[]>([]);
 
   selectedClients = signal<string[]>([]);
   selectedProjects = signal<string[]>([]);
@@ -257,13 +276,16 @@ export class UserAssignmentDialogComponent implements OnInit {
     return `${environment.apiUrl}/auth/users/${this.data.userId}/assignments`;
   }
 
+  /**
+   * Carga catálogos de clientes, proyectos y áreas en paralelo.
+   */
   loadData(): void {
     this.loading.set(true);
 
     Promise.all([
-      this.http.get<any[]>(`${environment.apiUrl}/clients`).toPromise(),
-      this.http.get<any[]>(`${environment.apiUrl}/projects`).toPromise(),
-      this.http.get<any[]>(`${environment.apiUrl}/areas`).toPromise()
+      firstValueFrom(this.http.get<CatalogItem[]>(`${environment.apiUrl}/clients`)),
+      firstValueFrom(this.http.get<CatalogItem[]>(`${environment.apiUrl}/projects`)),
+      firstValueFrom(this.http.get<CatalogItem[]>(`${environment.apiUrl}/areas`))
     ]).then(([clients, projects, areas]) => {
       this.clients.set(clients || []);
       this.projects.set(projects || []);
@@ -276,6 +298,9 @@ export class UserAssignmentDialogComponent implements OnInit {
     });
   }
 
+  /**
+   * Obtiene y normaliza las asignaciones actuales del usuario.
+   */
   loadCurrentAssignments(): void {
     if (!this.data?.userId) {
       // Si esto aparece, ya sabemos que no llegó el id
@@ -286,7 +311,7 @@ export class UserAssignmentDialogComponent implements OnInit {
 
     this.loading.set(true);
 
-    this.http.get<any>(this.assignmentsUrl()).subscribe({
+    this.http.get<AssignmentResponse>(this.assignmentsUrl()).subscribe({
       next: (res) => {
         // soporte ambas formas
         const clients = res?.clients ?? res?.clientIds ?? [];
@@ -363,7 +388,10 @@ export class UserAssignmentDialogComponent implements OnInit {
     this.selectedAreas.set(updated);
   }
 
-  getClientName(clientId: string): string {
+  getClientName(clientId?: string): string {
+    if (!clientId) {
+      return 'N/A';
+    }
     return this.clients().find(c => c._id === clientId)?.name || 'N/A';
   }
 

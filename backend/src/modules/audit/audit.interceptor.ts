@@ -1,7 +1,12 @@
-import { CallHandler, ExecutionContext, Injectable, NestInterceptor } from '@nestjs/common';
-import { Observable } from 'rxjs';
-import { tap } from 'rxjs/operators';
-import { AuditService } from './audit.service';
+import {
+  CallHandler,
+  ExecutionContext,
+  Injectable,
+  NestInterceptor,
+} from "@nestjs/common";
+import { Observable, throwError } from "rxjs";
+import { catchError, tap } from "rxjs/operators";
+import { AuditService } from "./audit.service";
 
 /**
  * Interceptor global de auditoría
@@ -13,36 +18,104 @@ export class AuditInterceptor implements NestInterceptor {
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
     const req = context.switchToHttp().getRequest();
-    const { method, url, user, body, ip, headers, params } = req;
+    const res = context.switchToHttp().getResponse();
+    const startedAt = Date.now();
+    const { method, url, user, body, query, ip, headers, params } = req;
+    const normalizedPath = String(url || "").split("?")[0];
+    const shouldSkip =
+      normalizedPath === "/" ||
+      normalizedPath.startsWith("/api/docs") ||
+      normalizedPath.includes("favicon.ico");
+
+    if (shouldSkip) {
+      return next.handle();
+    }
 
     return next.handle().pipe(
-      tap(async (response) => {
-        const isExport = method === 'GET' && url.includes('/export/');
-        const isMutation = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method);
-
-        if (!isMutation && !isExport) {
-          return;
-        }
-
+      tap(async () => {
         await this.auditService.log({
-          action: `${method} ${url}`,
-          entityType: isExport ? 'EXPORT' : 'HTTP',
-          entityId: body?.id || body?._id || params?.id || params?._id || 'N/A',
+          action: `${method} ${normalizedPath}`,
+          method,
+          path: normalizedPath,
+          entityType: method === "GET" && normalizedPath.includes("/export/")
+            ? "EXPORT"
+            : "HTTP",
+          entityId: body?.id || body?._id || params?.id || params?._id || "N/A",
           performedBy: user?.userId ?? null,
-          performedByLabel: user?.userId ? '' : 'anonymous',
+          performedByLabel: user?.email ?? (user?.userId ? String(user.userId) : "anonymous"),
           clientId: user?.clientId,
-          // Si el usuario tiene un área principal, usarla? O extraer del body?
-          // Por ahora nos limitamos al contexto seguro del usuario.
-          // areaId: user?.areaIds?.[0] || undefined, 
           ip,
-          userAgent: headers['user-agent'],
+          userAgent: headers["user-agent"],
+          statusCode: res?.statusCode ?? 200,
+          durationMs: Date.now() - startedAt,
+          severity: res?.statusCode >= 500 ? "CRITICAL" : "INFO",
           metadata: {
-            body: isExport ? {} : body, // No logear body en exports
-            params,
+            params: this.sanitize(params),
+            query: this.sanitize(query),
+            body: method === "GET" ? {} : this.sanitize(body),
           },
         });
       }),
+      catchError((error) => {
+        void this.auditService.log({
+          action: `${method} ${normalizedPath}`,
+          method,
+          path: normalizedPath,
+          entityType: "HTTP_ERROR",
+          entityId: params?.id || params?._id || "N/A",
+          performedBy: user?.userId ?? null,
+          performedByLabel: user?.email ?? (user?.userId ? String(user.userId) : "anonymous"),
+          clientId: user?.clientId,
+          ip,
+          userAgent: headers["user-agent"],
+          statusCode: typeof error?.status === "number" ? error.status : 500,
+          durationMs: Date.now() - startedAt,
+          severity: "CRITICAL",
+          metadata: {
+            errorName: error?.name ?? "UnknownError",
+            errorMessage: error?.message ?? "Unknown error",
+            params: this.sanitize(params),
+            query: this.sanitize(query),
+            body: method === "GET" ? {} : this.sanitize(body),
+          },
+        });
+        return throwError(() => error);
+      }),
     );
   }
-}
 
+  private sanitize(value: unknown): unknown {
+    if (value == null) {
+      return value;
+    }
+    if (Array.isArray(value)) {
+      return value.map((item) => this.sanitize(item));
+    }
+    if (typeof value !== "object") {
+      return value;
+    }
+
+    const redactedKeys = [
+      "password",
+      "token",
+      "accessToken",
+      "refreshToken",
+      "secret",
+      "mfaToken",
+      "authorization",
+    ];
+    const obj = value as Record<string, unknown>;
+    const sanitized: Record<string, unknown> = {};
+
+    for (const [key, val] of Object.entries(obj)) {
+      const keyLc = key.toLowerCase();
+      if (redactedKeys.some((redacted) => keyLc.includes(redacted.toLowerCase()))) {
+        sanitized[key] = "[REDACTED]";
+      } else {
+        sanitized[key] = this.sanitize(val);
+      }
+    }
+
+    return sanitized;
+  }
+}

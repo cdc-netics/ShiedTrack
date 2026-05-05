@@ -1,4 +1,4 @@
-import { AsyncLocalStorage } from 'async_hooks';
+import { AsyncLocalStorage } from "async_hooks";
 
 type TenantStore = {
   tenantId?: string;
@@ -6,7 +6,10 @@ type TenantStore = {
 
 const storage = new AsyncLocalStorage<TenantStore>();
 
-export const runWithTenant = <T>(tenantId: string | undefined, fn: () => T): T => {
+export const runWithTenant = <T>(
+  tenantId: string | undefined,
+  fn: () => T,
+): T => {
   return storage.run({ tenantId }, fn);
 };
 

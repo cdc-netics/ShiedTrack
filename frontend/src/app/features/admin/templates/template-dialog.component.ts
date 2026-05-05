@@ -12,6 +12,7 @@ import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../environments/environment';
 
 @Component({
+  standalone: true,
     selector: 'app-template-dialog',
     imports: [
         CommonModule,
@@ -32,9 +33,9 @@ import { environment } from '../../../../environments/environment';
         <!-- Nombre -->
         <mat-form-field appearance="outline" class="full-width">
           <mat-label>Nombre de la Vulnerabilidad</mat-label>
-          <input matInput formControlName="name" required 
+          <input matInput formControlName="title" required 
                  placeholder="ej: SQL Injection en formulario de login">
-          @if (templateForm.get('name')?.hasError('required')) {
+          @if (templateForm.get('title')?.hasError('required')) {
             <mat-error>El nombre es obligatorio</mat-error>
           }
         </mat-form-field>
@@ -54,12 +55,12 @@ import { environment } from '../../../../environments/environment';
 
           <mat-form-field appearance="outline">
             <mat-label>CVSS Score</mat-label>
-            <input matInput type="number" formControlName="cvssScore" 
+            <input matInput type="number" formControlName="cvss_score" 
                    min="0" max="10" step="0.1" placeholder="9.8">
-            @if (templateForm.get('cvssScore')?.hasError('min')) {
+            @if (templateForm.get('cvss_score')?.hasError('min')) {
               <mat-error>Mínimo 0.0</mat-error>
             }
-            @if (templateForm.get('cvssScore')?.hasError('max')) {
+            @if (templateForm.get('cvss_score')?.hasError('max')) {
               <mat-error>Máximo 10.0</mat-error>
             }
           </mat-form-field>
@@ -68,7 +69,7 @@ import { environment } from '../../../../environments/environment';
         <!-- CWE ID -->
         <mat-form-field appearance="outline" class="full-width">
           <mat-label>CWE ID</mat-label>
-          <input matInput formControlName="cweId" placeholder="CWE-89">
+          <input matInput formControlName="cwe_id" placeholder="CWE-89">
           <mat-hint>ej: CWE-79, CWE-89, CWE-22</mat-hint>
         </mat-form-field>
 
@@ -102,7 +103,7 @@ import { environment } from '../../../../environments/environment';
         <!-- Referencias -->
         <mat-form-field appearance="outline" class="full-width">
           <mat-label>Referencias</mat-label>
-          <textarea matInput formControlName="references" rows="2"
+          <textarea matInput formControlName="referencesText" rows="2"
                     placeholder="URLs de referencia separadas por nueva línea"></textarea>
           <mat-hint>Una URL por línea</mat-hint>
         </mat-form-field>
@@ -176,14 +177,15 @@ export class TemplateDialogComponent {
     
     // Inicializa formulario con datos existentes o defaults
     this.templateForm = this.fb.group({
-      name: [data?.name || '', Validators.required],
+      title: [data?.title || data?.name || '', Validators.required],
       severity: [data?.severity || 'MEDIUM', Validators.required],
-      cvssScore: [data?.cvssScore || null, [Validators.min(0), Validators.max(10)]],
-      cweId: [data?.cweId || ''],
+      cvss_score: [data?.cvss_score || data?.cvssScore || null, [Validators.min(0), Validators.max(10)]],
+      cwe_id: [data?.cwe_id || data?.cweId || ''],
       description: [data?.description || '', Validators.required],
       impact: [data?.impact || ''],
       recommendation: [data?.recommendation || '', Validators.required],
-      references: [data?.references?.join('\n') || '']
+      referencesText: [Array.isArray(data?.references) ? data.references.map((r: any) => r?.url || r).join('\n') : ''],
+      scope: [data?.scope || 'USER']
     });
   }
 
@@ -199,13 +201,17 @@ export class TemplateDialogComponent {
     // Convertir referencias de string a array
     const templateData = {
       ...formData,
-      references: formData.references 
-        ? formData.references.split('\n').filter((ref: string) => ref.trim())
+      references: formData.referencesText
+        ? formData.referencesText
+            .split('\n')
+            .map((url: string) => url.trim())
+            .filter((url: string) => url)
+            .map((url: string) => ({ label: url, url }))
         : []
     };
 
     const request = this.isEditMode
-      ? this.http.put(`${this.API_URL}/${this.data._id}`, templateData)
+      ? this.http.patch(`${this.API_URL}/${this.data._id}`, templateData)
       : this.http.post(this.API_URL, templateData);
 
     request.subscribe({

@@ -1,107 +1,53 @@
-# ShieldTrack Multi-Tenancy (Tenant Isolation)
+# Multi-tenancy y áreas — ShieldTrack
 
-**Documento canónico:** este archivo es la única fuente de verdad sobre multi‑tenancy.  
-Otros documentos similares fueron consolidados para evitar inconsistencias.
-
-## Estado actual (repositorio)
-- **Backend:** aislamiento por tenant con `TenantContextGuard` (CLS) + `multiTenantPlugin` en schemas.  
-- **Frontend:** se mantiene la terminología **Áreas** y el rol **AREA_ADMIN** (no TENANT_ADMIN).  
-- **UI:** “Áreas” se usa para separar dominios internos (QA, Ciber, etc.).  
-- **Nota técnica:** existe un plugin alternativo `tenantPlugin` (AsyncLocalStorage) registrado globalmente; debe unificarse con el enfoque CLS para evitar duplicidad técnica.
+Documento canónico (2026). Describe el **estado del código** y la relación entre tenant, áreas y datos legacy. Otros borradores antiguos sobre “solo áreas” o “solo tenants” quedaron **obsoletos** y se retiraron del repositorio para evitar contradicciones.
 
 ---
 
-Este documento define el rediseño para multi-tenancy real (aislamiento por Tenant) y la transición desde el modelo actual basado en "Áreas".
+## Resumen
 
-## Objetivos
-- Aislamiento total por Tenant: datos, roles, proyectos, hallazgos, configuraciones, nomenclaturas, estados y workflows.
-- Roles globales vs por Tenant: `OWNER` global con capacidades cross-tenant; roles por Tenant restringidos a su propio contexto.
-- Configuración centralizada por Tenant: un único lugar para definir todo lo específico del Tenant.
-- Tenancy como frontera de seguridad: enforcement en backend, queries y servicios (sin confiar en filtros frontend).
+- **Seguridad y datos:** el límite principal de aislamiento es el **tenant** (`tenantId` en entidades que lo requieren, plugins Mongoose y guards/interceptors en NestJS).
+- **Producto / UI:** se sigue hablando de **Áreas** como unidad organizativa visible; los roles incluyen **AREA_ADMIN**.
+- **Compatibilidad:** coexisten campos **legacy** (`clientId` en cliente/área/proyecto donde aún aplique) y el modelo actual con **`tenantId`**. Los servicios deben seguir resolviendo ambos durante la transición.
 
-## Entidades Clave
-- `Tenant` (nuevo): representa una organización/cliente aislada.
-  - Campos: `name`, `code`, `isActive`, `createdAt`, `branding`, `settings`.
-- `TenantConfig` (por Tenant): nomenclaturas, workflows, criticidades, estados, campos personalizados, reglas.
-- `User`: puede tener acceso a uno o más tenants; debe incluir `tenantIds` (lista) y contexto activo.
-- Todas las entidades operativas deben incluir `tenantId` obligatorio: `Client`, `Project`, `Finding`, `Evidence`, `Template`, `AuditLog`, etc.
+---
 
-## Roles y Permisos
-- `OWNER` (global):
-  - Ver todos los tenants y administrar configuración global.
-  - Mover usuarios entre tenants, asignar multi-tenant.
-  - Acceso total a datos de cualquier tenant.
-- Roles por Tenant (ejemplos): `AREA_ADMIN`, `ANALYST`, `VIEWER`.
-  - Visibilidad y acciones limitadas a su `tenantId`.
+## Backend (NestJS + Mongoose)
 
-## Contexto de Tenant (Runtime)
-- Determinación de tenant:
-  - Desde JWT: `tenantId` activo del usuario (establecido al login/cambio de contexto).
-  - Alternativamente, header `X-Tenant-ID` validado contra permisos del usuario.
-- En NestJS:
-  - `TenantContextGuard`: obtiene `tenantId` y valida acceso.
-  - `TenantFilterInterceptor`: aplica `tenantId` a cada consulta Mongoose.
-  - `TenantService`: utilidades para resolver/validar contexto, cambiar tenant activo del usuario.
+- **Contexto de tenant:** `TenantContextGuard`, interceptors y utilidades en `backend/src/common/` establecen y validan el tenant activo (p. ej. desde JWT o cabecera `X-Tenant-Id` cuando corresponda).
+- **Plugins:** en `main.ts` se registra un plugin global de Mongoose (`tenantPlugin`) para filtrado por tenant; los schemas críticos pueden usar además `multiTenantPlugin` donde esté aplicado.
+- **Área (`Area`):** incluye `tenantId` **obligatorio** e índices compuestos por tenant; `clientId` es opcional y **legacy** (ver `area.schema.ts`).
 
-## Enforcement Técnico
-- Mongoose:
-  - Todos los Schemas incluyen `tenantId: ObjectId` (required, indexed).
-  - Repositorios/servicios aplican filtros `{ tenantId: ctxTenantId }` en todas las queries.
-- Controladores:
-  - Decorador `@TenantScoped()` para endpoints; aplica guard y filtros.
-- No confiar en frontend: todos los endpoints validan/filtran por `tenantId`.
+No confiar solo en el frontend: toda query debe respetar el contexto de tenant y RBAC en servidor.
 
-## Configuración Centralizada por Tenant
-- Endpoint: `GET/PUT /api/tenants/:tenantId/config`.
-- Contiene:
-  - Nomenclaturas (códigos, prefijos por entidad).
-  - Workflows de hallazgos (estados, transiciones).
-  - Criticidades, etiquetas, categorías.
-  - Campos personalizados.
-  - Reglas específicas (por ejemplo, retest policy).
+---
 
-## Migración desde "Áreas" a Tenants (plan)
-1. Crear colección `tenants`.
-2. Migrar `areas` → `tenants` (1:1 inicialmente):
-   - `areas.name` → `tenants.name`
-   - `areas.code` → `tenants.code`
-   - `areas.clientId` evaluado; en multi-tenancy real, `client` puede ser parte del Tenant o quedar como entidad del Tenant.
-3. Agregar `tenantId` en todas las colecciones y backfill con el `tenant` derivado de área.
-4. Actualizar usuarios:
-   - `areaIds` → `tenantIds`.
-   - Rol `AREA_ADMIN` → `TENANT_ADMIN` (solo si se decide cambiar terminología).
-5. Adaptar servicios/repositorios para filtrar por `tenantId`.
-6. Mantener compatibilidad temporal (legacy):
-   - Alias de endpoints `/api/areas` → `/api/tenants` según feature flag.
-   - DTOs con campos `areaId` marcados como `Legacy` mientras se migra.
+## Autorización
 
-## Cambios de API (Faseada)
-- Nuevos endpoints:
-  - `GET /api/tenants` (OWNER global)
-  - `POST /api/tenants` (OWNER)
-  - `GET/PUT /api/tenants/:tenantId/config` (OWNER / TENANT_ADMIN)
-  - `POST /api/auth/context/tenant/:tenantId` (cambio de contexto)
-- Endpoints existentes actualizados para requerir `tenantId`.
+Los roles (OWNER, PLATFORM_ADMIN, CLIENT_ADMIN, AREA_ADMIN, ANALYST, VIEWER) y el aislamiento por cliente/área/tenant se aplican con guards de JWT y roles. El detalle de flujos está repartido entre `docs/architecture.md` y el código de `auth` / `user-area`.
 
-## UX / Visibilidad
-- Usuario normal: solo ve su `tenant`.
-- AREA_ADMIN: experiencia completa de administración dentro de su tenant (área).
-- OWNER: vista global con cambio de contexto a cualquier tenant.
+---
 
-## Seed y Datos de Prueba
-- Actualizar seed para crear dos tenants (ACME, Evil Corp) y asociar usuarios con `tenantIds`.
-- Incluir hallazgos en ambos tenants para validar aislamiento (IDOR tests).
+## API
 
-## Plan de Implementación (por fases)
-1. Introducir `Tenant` y `TenantConfig` + `tenantId` en Schemas.
-2. Guards/Interceptors para enforcement de `tenantId`.
-3. Endpoints de Tenants y cambio de contexto.
-4. Migración de datos `areas` → `tenants` y compatibilidad legacy.
-5. UI: renombrar “Áreas” a “Tenants” y centralizar configuración por Tenant.
-6. Pruebas P0: RBAC, IDOR, aislamiento, performance.
+- Los endpoints siguen bajo `/api`; ver [API.md](API.md) y Swagger en `/api/docs`.
+- Donde un endpoint requiera contexto explícito de tenant, validar en Swagger la cabecera o el cuerpo esperado.
 
-## Consideraciones
-- Índices por `tenantId` en colecciones de alto volumen.
-- Auditoría: incluir siempre `tenantId` en eventos.
-- Backups: estrategia por `tenant` cuando aplique.
-- Seguridad: `tenantId` como frontera; nunca mezclar resultados entre tenants.
+---
+
+## Despliegue
+
+Variables `CORS_ORIGINS`, `FRONTEND_URL` y `JWT_SECRET` afectan cómo los clientes legítimos hablan con la API; ver [DEPLOYMENT.md](DEPLOYMENT.md).
+
+---
+
+## Evolución
+
+Prioridad actual: **áreas como concepto funcional principal** con **tenant como capa de compatibilidad y segregación** hasta completar migraciones de datos y DTOs. Cualquier nuevo desarrollo debe:
+
+1. Filtrar por `tenantId` cuando el schema lo tenga.
+2. Mantener pruebas de IDOR y cruces de tenant antes de publicar cambios en autorización.
+
+---
+
+Documentación relacionada: [architecture.md](architecture.md), [API.md](API.md), [DEPLOYMENT.md](DEPLOYMENT.md).

@@ -1,6 +1,6 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document, Types } from 'mongoose';
-import { UserRole } from '../../../common/enums';
+import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
+import { Document, Types } from "mongoose";
+import { UserRole } from "../../../common/enums";
 
 @Schema({ timestamps: true })
 export class User extends Document {
@@ -19,14 +19,14 @@ export class User extends Document {
   @Prop({ required: true, enum: UserRole })
   role!: UserRole;
 
-  @Prop({ type: Types.ObjectId, ref: 'Client' })
+  @Prop({ type: Types.ObjectId, ref: "Client" })
   clientId?: Types.ObjectId;
 
-  @Prop({ type: [Types.ObjectId], ref: 'Area', default: [] })
+  @Prop({ type: [Types.ObjectId], ref: "Area", default: [] })
   areaIds!: Types.ObjectId[];
 
   // NUEVO: proyectos visibles por usuario
-  @Prop({ type: [Types.ObjectId], ref: 'Project', default: [] })
+  @Prop({ type: [Types.ObjectId], ref: "Project", default: [] })
   visibleProjectIds!: Types.ObjectId[];
 
   @Prop({ default: false })
@@ -44,16 +44,16 @@ export class User extends Document {
   @Prop()
   deletedAt?: Date;
 
-  @Prop({ type: Types.ObjectId, ref: 'User' })
+  @Prop({ type: Types.ObjectId, ref: "User" })
   deletedBy?: Types.ObjectId;
 
   @Prop()
   lastLogin?: Date;
 
-  @Prop({ type: [Types.ObjectId], ref: 'Tenant', default: [] })
+  @Prop({ type: [Types.ObjectId], ref: "Tenant", default: [] })
   tenantIds?: Types.ObjectId[];
 
-  @Prop({ type: Types.ObjectId, ref: 'Tenant' })
+  @Prop({ type: Types.ObjectId, ref: "Tenant" })
   activeTenantId?: Types.ObjectId;
 }
 

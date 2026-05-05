@@ -10,6 +10,7 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialogModule } from '@angular/material/dialog';
 import { MatSnackBarModule } from '@angular/material/snack-bar';
+import { environment } from '../../../../environments/environment';
 
 interface Backup {
   filename: string;
@@ -27,7 +28,13 @@ interface BackupStats {
   nextScheduledBackup: string;
 }
 
+const SNACKBAR_SHORT_MS = 2000;
+const SNACKBAR_DEFAULT_MS = 3000;
+const SNACKBAR_LONG_MS = 5000;
+const RELOAD_DELAY_MS = 3000;
+
 @Component({
+  standalone: true,
     selector: 'app-backup-manager',
     imports: [
         CommonModule,
@@ -280,36 +287,45 @@ export class BackupManagerComponent implements OnInit {
     this.loadStats();
   }
 
+  /**
+   * Carga el inventario de respaldos disponibles desde el backend.
+   */
   async loadBackups(): Promise<void> {
     this.loading.set(true);
     try {
-      const backups = await firstValueFrom(this.http.get<Backup[]>('/api/backup/list'));
+      const backups = await firstValueFrom(this.http.get<Backup[]>(`${environment.apiUrl}/backup/list`));
       this.backups.set(backups);
     } catch (error: any) {
-      this.snackBar.open(error.error?.message || 'Error cargando backups', 'Cerrar', { duration: 3000 });
+      this.snackBar.open(error.error?.message || 'Error cargando backups', 'Cerrar', { duration: SNACKBAR_DEFAULT_MS });
     } finally {
       this.loading.set(false);
     }
   }
 
+  /**
+   * Obtiene métricas agregadas del subsistema de backups.
+   */
   async loadStats(): Promise<void> {
     try {
-      const stats = await firstValueFrom(this.http.get<BackupStats>('/api/backup/stats'));
+      const stats = await firstValueFrom(this.http.get<BackupStats>(`${environment.apiUrl}/backup/stats`));
       this.stats.set(stats);
     } catch (error) {
       console.error('Error cargando estadísticas:', error);
     }
   }
 
+  /**
+   * Dispara una ejecución manual de backup y actualiza la vista.
+   */
   async createBackup(): Promise<void> {
     this.creating.set(true);
     try {
-      await firstValueFrom(this.http.post('/api/backup/create', {}));
-      this.snackBar.open('✅ Backup creado exitosamente', 'Cerrar', { duration: 3000 });
+      await firstValueFrom(this.http.post(`${environment.apiUrl}/backup/create`, {}));
+      this.snackBar.open('✅ Backup creado exitosamente', 'Cerrar', { duration: SNACKBAR_DEFAULT_MS });
       this.loadBackups();
       this.loadStats();
     } catch (error: any) {
-      this.snackBar.open(error.error?.message || 'Error creando backup', 'Cerrar', { duration: 5000 });
+      this.snackBar.open(error.error?.message || 'Error creando backup', 'Cerrar', { duration: SNACKBAR_LONG_MS });
     } finally {
       this.creating.set(false);
     }
@@ -318,7 +334,7 @@ export class BackupManagerComponent implements OnInit {
     async downloadBackup(filename: string): Promise<void> {
       try {
         const blob = await firstValueFrom(
-          this.http.get(`/api/backup/download/${filename}`, {
+          this.http.get(`${environment.apiUrl}/backup/download/${filename}`, {
             responseType: 'blob'
           })
         );
@@ -331,12 +347,12 @@ export class BackupManagerComponent implements OnInit {
 
         window.URL.revokeObjectURL(downloadUrl);
 
-        this.snackBar.open('✅ Descarga iniciada', 'Cerrar', { duration: 2000 });
+        this.snackBar.open('✅ Descarga iniciada', 'Cerrar', { duration: SNACKBAR_SHORT_MS });
       } catch (error: any) {
         this.snackBar.open(
           error.error?.message || 'Error descargando backup',
           'Cerrar',
-          { duration: 5000 }
+          { duration: SNACKBAR_LONG_MS }
         );
       }
     }
@@ -357,11 +373,11 @@ export class BackupManagerComponent implements OnInit {
 
   async restoreBackup(filename: string): Promise<void> {
     try {
-      await firstValueFrom(this.http.post(`/api/backup/restore/${filename}`, {}));
-      this.snackBar.open('✅ Backup restaurado exitosamente. Recargando aplicación...', 'Cerrar', { duration: 3000 });
-      setTimeout(() => window.location.reload(), 3000);
+      await firstValueFrom(this.http.post(`${environment.apiUrl}/backup/restore/${filename}`, {}));
+      this.snackBar.open('✅ Backup restaurado exitosamente. Recargando aplicación...', 'Cerrar', { duration: SNACKBAR_DEFAULT_MS });
+      setTimeout(() => window.location.reload(), RELOAD_DELAY_MS);
     } catch (error: any) {
-      this.snackBar.open(error.error?.message || 'Error restaurando backup', 'Cerrar', { duration: 5000 });
+      this.snackBar.open(error.error?.message || 'Error restaurando backup', 'Cerrar', { duration: SNACKBAR_LONG_MS });
     }
   }
 
@@ -374,12 +390,12 @@ export class BackupManagerComponent implements OnInit {
 
   async deleteBackup(filename: string): Promise<void> {
     try {
-      await firstValueFrom(this.http.delete(`/api/backup/${filename}`));
-      this.snackBar.open('Backup eliminado', 'Cerrar', { duration: 2000 });
+      await firstValueFrom(this.http.delete(`${environment.apiUrl}/backup/${filename}`));
+      this.snackBar.open('Backup eliminado', 'Cerrar', { duration: SNACKBAR_SHORT_MS });
       this.loadBackups();
       this.loadStats();
     } catch (error: any) {
-      this.snackBar.open(error.error?.message || 'Error eliminando backup', 'Cerrar', { duration: 3000 });
+      this.snackBar.open(error.error?.message || 'Error eliminando backup', 'Cerrar', { duration: SNACKBAR_DEFAULT_MS });
     }
   }
 

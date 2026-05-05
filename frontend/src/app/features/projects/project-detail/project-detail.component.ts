@@ -21,6 +21,7 @@ import { AuthService } from '../../../core/services/auth.service';
 import { UserRole } from '../../../shared/enums';
 
 @Component({
+  standalone: true,
   selector: 'app-project-detail',
   imports: [
     CommonModule,
@@ -332,14 +333,25 @@ export class ProjectDetailComponent implements OnInit {
   clients = signal<any[]>([]);
   areas = signal<any[]>([]);
 
-  projectDuration = computed(() => {
-    const startDate = this.projectForm?.get('serviceStartDate')?.value;
-    if (!startDate) return null;
+  startDateSignal = signal<any>(new Date());
+  endDateSignal = signal<any>(null);
 
-    const start = new Date(startDate);
-    const now = new Date();
-    const diffTime = Math.abs(now.getTime() - start.getTime());
+  projectDuration = computed(() => {
+    const startVal = this.startDateSignal();
+    const endVal = this.endDateSignal();
+    
+    if (!startVal || !endVal) return 'Selecciona fecha de inicio y fin';
+
+    const start = new Date(startVal);
+    const end = new Date(endVal);
+    
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) return null;
+    
+    const diffTime = end.getTime() - start.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays < 0) return 'La fecha de fin debe ser posterior al inicio';
+    if (diffDays === 0) return '1 día';
 
     if (diffDays < 30) return `${diffDays} días`;
     if (diffDays < 365) {
@@ -387,6 +399,10 @@ export class ProjectDetailComponent implements OnInit {
       projectStatus: ['ACTIVE'],
       teamMembers: this.fb.array([])
     });
+
+    // Suscribirse a cambios de fechas para actualizar los signals reactivos
+    this.projectForm.get('serviceStartDate')?.valueChanges.subscribe(v => this.startDateSignal.set(v));
+    this.projectForm.get('endDate')?.valueChanges.subscribe(v => this.endDateSignal.set(v));
   }
 
   loadClients(): void {
@@ -420,6 +436,10 @@ export class ProjectDetailComponent implements OnInit {
           endDate: project.endDate ? new Date(project.endDate) : null,
           projectStatus: project.projectStatus || 'ACTIVE'
         });
+
+        // Actualizar signals para disparar el cálculo de duración
+        this.startDateSignal.set(project.serviceStartDate);
+        this.endDateSignal.set(project.endDate);
 
         this.teamMembers.clear();
         if (project.teamMembers && project.teamMembers.length > 0) {
@@ -464,12 +484,14 @@ export class ProjectDetailComponent implements OnInit {
 
   downloadPdf() {
     if (!this.projectId()) return;
-    window.open(`${environment.apiUrl}/export/project/${this.projectId()}/pdf`, '_blank');
+    const token = this.authService.getToken();
+    window.open(`${environment.apiUrl}/export/project/${this.projectId()}/pdf?token=${token}`, '_blank');
   }
 
   downloadZip() {
     if (!this.projectId()) return;
-    window.open(`${environment.apiUrl}/export/project/${this.projectId()}/zip`, '_blank');
+    const token = this.authService.getToken();
+    window.open(`${environment.apiUrl}/export/project/${this.projectId()}/zip?token=${token}`, '_blank');
   }
 
 saveProject(): void {
