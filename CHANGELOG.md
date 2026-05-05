@@ -29,6 +29,7 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 - **NAV/ROUTES (Frontend):** nueva ruta pública autenticada `/templates` (además de `/admin/templates`) para que usuarios no admin puedan consultar/crear sus plantillas sin pasar por el centro de administración.
 - **NAV (Sidebar):** se agrega acceso principal `Plantillas` en el menú operativo para visibilidad directa del flujo de plantillas.
 - **FINDING WIZARD (Frontend):** búsqueda de plantillas en el wizard ahora considera `scope` y ordena con prioridad las plantillas personales del usuario sobre las generales.
+- **PERFIL DE USUARIO (Frontend):** configuración de cuenta reforzada en `/profile`: edición de nombre/apellido/email, actualización de avatar por URL **o** carga de imagen local (preview inmediata, validación de tipo y tamaño), y flujo de cambio de contraseña con confirmación de nueva contraseña.
 
 ## [2.2.0] - 2026-05-05
 

@@ -48,16 +48,33 @@ import { AuthService } from '../../core/services/auth.service';
               <input matInput formControlName="avatarUrl" placeholder="https://..." />
             </mat-form-field>
 
-            <h3 class="full">Cambio de contraseña</h3>
+            <div class="full avatar-upload">
+              <label class="upload-label">o subir imagen de avatar</label>
+              <input type="file" accept="image/*" (change)="onAvatarFileSelected($event)" />
+              <small>Formatos permitidos: imagenes. Maximo: 2MB.</small>
+            </div>
+
+            @if (profileForm.value.avatarUrl) {
+              <div class="full avatar-preview-wrap">
+                <img [src]="profileForm.value.avatarUrl || ''" alt="Vista previa del avatar" class="avatar-preview" />
+              </div>
+            }
+
+            <h3 class="full">Cambio de contrasena</h3>
 
             <mat-form-field appearance="outline">
-              <mat-label>Contraseña actual</mat-label>
+              <mat-label>Contrasena actual</mat-label>
               <input matInput type="password" formControlName="currentPassword" />
             </mat-form-field>
 
             <mat-form-field appearance="outline">
-              <mat-label>Nueva contraseña</mat-label>
+              <mat-label>Nueva contrasena</mat-label>
               <input matInput type="password" formControlName="newPassword" />
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="full">
+              <mat-label>Confirmar nueva contrasena</mat-label>
+              <input matInput type="password" formControlName="confirmPassword" />
             </mat-form-field>
 
             <div class="actions full">
@@ -73,6 +90,10 @@ import { AuthService } from '../../core/services/auth.service';
     .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
     .full { grid-column: 1 / -1; }
     .actions { display: flex; justify-content: flex-end; }
+    .avatar-upload { display: flex; flex-direction: column; gap: 8px; }
+    .upload-label { font-weight: 600; }
+    .avatar-preview-wrap { display: flex; align-items: center; }
+    .avatar-preview { width: 72px; height: 72px; border-radius: 50%; object-fit: cover; border: 1px solid #ddd; }
   `],
 })
 export class ProfileComponent {
@@ -87,6 +108,7 @@ export class ProfileComponent {
     avatarUrl: [''],
     currentPassword: [''],
     newPassword: [''],
+    confirmPassword: [''],
   });
 
   constructor() {
@@ -103,19 +125,56 @@ export class ProfileComponent {
     if (this.profileForm.invalid) return;
     const payload = { ...this.profileForm.value } as any;
 
+    const wantsPasswordChange = !!payload.currentPassword || !!payload.newPassword || !!payload.confirmPassword;
+    if (wantsPasswordChange) {
+      if (!payload.currentPassword || !payload.newPassword) {
+        this.snackBar.open('Para cambiar contrasena debes completar contrasena actual y nueva', 'Cerrar', { duration: 3500 });
+        return;
+      }
+      if (payload.newPassword !== payload.confirmPassword) {
+        this.snackBar.open('La confirmacion de contrasena no coincide', 'Cerrar', { duration: 3500 });
+        return;
+      }
+    }
+
     if (!payload.currentPassword && !payload.newPassword) {
       delete payload.currentPassword;
       delete payload.newPassword;
     }
+    delete payload.confirmPassword;
 
     this.authService.updateProfile(payload).subscribe({
       next: () => {
         this.snackBar.open('Perfil actualizado correctamente', 'Cerrar', { duration: 3000 });
-        this.profileForm.patchValue({ currentPassword: '', newPassword: '' });
+        this.profileForm.patchValue({ currentPassword: '', newPassword: '', confirmPassword: '' });
       },
       error: (err) => {
         this.snackBar.open(err?.error?.message || 'Error actualizando perfil', 'Cerrar', { duration: 3500 });
       },
     });
+  }
+
+  onAvatarFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      this.snackBar.open('El archivo debe ser una imagen (png, jpg, webp, etc.)', 'Cerrar', { duration: 3500 });
+      input.value = '';
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      this.snackBar.open('La imagen supera 2MB. Usa una imagen mas liviana.', 'Cerrar', { duration: 3500 });
+      input.value = '';
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const value = typeof reader.result === 'string' ? reader.result : '';
+      this.profileForm.patchValue({ avatarUrl: value });
+    };
+    reader.readAsDataURL(file);
   }
 }
