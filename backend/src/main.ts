@@ -20,8 +20,6 @@ const logger = new Logger("Bootstrap");
 async function bootstrap() {
   // Crear instancia de MongoDBConnectionService directamente
 
-  console.log("✅ MAIN.TS CARGADO - VERSION MAIN_V1");
-
   const configService = new ConfigService();
   const mongoConnectionService = new MongoDBConnectionService(configService);
 
@@ -42,8 +40,6 @@ async function bootstrap() {
 
   // Ahora crear la aplicación principal
   const app = await NestFactory.create(AppModule);
-
-  console.log("✅ MAIN.TS CARGADO - ShieldTrack backend arrancando...");
 
   // Configuración de prefijo global para la API
   app.setGlobalPrefix("api", {
@@ -85,12 +81,19 @@ async function bootstrap() {
 
   app.enableCors({
     origin: (origin, callback) => {
-      if (!origin && !isProduction) {
+      // Peticiones sin cabecera Origin: mismo origen (p. ej. front en :80 y /api por nginx),
+      // herramientas o algunos navegadores; antes fallaban en NODE_ENV=production.
+      if (!origin) {
         callback(null, true);
         return;
       }
 
-      if (origin && configuredOrigins.includes(origin)) {
+      if (configuredOrigins.includes(origin)) {
+        callback(null, true);
+        return;
+      }
+
+      if (!isProduction) {
         callback(null, true);
         return;
       }
@@ -134,8 +137,8 @@ async function bootstrap() {
   const port = process.env.PORT || 3000;
   await app.listen(port);
 
-  console.log(`🚀 ShieldTrack Backend corriendo en: http://localhost:${port}`);
-  console.log(
+  logger.log(`ShieldTrack Backend corriendo en: http://localhost:${port}`);
+  logger.log(
     `📚 Documentación Swagger disponible en: http://localhost:${port}/api/docs`,
   );
 }

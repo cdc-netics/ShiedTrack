@@ -1,26 +1,23 @@
+FROM node:20-alpine AS build
+
+RUN apk add --no-cache python3 make g++
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --quiet
+COPY . .
+RUN npm run build && npm prune --omit=dev
+
 FROM node:20-alpine
 
-# Dependencias de compilación para bcrypt y herramientas de MongoDB
-RUN apk add --no-cache python3 make g++ mongodb-tools
-
+RUN apk add --no-cache mongodb-tools
 WORKDIR /app
 
-# Copiar solo archivos de dependencias primero para aprovechar el cache
-COPY package*.json ./
+COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/dist ./dist
+COPY --from=build /app/docker-entrypoint.sh ./docker-entrypoint.sh
 
-# Forzamos la instalación limpia de dependencias en el contenedor
-RUN npm ci --quiet
-
-# Copiamos el resto del código
-COPY . .
-
-# Limpiar finales de línea de Windows y dar permisos
 RUN sed -i 's/\r$//' docker-entrypoint.sh && chmod +x docker-entrypoint.sh
-
-RUN npm run build
 
 ENV NODE_ENV=production
 EXPOSE 3000
-
-# Usamos el script de entrada en lugar de ejecutar node directamente
 ENTRYPOINT ["./docker-entrypoint.sh"]

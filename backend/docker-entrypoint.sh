@@ -1,8 +1,12 @@
 #!/bin/sh
 set -e
 
-if [ ! -f dist/main.js ]; then
-  echo "❌ No se encontró dist/main.js. Revise que la imagen se construyó correctamente (npm run build)."
+if [ -f dist/main.js ]; then
+  MAIN_JS=dist/main.js
+elif [ -f dist/src/main.js ]; then
+  MAIN_JS=dist/src/main.js
+else
+  echo "❌ No se encontró dist/main.js ni dist/src/main.js. Ejecute npm run build en la carpeta backend (nest build)."
   exit 1
 fi
 
@@ -12,4 +16,4 @@ npm run seed:owner || echo "⚠️ El owner ya existe o hubo un error"
 npm run seed:test || echo "⚠️ Error al cargar datos de prueba"
 
 echo "🚀 Iniciando aplicación..."
-exec node dist/main.js
+exec node "$MAIN_JS"

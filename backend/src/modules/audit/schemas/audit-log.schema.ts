@@ -10,6 +10,12 @@ export class AuditLog extends Document {
   @Prop({ required: true, trim: true })
   action!: string; // Ej: POST /api/auth/login, USER_ROLE_CHANGE, PROJECT_CLOSED
 
+  @Prop({ required: false, trim: true, uppercase: true })
+  method?: string;
+
+  @Prop({ required: false, trim: true })
+  path?: string;
+
   @Prop({ required: true, trim: true })
   entityType!: string; // HTTP, EXPORT, User, Client, Project, Finding, etc.
 
@@ -47,6 +53,12 @@ export class AuditLog extends Document {
   @Prop({ required: true, trim: true, default: "INFO" })
   severity!: string; // INFO, WARNING, CRITICAL
 
+  @Prop({ required: false })
+  statusCode?: number;
+
+  @Prop({ required: false })
+  durationMs?: number;
+
   // timestamps (por Schema timestamps: true)
   createdAt!: Date;
   updatedAt!: Date;
@@ -64,3 +76,4 @@ AuditLogSchema.index({ entityType: 1, entityId: 1 });
 AuditLogSchema.index({ action: 1, createdAt: -1 });
 AuditLogSchema.index({ severity: 1, createdAt: -1 });
 AuditLogSchema.index({ tenantId: 1, createdAt: -1 });
+AuditLogSchema.index({ createdAt: 1 }, { expireAfterSeconds: 60 * 60 * 24 * 365 });

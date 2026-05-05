@@ -1,6 +1,5 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/guards/auth.guard';
-import { ProjectCreateComponent } from './features/projects/project-create/project-create.component';
 import { environment } from '../environments/environment';
 import { TenantRouteGuard } from './core/guards/tenant-route.guard';
 

@@ -6,7 +6,7 @@ Sistema de gestión de hallazgos de ciberseguridad para reemplazar Excel. Plataf
 [![Status: Development](https://img.shields.io/badge/Status-Development-orange.svg)](ISSUES.md)
 [![Node.js](https://img.shields.io/badge/Node.js-24.x-green.svg)](https://nodejs.org/)
 [![Angular](https://img.shields.io/badge/Angular-20.x-red.svg)](https://angular.io/)
-[![MongoDB](https://img.shields.io/badge/MongoDB-7.x-green.svg)](https://www.mongodb.com/)
+[![MongoDB](https://img.shields.io/badge/MongoDB-8.x-green.svg)](https://www.mongodb.com/)
 
 ---
 
@@ -27,8 +27,8 @@ ShieldTrack centraliza el ciclo completo de gestión de hallazgos: registro, asi
 
 | Documento | Contenido |
 | :--- | :--- |
-| 🚀 **[SETUP.md](SETUP.md)** | Instalación en desarrollo y problemas frecuentes. |
-| 🚢 **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)** | Docker, variables de entorno, CORS y checklist de producción. |
+| 🚀 **[SETUP.md](SETUP.md)** | Instalación: `.env` en la raíz vs `backend/.env`, puertos, Mongo, seeds y troubleshooting. |
+| 🚢 **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)** | Compose, autenticación Mongo (`MONGO_INITDB_*`, `MONGODB_URI`), CORS, seeds con `docker compose exec`, checklist de producción. |
 | 🔐 **[docs/DEVELOPMENT-CREDENTIALS.md](docs/DEVELOPMENT-CREDENTIALS.md)** | Usuarios y contraseñas de prueba (seed / login dev); no usar en producción. |
 | 🌐 **[docs/API.md](docs/API.md)** | Prefijo `/api`, Swagger, JWT, validación y cabeceras. |
 | 🏢 **[docs/MULTI-TENANCY.md](docs/MULTI-TENANCY.md)** | Tenant, áreas y compatibilidad legacy (fuente canónica). |
@@ -40,25 +40,28 @@ ShieldTrack centraliza el ciclo completo de gestión de hallazgos: registro, asi
 
 ---
 
-## 🚀 Inicio rápido (Docker — recomendado)
+## Inicio rápido (Docker — recomendado)
 
-Requisitos: **Docker** y **Docker Compose** instalados. Copie **`.env.example`** a **`.env`** en la raíz y configure `JWT_SECRET` (y el resto según [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)). Usuarios de prueba: [docs/DEVELOPMENT-CREDENTIALS.md](docs/DEVELOPMENT-CREDENTIALS.md).
+**Requisitos:** Docker y Docker Compose (`docker compose`).
+
+1. En la **raíz del repo**, copie **`.env.example`** → **`.env`**.
+2. Defina al menos un **`JWT_SECRET`** fuerte. Revise **MongoDB**: `MONGO_INITDB_ROOT_USERNAME`, `MONGO_INITDB_ROOT_PASSWORD` y **`MONGODB_URI`** deben coincidir (host del servicio en Compose: **`mongodb`**). Ajuste **`BACKEND_PORT`**, **`FRONTEND_PORT`** y **`MONGO_PORT`** si hay conflictos de puertos.
+3. Arranque:
 
 ```bash
-# Primera vez o tras cambios en Dockerfile
 npm start
-
-# Segundo plano
-npm run start:detached
-
-# Detener
-npm run stop
 ```
 
-- **Frontend:** http://localhost (puerto 80 del contenedor)
-- **API:** http://localhost:3000 — Swagger: http://localhost:3000/api/docs
+Otros scripts: `npm run start:detached`, `npm run stop`.
 
-En producción configure `JWT_SECRET`, `CORS_ORIGINS` (o `FRONTEND_URL`) y el resto de variables según [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+**URLs** (los puertos salen de su `.env`; por defecto `BACKEND_PORT=3000`, `FRONTEND_PORT=80`):
+
+| Qué | Dónde |
+|-----|--------|
+| App web | `http://localhost` o `http://localhost:<FRONTEND_PORT>` |
+| API / Swagger | `http://localhost:<BACKEND_PORT>/api/docs` |
+
+Usuarios de prueba (tras seeds): [docs/DEVELOPMENT-CREDENTIALS.md](docs/DEVELOPMENT-CREDENTIALS.md). Guía paso a paso y problemas frecuentes: [SETUP.md](SETUP.md). Variables, Compose y producción: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md). Antes de un despliegue real, revise el checklist de **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)** (`JWT_SECRET`, CORS, `NODE_ENV`, Mongo).
 
 ### Desarrollo en el host (sin Docker)
 

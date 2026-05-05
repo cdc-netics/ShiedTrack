@@ -30,6 +30,10 @@ export class AuditService {
     ip?: string;
     userAgent?: string;
     severity?: string;
+    method?: string;
+    path?: string;
+    statusCode?: number;
+    durationMs?: number;
   }): Promise<void> {
     try {
       const audit = new this.auditModel({
@@ -71,7 +75,15 @@ export class AuditService {
     if (filters.performedBy) query.performedBy = filters.performedBy;
     if (filters.entityType) query.entityType = filters.entityType;
     if (filters.entityId) query.entityId = filters.entityId;
-    if (filters.action) query.action = filters.action;
+    if (filters.action) {
+      const upperAction = filters.action.toUpperCase();
+      const isHttpMethod = ["GET", "POST", "PUT", "PATCH", "DELETE"].includes(
+        upperAction,
+      );
+      query.action = isHttpMethod
+        ? { $regex: `^${upperAction}\\s`, $options: "i" }
+        : filters.action;
+    }
     if (filters.severity) query.severity = filters.severity;
 
     if (filters.startDate || filters.endDate) {

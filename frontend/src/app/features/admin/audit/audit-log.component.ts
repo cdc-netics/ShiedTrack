@@ -50,12 +50,11 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
           <mat-label>Acción</mat-label>
           <mat-select [(ngModel)]="actionFilter">
             <mat-option value="">Todas</mat-option>
-            <mat-option value="CREATE">Crear</mat-option>
-            <mat-option value="UPDATE">Actualizar</mat-option>
-            <mat-option value="DELETE">Eliminar</mat-option>
-            <mat-option value="LOGIN">Login</mat-option>
-            <mat-option value="LOGOUT">Logout</mat-option>
-            <mat-option value="EXPORT">Exportar</mat-option>
+            <mat-option value="POST">POST</mat-option>
+            <mat-option value="PUT">PUT</mat-option>
+            <mat-option value="PATCH">PATCH</mat-option>
+            <mat-option value="DELETE">DELETE</mat-option>
+            <mat-option value="GET">GET</mat-option>
           </mat-select>
         </mat-form-field>
 
@@ -63,11 +62,9 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
           <mat-label>Entidad</mat-label>
           <mat-select [(ngModel)]="entityFilter">
             <mat-option value="">Todas</mat-option>
-            <mat-option value="Finding">Hallazgo</mat-option>
-            <mat-option value="Project">Proyecto</mat-option>
-            <mat-option value="User">Usuario</mat-option>
-            <mat-option value="Client">Cliente</mat-option>
-            <mat-option value="Area">Área</mat-option>
+            <mat-option value="HTTP">HTTP</mat-option>
+            <mat-option value="HTTP_ERROR">HTTP Error</mat-option>
+            <mat-option value="EXPORT">Export</mat-option>
           </mat-select>
         </mat-form-field>
 
@@ -83,16 +80,16 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
           <td mat-cell *matCellDef="let log">{{ log.createdAt | date:'medium' }}</td>
         </ng-container>
 
-        <ng-container matColumnDef="userId">
+        <ng-container matColumnDef="performedBy">
           <th mat-header-cell *matHeaderCellDef>Usuario</th>
-          <td mat-cell *matCellDef="let log">{{ log.userId }}</td>
+          <td mat-cell *matCellDef="let log">{{ log.performedByLabel || log.performedBy || 'anonymous' }}</td>
         </ng-container>
 
         <ng-container matColumnDef="action">
           <th mat-header-cell *matHeaderCellDef>Acción</th>
           <td mat-cell *matCellDef="let log">
-            <mat-chip [class]="'action-' + log.action.toLowerCase()">
-              {{ log.action }}
+            <mat-chip [class]="'action-' + ((log.method || log.action || '').toLowerCase())">
+              {{ log.method || log.action }}
             </mat-chip>
           </td>
         </ng-container>
@@ -109,7 +106,16 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 
         <ng-container matColumnDef="description">
           <th mat-header-cell *matHeaderCellDef>Descripción</th>
-          <td mat-cell *matCellDef="let log">{{ log.description || '-' }}</td>
+          <td mat-cell *matCellDef="let log">{{ log.path || log.description || '-' }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="severity">
+          <th mat-header-cell *matHeaderCellDef>Severidad</th>
+          <td mat-cell *matCellDef="let log">
+            <mat-chip [class]="'severity-' + ((log.severity || 'INFO').toLowerCase())">
+              {{ log.severity || 'INFO' }}
+            </mat-chip>
+          </td>
         </ng-container>
 
         <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
@@ -180,6 +186,26 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
       color: #616161;
     }
 
+    .action-post {
+      background: #e8f5e9;
+      color: #2e7d32;
+    }
+
+    .action-get {
+      background: #e3f2fd;
+      color: #0d47a1;
+    }
+
+    .severity-info {
+      background: #e8f1ff;
+      color: #0d47a1;
+    }
+
+    .severity-critical {
+      background: #ffebee;
+      color: #b71c1c;
+    }
+
     .filters {
       display: flex;
       gap: 16px;
@@ -210,7 +236,7 @@ export class AuditLogComponent implements OnInit {
 
   // UI State
   loading = signal(false);
-  displayedColumns = ['createdAt', 'userId', 'action', 'entityType', 'entityId', 'description'];
+  displayedColumns = ['createdAt', 'performedBy', 'action', 'entityType', 'entityId', 'description', 'severity'];
   auditLogs = signal<any[]>([]);
   totalRecords = signal(0);
   
@@ -242,7 +268,9 @@ export class AuditLogComponent implements OnInit {
           let filtered = logs;
           if (this.userFilter) {
             filtered = logs.filter(log => 
-              log.userId?.toLowerCase().includes(this.userFilter.toLowerCase())
+              (log.performedByLabel || log.performedBy || '')
+                .toLowerCase()
+                .includes(this.userFilter.toLowerCase())
             );
           }
           
