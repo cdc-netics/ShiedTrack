@@ -7,7 +7,7 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 ## [Unreleased]
 
-## [2.2.1] - 2026-05-06
+## [2.2.1] - 2026-05-05
 
 - **FIX (Docker — backend / 502):** `nest build` con la config previa podía dejar **solo `.d.ts`** en `dist` (sin `.js`), de modo que el entrypoint fallaba y nginx devolvía **502**. Se añade `nest-cli.json` (`builder: "tsc"`, `tsconfig.build.json`), `tsconfig.build.json` con `include`/`rootDir`/`incremental: false`, y `docker-entrypoint.sh` admite `dist/main.js` o `dist/src/main.js`.
 - **DOCKER (Mongo healthcheck):** El servicio `mongodb` podía quedar `unhealthy` con un volumen antiguo sin usuario root: el check solo autenticaba y Mongo devolvía `UserNotFound`. Ahora el healthcheck hace ping sin credenciales y, si hace falta, prueba con `MONGO_INITDB_ROOT_*`; más `start_period` y reintentos para arranques lentos.
@@ -31,7 +31,7 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 - **FINDING WIZARD (Frontend):** búsqueda de plantillas en el wizard ahora considera `scope` y ordena con prioridad las plantillas personales del usuario sobre las generales.
 - **PERFIL DE USUARIO (Frontend):** configuración de cuenta reforzada en `/profile`: edición de nombre/apellido/email, actualización de avatar por URL **o** carga de imagen local (preview inmediata, validación de tipo y tamaño), y flujo de cambio de contraseña con confirmación de nueva contraseña.
 
-## [2.2.0] - 2026-05-05
+## [2.2.0] - 2026-05-04
 
 ### Resumen
 
