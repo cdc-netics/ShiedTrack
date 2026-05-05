@@ -3,6 +3,7 @@ import { ValidationPipe, Logger } from "@nestjs/common";
 import { SwaggerModule, DocumentBuilder } from "@nestjs/swagger";
 import { ConfigService } from "@nestjs/config";
 import * as mongoose from "mongoose";
+import type { CorsOptions } from "@nestjs/common/interfaces/external/cors-options.interface";
 import { AppModule } from "./app.module";
 import { HttpExceptionFilter } from "./common/filters/http-exception.filter";
 import { AuditInterceptor } from "./modules/audit/audit.interceptor";
@@ -80,7 +81,10 @@ async function bootstrap() {
     .filter(Boolean);
 
   app.enableCors({
-    origin: (origin, callback) => {
+    origin: (
+      origin: string | undefined,
+      callback: (err: Error | null, allow?: boolean) => void,
+    ) => {
       // Peticiones sin cabecera Origin: mismo origen (p. ej. front en :80 y /api por nginx),
       // herramientas o algunos navegadores; antes fallaban en NODE_ENV=production.
       if (!origin) {
@@ -104,7 +108,7 @@ async function bootstrap() {
     credentials: true,
     allowedHeaders:
       "Content-Type, Accept, Authorization, X-Requested-With, X-Tenant-Id",
-  });
+  } as CorsOptions);
 
   // Configuración de Swagger para documentación de API
   const config = new DocumentBuilder()
