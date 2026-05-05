@@ -69,7 +69,7 @@ export class AuditService {
     startDate?: Date;
     endDate?: Date;
     limit?: number;
-  }): Promise<AuditLog[]> {
+  }): Promise<any[]> {
     const query: any = {};
 
     if (filters.performedBy) query.performedBy = filters.performedBy;
@@ -80,9 +80,14 @@ export class AuditService {
       const isHttpMethod = ["GET", "POST", "PUT", "PATCH", "DELETE"].includes(
         upperAction,
       );
-      query.action = isHttpMethod
-        ? { $regex: `^${upperAction}\\s`, $options: "i" }
-        : filters.action;
+      if (isHttpMethod) {
+        query.$or = [
+          { method: upperAction },
+          { action: { $regex: `^${upperAction}\\s`, $options: "i" } },
+        ];
+      } else {
+        query.action = filters.action;
+      }
     }
     if (filters.severity) query.severity = filters.severity;
 
@@ -92,12 +97,11 @@ export class AuditService {
       if (filters.endDate) query.createdAt.$lte = filters.endDate;
     }
 
-    return (
-      this.auditModel
-        .find(query)
-        //.populate('performedBy', 'email firstName lastName')
-        .sort({ createdAt: -1 })
-        .limit(filters.limit || 100)
-    );
+    return this.auditModel
+      .find(query)
+      .populate("performedBy", "email firstName lastName")
+      .sort({ createdAt: -1 })
+      .limit(filters.limit || 1000)
+      .lean();
   }
 }

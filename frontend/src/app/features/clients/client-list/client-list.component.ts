@@ -1,6 +1,6 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { MatTableModule } from '@angular/material/table';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -130,15 +130,15 @@ import { environment } from '../../../../environments/environment'; // Standardi
             <ng-container matColumnDef="actions">
               <th mat-header-cell *matHeaderCellDef>Acciones</th>
               <td mat-cell *matCellDef="let client">
-                <button mat-icon-button (click)="openClientDialog(client)" 
+                <button mat-icon-button (click)="openClientDialog(client); $event.stopPropagation()" 
                         matTooltip="Editar cliente">
                   <mat-icon>edit</mat-icon>
                 </button>
-                <button mat-icon-button [routerLink]="['/findings']" [queryParams]="{ clientId: client._id }"
+                <button mat-icon-button [routerLink]="['/findings']" [queryParams]="{ clientId: client._id }" (click)="$event.stopPropagation()"
                         matTooltip="Ver detalles">
                   <mat-icon>visibility</mat-icon>
                 </button>
-                <button mat-icon-button [matMenuTriggerFor]="exportMenu" matTooltip="Exportar datos">
+                <button mat-icon-button [matMenuTriggerFor]="exportMenu" matTooltip="Exportar datos" (click)="$event.stopPropagation()">
                   <mat-icon>cloud_download</mat-icon>
                 </button>
                 <mat-menu #exportMenu="matMenu">
@@ -151,7 +151,7 @@ import { environment } from '../../../../environments/environment'; // Standardi
                     <span>Reporte General (CSV)</span>
                   </button>
                 </mat-menu>
-                <button mat-icon-button (click)="deleteClient(client)" 
+                <button mat-icon-button (click)="deleteClient(client); $event.stopPropagation()" 
                         matTooltip="Eliminar" color="warn">
                   <mat-icon>delete</mat-icon>
                 </button>
@@ -159,7 +159,7 @@ import { environment } from '../../../../environments/environment'; // Standardi
             </ng-container>
 
             <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-            <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+            <tr mat-row *matRowDef="let row; columns: displayedColumns;" class="clickable-row" (click)="openClientDetails(row)"></tr>
           </table>
           </div>
         }
@@ -173,6 +173,10 @@ import { environment } from '../../../../environments/environment'; // Standardi
 
     .clients-table {
       width: 100%;
+    }
+
+    .clickable-row {
+      cursor: pointer;
     }
 
     .client-name {
@@ -245,6 +249,7 @@ export class ClientListComponent implements OnInit {
   private http = inject(HttpClient);
   private dialog = inject(MatDialog);
   private snackBar = inject(MatSnackBar);
+  private router = inject(Router);
   private readonly API_URL = `${environment.apiUrl}/clients`;
   
   // Columnas visibles en la tabla
@@ -386,5 +391,10 @@ export class ClientListComponent implements OnInit {
         );
       }
     });
+  }
+
+  openClientDetails(client: any): void {
+    if (!client?._id) return;
+    void this.router.navigate(['/clients', client._id]);
   }
 }

@@ -6,7 +6,7 @@ import {
   signal,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { MatTableModule } from '@angular/material/table';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -177,19 +177,19 @@ import { UserRole } from '../../../shared/enums';
             <ng-container matColumnDef="actions">
               <th mat-header-cell *matHeaderCellDef>Acciones</th>
               <td mat-cell *matCellDef="let project">
-                <button mat-icon-button [routerLink]="['/projects', project._id]" 
+                <button mat-icon-button [routerLink]="['/projects', project._id]" (click)="$event.stopPropagation()"
                         matTooltip="Ver/Editar detalles">
                   <mat-icon>edit</mat-icon>
                 </button>
                 @if (canCloseProject(project) && project.projectStatus !== 'CLOSED') {
-                  <button mat-icon-button (click)="closeProject(project)" 
+                  <button mat-icon-button (click)="closeProject(project); $event.stopPropagation()"
                           matTooltip="Cerrar proyecto"
                           color="warn">
                     <mat-icon>lock</mat-icon>
                   </button>
                 }
                 @if (currentUserRole === 'OWNER') {
-                  <button mat-icon-button (click)="deleteProject(project)" 
+                  <button mat-icon-button (click)="deleteProject(project); $event.stopPropagation()"
                           matTooltip="Eliminar proyecto permanentemente"
                           color="warn">
                     <mat-icon>delete_forever</mat-icon>
@@ -198,7 +198,7 @@ import { UserRole } from '../../../shared/enums';
                 @if (project.projectStatus === 'CLOSED') {
                   <mat-icon class="closed-icon" matTooltip="Proyecto cerrado">lock</mat-icon>
                 }
-                <button mat-icon-button (click)="exportProject(project._id)" 
+                <button mat-icon-button (click)="exportProject(project._id); $event.stopPropagation()"
                         matTooltip="Exportar">
                   <mat-icon>download</mat-icon>
                 </button>
@@ -206,7 +206,7 @@ import { UserRole } from '../../../shared/enums';
             </ng-container>
 
             <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-            <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+            <tr mat-row *matRowDef="let row; columns: displayedColumns;" class="clickable-row" (click)="openProject(row)"></tr>
           </table>
           </div>
         }
@@ -224,6 +224,10 @@ import { UserRole } from '../../../shared/enums';
 
     .projects-table {
       width: 100%;
+    }
+
+    .clickable-row {
+      cursor: pointer;
     }
 
     .project-name {
@@ -310,6 +314,7 @@ export class ProjectListComponent implements OnInit {
   private http = inject(HttpClient);
   private dialog = inject(MatDialog);
   private snackBar = inject(MatSnackBar);
+  private router = inject(Router);
   private API_URL = `${environment.apiUrl}/projects`;
   
   // Columnas visibles en la tabla (orden importa para MatTable)
@@ -520,5 +525,10 @@ export class ProjectListComponent implements OnInit {
         );
       }
     });
+  }
+
+  openProject(project: any): void {
+    if (!project?._id) return;
+    void this.router.navigate(['/projects', project._id]);
   }
 }

@@ -9,6 +9,14 @@
   font-size: 0.9375rem;
 }
 
+.clickable-kpi {
+  cursor: pointer;
+}
+
+.clickable-kpi:hover {
+  transform: translateY(-1px);
+}
+
 .dense-table {
   width: 100%;
   font-size: 0.875rem;

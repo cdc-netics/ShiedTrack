@@ -20,6 +20,9 @@ export class User extends Document {
   @Prop({ required: true })
   lastName: string;
 
+  @Prop()
+  avatarUrl?: string;
+
   @Prop({ required: true, enum: UserRole })
   role: UserRole;
 

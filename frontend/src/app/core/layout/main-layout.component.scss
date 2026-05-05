@@ -1,4 +1,4 @@
-/* Bloque: shell de aplicaciÛn (layout principal) */
+/* Bloque: shell de aplicaciùn (layout principal) */
 :host {
   display: block;
   height: 100%;
@@ -21,6 +21,13 @@
   width: 28px;
   height: 28px;
   object-fit: contain;
+}
+
+.app-shell__logo-fallback {
+  width: 28px;
+  height: 28px;
+  font-size: 28px;
+  line-height: 28px;
 }
 
 .app-shell__title {
@@ -72,6 +79,14 @@
   white-space: nowrap;
 }
 
+.app-shell__avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+}
+
 .app-main {
   flex: 1 1 auto;
   min-height: 0;
@@ -80,7 +95,7 @@
   box-sizing: border-box;
 }
 
-/* NavegaciÛn lateral: espacio negativo y agrupaciÛn sin ìtarjetasî */
+/* Navegaciùn lateral: espacio negativo y agrupaciùn sin ùtarjetasù */
 .app-nav {
   display: flex;
   flex-direction: column;
@@ -123,6 +138,25 @@
 
 .app-nav__link mat-icon {
   color: rgba(0, 0, 0, 0.54);
+}
+
+.app-nav__link--nested-item {
+  padding-inline-start: 0.5rem;
+}
+
+.admin-accordion {
+  box-shadow: none;
+  border-radius: 8px;
+}
+
+.admin-accordion .mat-expansion-panel-header {
+  padding-inline: 0.75rem;
+}
+
+.admin-accordion .mat-expansion-panel-header mat-panel-title {
+  align-items: center;
+  gap: 0.75rem;
+  font-weight: 500;
 }
 
 /* Estado activo: acento lateral + hover claro (sin caja pesada) */

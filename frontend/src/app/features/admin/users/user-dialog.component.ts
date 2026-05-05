@@ -334,9 +334,11 @@ export class UserDialogComponent {
       areaIds: this.userForm.value.areaIds
     };
 
-    // En modo creación, incluir email y password obligatorio
+    // Email siempre editable por administradores autorizados
+    userData.email = this.userForm.value.email;
+
+    // En modo creación, incluir password obligatorio
     if (!this.isEditMode) {
-      userData.email = this.userForm.value.email;
       userData.password = this.userForm.value.password;
     }
 

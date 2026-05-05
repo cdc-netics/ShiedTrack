@@ -8,7 +8,8 @@ import { Injectable } from '@angular/core';
   providedIn: 'root'
 })
 export class ThemeService {
-  private logoUrl = 'assets/logo.svg';
+  private static readonly DEFAULT_LOGO = '/assets/logo.svg';
+  private logoUrl = ThemeService.DEFAULT_LOGO;
 
   applyTheme(theme: { primaryColor?: string; logoUrl?: string }): void {
     const root = document.documentElement;
@@ -17,12 +18,27 @@ export class ThemeService {
       root.style.setProperty('--primary-color', theme.primaryColor);
     }
 
-    if (theme.logoUrl) {
-      this.logoUrl = theme.logoUrl;
+    if (theme.logoUrl && theme.logoUrl.trim()) {
+      this.logoUrl = this.normalizeLogoUrl(theme.logoUrl.trim());
+    } else {
+      this.logoUrl = ThemeService.DEFAULT_LOGO;
     }
   }
 
   get currentLogo(): string {
     return this.logoUrl;
+  }
+
+  private normalizeLogoUrl(url: string): string {
+    if (/^https?:\/\//i.test(url) || url.startsWith('/assets/') || url.startsWith('assets/')) {
+      if (url.startsWith('assets/')) {
+        return `/${url}`;
+      }
+      return url;
+    }
+    if (url.startsWith('/')) {
+      return url;
+    }
+    return `/${url}`;
   }
 }

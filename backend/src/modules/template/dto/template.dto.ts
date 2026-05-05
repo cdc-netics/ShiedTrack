@@ -90,8 +90,8 @@ export class CreateTemplateDto {
   @IsString({ each: true })
   tags?: string[];
 
-  @ApiProperty({ example: "GLOBAL", description: "Alcance: GLOBAL o TENANT" })
-  @IsEnum(["GLOBAL", "TENANT"])
+  @ApiProperty({ example: "USER", description: "Alcance: USER, GLOBAL o TENANT" })
+  @IsEnum(["USER", "GLOBAL", "TENANT"])
   scope: string;
 
   @ApiPropertyOptional({

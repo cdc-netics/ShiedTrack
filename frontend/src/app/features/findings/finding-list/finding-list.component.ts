@@ -6,7 +6,7 @@ import {
   signal,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatTableModule } from '@angular/material/table';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -162,22 +162,22 @@ import { environment } from '../../../../environments/environment';
           </div>
           
           <div class="ui-stat-strip" aria-label="Conteo por severidad">
-            <div class="ui-stat-pill ui-stat-pill--critical">
+            <button type="button" class="ui-stat-pill ui-stat-pill--critical" (click)="quickFilterBySeverity('CRITICAL')">
               <span class="ui-stat-pill__count">{{ getCountBySeverity('CRITICAL') }}</span>
               <span class="ui-stat-pill__label">Críticos</span>
-            </div>
-            <div class="ui-stat-pill ui-stat-pill--high">
+            </button>
+            <button type="button" class="ui-stat-pill ui-stat-pill--high" (click)="quickFilterBySeverity('HIGH')">
               <span class="ui-stat-pill__count">{{ getCountBySeverity('HIGH') }}</span>
               <span class="ui-stat-pill__label">Altos</span>
-            </div>
-            <div class="ui-stat-pill ui-stat-pill--medium">
+            </button>
+            <button type="button" class="ui-stat-pill ui-stat-pill--medium" (click)="quickFilterBySeverity('MEDIUM')">
               <span class="ui-stat-pill__count">{{ getCountBySeverity('MEDIUM') }}</span>
               <span class="ui-stat-pill__label">Medios</span>
-            </div>
-            <div class="ui-stat-pill ui-stat-pill--low">
+            </button>
+            <button type="button" class="ui-stat-pill ui-stat-pill--low" (click)="quickFilterBySeverity('LOW')">
               <span class="ui-stat-pill__count">{{ getCountBySeverity('LOW') }}</span>
               <span class="ui-stat-pill__label">Bajos</span>
-            </div>
+            </button>
           </div>
       </section>
 
@@ -295,15 +295,15 @@ import { environment } from '../../../../environments/environment';
             <ng-container matColumnDef="actions">
               <th mat-header-cell *matHeaderCellDef>Acciones</th>
               <td mat-cell *matCellDef="let finding">
-                <button mat-icon-button [routerLink]="['/findings', finding._id]" 
+                <button mat-icon-button [routerLink]="['/findings', finding._id]" (click)="$event.stopPropagation()"
                         matTooltip="Ver detalles">
                   <mat-icon>visibility</mat-icon>
                 </button>
-                <button mat-icon-button [routerLink]="['/findings', finding._id, 'edit']"
+                <button mat-icon-button [routerLink]="['/findings', finding._id, 'edit']" (click)="$event.stopPropagation()"
                         matTooltip="Editar">
                   <mat-icon>edit</mat-icon>
                 </button>
-                <button mat-icon-button [routerLink]="['/findings', finding._id, 'timeline']"
+                <button mat-icon-button [routerLink]="['/findings', finding._id, 'timeline']" (click)="$event.stopPropagation()"
                         matTooltip="Ver timeline">
                   <mat-icon>history</mat-icon>
                 </button>
@@ -311,7 +311,9 @@ import { environment } from '../../../../environments/environment';
             </ng-container>
 
             <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-            <tr mat-row *matRowDef="let row; columns: displayedColumns;" 
+            <tr mat-row *matRowDef="let row; columns: displayedColumns;"
+                (click)="openFinding(row)"
+                class="clickable-row"
                 [class.row-critical]="row.severity === 'CRITICAL'"></tr>
           </table>
           </div>
@@ -347,6 +349,10 @@ import { environment } from '../../../../environments/environment';
 
     .row-critical {
       background: #ffebee !important;
+    }
+
+    .clickable-row {
+      cursor: pointer;
     }
 
     .code-cell {
@@ -482,6 +488,7 @@ export class FindingListComponent implements OnInit {
   projectService = inject(ProjectService);
   http = inject(HttpClient);
   route = inject(ActivatedRoute);
+  private router = inject(Router);
   
   // Columnas visibles de la tabla
   displayedColumns = ['select', 'code', 'title', 'severity', 'cvss', 'status', 'project', 'date', 'actions'];
@@ -543,6 +550,16 @@ export class FindingListComponent implements OnInit {
     const clientIdFromQuery = this.route.snapshot.queryParamMap.get('clientId');
     if (clientIdFromQuery) {
       this.onClientChange(clientIdFromQuery);
+    }
+    const severityFromQuery = this.route.snapshot.queryParamMap.get('severity');
+    if (severityFromQuery) {
+      this.severityFilter.set(String(severityFromQuery).toUpperCase());
+      this.applyFilters();
+    }
+    const statusFromQuery = this.route.snapshot.queryParamMap.get('status');
+    if (statusFromQuery) {
+      this.statusFilter.set(String(statusFromQuery).toUpperCase());
+      this.applyFilters();
     }
   }
 
@@ -697,6 +714,16 @@ export class FindingListComponent implements OnInit {
   getCountBySeverity(severity: string): number {
     // Recuento rapido para tarjetas de resumen
     return this.findingService.findings().filter(f => f.severity === severity).length;
+  }
+
+  quickFilterBySeverity(severity: string): void {
+    this.severityFilter.set(severity);
+    this.applyFilters();
+  }
+
+  openFinding(finding: any): void {
+    if (!finding?._id) return;
+    void this.router.navigate(['/findings', finding._id]);
   }
 
   getSeverityLabel(severity: string): string {

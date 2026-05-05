@@ -36,12 +36,18 @@ export class AuditController {
   @ApiQuery({ name: "entityId", required: false })
   @ApiQuery({ name: "action", required: false })
   @ApiQuery({ name: "severity", required: false })
+  @ApiQuery({ name: "performedBy", required: false })
+  @ApiQuery({ name: "startDate", required: false, type: String })
+  @ApiQuery({ name: "endDate", required: false, type: String })
   @ApiQuery({ name: "limit", required: false, type: Number })
   async getLogs(
     @Query("entityType") entityType?: string,
     @Query("entityId") entityId?: string,
     @Query("action") action?: string,
     @Query("severity") severity?: string,
+    @Query("performedBy") performedBy?: string,
+    @Query("startDate") startDate?: string,
+    @Query("endDate") endDate?: string,
     @Query("limit") limit?: number,
     @Req() req?: Request,
   ) {
@@ -53,6 +59,9 @@ export class AuditController {
         entityId,
         action,
         severity,
+        performedBy,
+        startDate: startDate ? new Date(startDate) : undefined,
+        endDate: endDate ? new Date(endDate) : undefined,
         limit: limit ? parseInt(limit.toString(), 10) : 100,
       }),
     );

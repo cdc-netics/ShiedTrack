@@ -18,6 +18,7 @@ import {
   LoginDto,
   EnableMfaDto,
   UpdateUserDto,
+  UpdateProfileDto,
 } from "./dto/auth.dto";
 import { UserRole } from "../../common/enums";
 import { UserAreaService } from "./user-area.service";
@@ -224,6 +225,7 @@ export class AuthService {
         email: user.email,
         firstName: user.firstName,
         lastName: user.lastName,
+        avatarUrl: user.avatarUrl,
         role: user.role,
         clientId: user.clientId,
         tenantIds: user.tenantIds,
@@ -350,8 +352,53 @@ export class AuthService {
   /**
    * Actualiza un usuario
    */
-  async updateUser(userId: string, dto: UpdateUserDto): Promise<User> {
-    const { areaIds, ...updateData } = dto;
+  async updateUser(
+    userId: string,
+    dto: UpdateUserDto,
+    currentUser: any,
+  ): Promise<User> {
+    const { areaIds, password, email, ...rest } = dto;
+    const targetUser = await this.userModel.findById(userId);
+
+    if (!targetUser) {
+      throw new BadRequestException("Usuario no encontrado");
+    }
+
+    if (currentUser?.role === UserRole.CLIENT_ADMIN) {
+      if (targetUser.clientId?.toString() !== currentUser.clientId?.toString()) {
+        throw new ForbiddenException(
+          "No tiene permisos para editar usuarios de otro cliente",
+        );
+      }
+
+      if (
+        [UserRole.OWNER, UserRole.PLATFORM_ADMIN, UserRole.CLIENT_ADMIN].includes(
+          targetUser.role,
+        )
+      ) {
+        throw new ForbiddenException(
+          "CLIENT_ADMIN no puede editar usuarios administrativos globales",
+        );
+      }
+    }
+
+    const updateData: Record<string, any> = { ...rest };
+
+    if (email && email !== targetUser.email) {
+      const existingUser = await this.userModel.findOne({
+        email,
+        _id: { $ne: userId },
+      });
+      if (existingUser) {
+        throw new ConflictException("El email ya está registrado");
+      }
+      updateData.email = email;
+    }
+
+    if (password) {
+      updateData.password = await bcrypt.hash(password, 10);
+    }
+
     const user = await this.userModel
       .findByIdAndUpdate(userId, updateData, { new: true })
       .select("-password -mfaSecret");
@@ -372,6 +419,58 @@ export class AuthService {
 
     this.logger.log(`Usuario actualizado: ${user.email}`);
     return user;
+  }
+
+  async updateOwnProfile(userId: string, dto: UpdateProfileDto): Promise<User> {
+    const user = await this.userModel.findById(userId);
+    if (!user) {
+      throw new BadRequestException("Usuario no encontrado");
+    }
+
+    const updateData: Record<string, any> = {};
+
+    if (dto.firstName !== undefined) updateData.firstName = dto.firstName;
+    if (dto.lastName !== undefined) updateData.lastName = dto.lastName;
+    if (dto.avatarUrl !== undefined) updateData.avatarUrl = dto.avatarUrl;
+
+    if (dto.email && dto.email !== user.email) {
+      const existing = await this.userModel.findOne({
+        email: dto.email,
+        _id: { $ne: userId },
+      });
+      if (existing) {
+        throw new ConflictException("El email ya está registrado");
+      }
+      updateData.email = dto.email;
+    }
+
+    if (dto.newPassword || dto.currentPassword) {
+      if (!dto.currentPassword || !dto.newPassword) {
+        throw new BadRequestException(
+          "Para cambiar contraseña debe enviar currentPassword y newPassword",
+        );
+      }
+
+      const isCurrentPasswordValid = await bcrypt.compare(
+        dto.currentPassword,
+        user.password,
+      );
+      if (!isCurrentPasswordValid) {
+        throw new BadRequestException("La contraseña actual es incorrecta");
+      }
+
+      updateData.password = await bcrypt.hash(dto.newPassword, 10);
+    }
+
+    const updated = await this.userModel
+      .findByIdAndUpdate(userId, updateData, { new: true })
+      .select("-password -mfaSecret");
+
+    if (!updated) {
+      throw new BadRequestException("No se pudo actualizar el perfil");
+    }
+
+    return updated;
   }
 
   /**

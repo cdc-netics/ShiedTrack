@@ -11,6 +11,7 @@ import { MatMenuModule } from '@angular/material/menu';
 import { MatSidenavModule } from '@angular/material/sidenav';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatExpansionModule } from '@angular/material/expansion';
 import { AuthService } from '../services/auth.service';
 import { ThemeService } from '../services/theme.service';
 import { environment } from '../../../environments/environment';
@@ -29,6 +30,7 @@ import { environment } from '../../../environments/environment';
     MatMenuModule,
     MatChipsModule,
     MatTooltipModule,
+    MatExpansionModule,
   ],
   templateUrl: './main-layout.component.html',
   styleUrl: './main-layout.component.scss',
@@ -36,8 +38,7 @@ import { environment } from '../../../environments/environment';
 export class MainLayoutComponent implements OnInit, AfterViewInit {
   private readonly http = inject(HttpClient);
   currentTenant: { name?: string; displayName?: string } | null = null;
-
-  protected readonly environment = environment;
+  logoLoadFailed = false;
 
   constructor(
     public authService: AuthService,
@@ -87,7 +88,12 @@ export class MainLayoutComponent implements OnInit, AfterViewInit {
       primaryColor: clientSettings?.primaryColor,
       logoUrl: clientSettings?.logoUrl,
     });
+    this.logoLoadFailed = false;
     void this.loadCurrentTenant();
+  }
+
+  onLogoError(): void {
+    this.logoLoadFailed = true;
   }
 
   async loadCurrentTenant(): Promise<void> {
