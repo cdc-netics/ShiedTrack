@@ -47,6 +47,7 @@ El sistema funciona en lo básico, pero hay problemas de navegación, branding, 
 | B7b | ✅ Completado | Bugs - Frontend | Wizard Profesional campo proyecto no carga de forma inmediata toda la informacion | Corregido filtrado reactivo para soportar objetos poblados y tenantId |
 | B7c | ✅ Completado | Bugs - Frontend | Duración del proyecto no actualiza contador | Implementado seguimiento reactivo de fechas con signals |
 | B8a | ✅ Completado | Bugs - Backend | Error E11000 duplicidad en códigos VULN-000001 | Implementado correlativo por año con ordenamiento DESC robusto |
+| B10a | ✅ Completado | Bugs - Docker/Seeds | Login falla con credenciales seed en Docker | Runtime copia scripts/package; seeds usan bcryptjs; owner se normaliza |
 | M1 | ✅ Completado | Mejoras | SMTP test falla (Outlook 535) | Fix realizado, falta validar |
 | M2 | ✅ Completado | Mejoras | Multi‑tenancy inconsistente | Unificado en módulo Projects |
 | M3 | ✅ Completado | Mejoras | Permisos de lectura por proyecto para clientes | Implementado visibleProjectIds |
@@ -107,6 +108,14 @@ El sistema funciona en lo básico, pero hay problemas de navegación, branding, 
 ---
 
 ### Sección B — Problemas y Depuración (Bugs)
+
+#### **B10a - Login falla con credenciales seed en Docker**
+- **Estado:** ✅ Completado
+- **Fecha:** 2026-05-08
+- **Descripcion:** El sitio rechazaba credenciales de desarrollo aunque Docker estaba levantado y el selector de login mostraba usuarios seed validos.
+- **Causa raiz:** La imagen runtime del backend no copiaba `package*.json` ni `scripts/`, pero `docker-entrypoint.sh` intentaba ejecutar `npm run seed:owner` y `npm run seed:test`. Ademas, los seeds requerian `bcrypt`, mientras que el backend y la imagen solo tienen `bcryptjs`. Los errores quedaban ocultos por `|| echo`, dejando el contenedor arriba con usuarios/credenciales antiguas en Mongo.
+- **Solucion aplicada:** `backend/Dockerfile` copia `package*.json` y `scripts/`; `backend/docker-entrypoint.sh` ya no oculta errores de seed; `create-owner.js` y `seed-test-data.js` usan `bcryptjs`; `create-owner.js` normaliza `admin@shieldtrack.com` si ya existe.
+- **Validacion:** Backend reconstruido con `docker compose up --build -d backend`; login por API OK para `admin@shieldtrack.com / Admin123!`, `owner@shieldtrack.com / Password123!`, `clientadmin@acmecorp.com / Password123!` y `viewer@shieldtrack.com / Password123!`.
 
 #### **B1a — Evidencias no se ven ni previsualizan**
 - **Estado:** Pendiente  
