@@ -7,6 +7,12 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 ## [Unreleased]
 
+- **FIX (Docker - backend seeds / login):** la imagen runtime del backend ahora copia `package*.json` y `scripts/`, permitiendo que `docker-entrypoint.sh` ejecute `npm run seed:owner` y `npm run seed:test` al iniciar. Antes el entrypoint intentaba correr seeds que no existian dentro del contenedor.
+- **FIX (Seeds - credenciales de desarrollo):** `create-owner.js` y `seed-test-data.js` usan `bcryptjs`, alineado con la dependencia real del backend. Esto corrige fallos en Docker donde `bcrypt` no estaba instalado.
+- **FIX (Seeds - idempotencia):** `create-owner.js` ahora normaliza el usuario `admin@shieldtrack.com` si ya existe, reactivandolo y dejando la contrasena de desarrollo en `Admin123!`. Esto evita credenciales antiguas en volumenes persistentes de Mongo.
+- **OPS (Docker entrypoint):** los errores de seeds ya no se ocultan con `|| echo`; si una carga inicial falla, el contenedor backend falla de forma visible para facilitar diagnostico.
+- **VALIDACION:** verificado login por API con `admin@shieldtrack.com / Admin123!` y usuarios seed `owner@shieldtrack.com`, `clientadmin@acmecorp.com`, `viewer@shieldtrack.com` con `Password123!`.
+
 ## [2.2.1] - 2026-05-05
 
 - **FIX (Docker — backend / 502):** `nest build` con la config previa podía dejar **solo `.d.ts`** en `dist` (sin `.js`), de modo que el entrypoint fallaba y nginx devolvía **502**. Se añade `nest-cli.json` (`builder: "tsc"`, `tsconfig.build.json`), `tsconfig.build.json` con `include`/`rootDir`/`incremental: false`, y `docker-entrypoint.sh` admite `dist/main.js` o `dist/src/main.js`.

@@ -12,8 +12,8 @@ fi
 
 echo "🌱 Ejecutando carga de datos iniciales (Seeds)..."
 # Ejecutamos los scripts de seed definidos en tu package.json
-npm run seed:owner || echo "⚠️ El owner ya existe o hubo un error"
-npm run seed:test || echo "⚠️ Error al cargar datos de prueba"
+npm run seed:owner
+npm run seed:test
 
 echo "🚀 Iniciando aplicación..."
 exec node "$MAIN_JS"

@@ -10,7 +10,7 @@
  */
 
 const mongoose = require('mongoose');
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 
 const MONGO_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/shieldtrack';
 
