@@ -46,6 +46,13 @@ El sistema funciona en lo básico, pero hay problemas de navegación, branding, 
 | B7a | ✅ Completado | Bugs - Frontend | Nuevo Hallazgo - Wizard Profesional, seleccion de cliente no permite corregir | Agregado evento focus para mostrar lista completa |
 | B7b | ✅ Completado | Bugs - Frontend | Wizard Profesional campo proyecto no carga de forma inmediata toda la informacion | Corregido filtrado reactivo para soportar objetos poblados y tenantId |
 | B7c | ✅ Completado | Bugs - Frontend | Duración del proyecto no actualiza contador | Implementado seguimiento reactivo de fechas con signals |
+| B7d | ✅ Completado | Bugs - Findings | Nuevo Hallazgo falla al guardar con cve_id, detection_source y references | DTO/backend y payload del wizard alineados; contador de codes autocorregido |
+| B7e | ✅ Completado | Bugs - Findings | Cierre masivo desde `/findings` no cierra ni oculta hallazgos | Frontend envia `_id` como `ids`; backend usa motivo valido y lista se refresca |
+| B7f | ✅ Completado | Bugs - Findings | Boton editar de hallazgo redirige a dashboard | Agregada ruta `/findings/:id/edit` y entrada directa en modo edicion |
+| B7g | ✅ Completado | Bugs - Findings | Guardar edicion de hallazgo responde 400 Bad Request | Payload de edicion alineado: `cvssScore` y `references` string[] |
+| B7h | ✅ Completado | Bugs - Findings | Boton ver timeline redirige a dashboard | Agregada ruta `/findings/:id/timeline` y apertura directa en pestaña Seguimiento |
+| B7i | ✅ Completado | Bugs - Findings | Seguimiento agregado con evidencia desaparece al volver a entrar | Backend guarda timeline con ObjectId, datos existentes migrados y frontend normaliza render |
+| B7j | ✅ Completado | Bugs - Findings | Modal Agregar Seguimiento aparece desordenado | Formato original restaurado con ejemplos/adjuntos y guardado conservado |
 | B8a | ✅ Completado | Bugs - Backend | Error E11000 duplicidad en códigos VULN-000001 | Implementado correlativo por año con ordenamiento DESC robusto |
 | B10a | ✅ Completado | Bugs - Docker/Seeds | Login falla con credenciales seed en Docker | Runtime copia scripts/package; seeds usan bcryptjs; owner se normaliza |
 | M1 | ✅ Completado | Mejoras | SMTP test falla (Outlook 535) | Fix realizado, falta validar |
@@ -116,6 +123,62 @@ El sistema funciona en lo básico, pero hay problemas de navegación, branding, 
 - **Causa raiz:** La imagen runtime del backend no copiaba `package*.json` ni `scripts/`, pero `docker-entrypoint.sh` intentaba ejecutar `npm run seed:owner` y `npm run seed:test`. Ademas, los seeds requerian `bcrypt`, mientras que el backend y la imagen solo tienen `bcryptjs`. Los errores quedaban ocultos por `|| echo`, dejando el contenedor arriba con usuarios/credenciales antiguas en Mongo.
 - **Solucion aplicada:** `backend/Dockerfile` copia `package*.json` y `scripts/`; `backend/docker-entrypoint.sh` ya no oculta errores de seed; `create-owner.js` y `seed-test-data.js` usan `bcryptjs`; `create-owner.js` normaliza `admin@shieldtrack.com` si ya existe.
 - **Validacion:** Backend reconstruido con `docker compose up --build -d backend`; login por API OK para `admin@shieldtrack.com / Admin123!`, `owner@shieldtrack.com / Password123!`, `clientadmin@acmecorp.com / Password123!` y `viewer@shieldtrack.com / Password123!`.
+
+#### **B7d - Nuevo Hallazgo falla al guardar con campos tecnicos**
+- **Estado:** ✅ Completado
+- **Fecha:** 2026-05-11
+- **Descripcion:** Al guardar un hallazgo desde `/findings/new`, la API respondia `property cve_id should not exist`, `property detection_source should not exist` y `each value in references must be a string`.
+- **Causa raiz:** El wizard enviaba `cve_id` y `detection_source`, pero los DTOs de hallazgos no los aceptaban. Ademas, `references` se enviaba como objetos `{ label, url }` aunque el backend espera `string[]`. Durante la validacion se detecto tambien que el contador de `code` podia quedar desfasado con datos seed y generar duplicados `VULN-2026-000001`.
+- **Solucion aplicada:** `CreateFindingDto` y `UpdateFindingDto` aceptan `cve_id` y `detection_source`; el wizard convierte referencias a strings antes de guardar; `FindingService` mapea `cvssScore` a `cvss_score`; el hook de correlativos sincroniza el contador con el mayor codigo existente por prefijo/anio antes de incrementar.
+- **Validacion:** Backend y frontend reconstruidos con `docker compose up --build -d backend frontend`. Prueba por API creada con `cve_id`, `detection_source`, `references: string[]` y `cvssScore`; se genero `VULN-2026-000002` correctamente y el hallazgo temporal fue eliminado.
+
+#### **B7e - Cierre masivo no oculta hallazgos en listado**
+- **Estado:** ✅ Completado
+- **Fecha:** 2026-05-11
+- **Descripcion:** En `/findings`, al marcar un hallazgo y presionar `Cerrar`, el hallazgo no se cerraba ni desaparecia del listado activo.
+- **Causa raiz:** El frontend tomaba `f.id` aunque los documentos usan `_id`, y enviaba el body como `{ findingIds }`, mientras que el backend esperaba `{ ids }`. Ademas, el servicio frontend marcaba estado local como `Closed`, valor que no coincide con el enum real `CLOSED`.
+- **Solucion aplicada:** El listado ahora obtiene `_id`, el servicio envia `{ ids, closeReason: 'FIXED' }`, elimina localmente los hallazgos cerrados y recarga la lista. El backend valida `closeReason` como enum y usa `FIXED` por defecto.
+- **Validacion:** Prueba por API creada con hallazgo temporal `VULN-2026-000004`; `/findings/bulk-close` devolvio `1`, el detalle quedo `CLOSED/FIXED`, el hallazgo ya no aparecio en `/findings` y luego fue eliminado permanentemente.
+
+#### **B7f - Boton editar de hallazgo redirige a dashboard**
+- **Estado:** ✅ Completado
+- **Fecha:** 2026-05-12
+- **Descripcion:** En `/findings`, al presionar el icono del lapiz, la app navegaba a `/findings/:id/edit` pero terminaba en `/dashboard`.
+- **Causa raiz:** El router no tenia declarada la ruta `/findings/:id/edit`; por eso Angular caia en la ruta wildcard `**` y redirigia a `dashboard`.
+- **Solucion aplicada:** Se agrego la ruta `/findings/:id/edit` reutilizando `FindingDetailComponent` con `data: { editMode: true }`. El componente ahora activa `editMode` al entrar por esa ruta.
+- **Validacion:** Build frontend exitoso con `npm.cmd run build`; contenedor `frontend` reconstruido con `docker compose up --build -d frontend`.
+
+#### **B7g - Guardar edicion de hallazgo responde 400 Bad Request**
+- **Estado:** ✅ Completado
+- **Fecha:** 2026-05-12
+- **Descripcion:** Desde `/findings/:id/edit`, al guardar cambios, el backend respondia 400 y la consola mostraba `Failed to load resource`.
+- **Causa raiz:** El editor enviaba `cvss_score` y `references`; `UpdateFindingDto` esperaba `cvssScore` y no permitia `references`, por lo que el `ValidationPipe` rechazaba el payload con `property cvss_score should not exist` y `property references should not exist`.
+- **Solucion aplicada:** El editor envia `cvssScore`, normaliza referencias a `string[]`, y renderiza referencias existentes aunque vengan desde API como strings. `UpdateFindingDto` ahora acepta `references` y `FindingService.update()` mapea `cvssScore` a `cvss_score` antes de persistir.
+- **Validacion:** Frontend compila con `npm.cmd run build`; Docker reconstruido con `docker compose up --build -d backend frontend`. Prueba por API edito un hallazgo temporal con `cvssScore: 7.1` y `references`, confirmando respuesta OK y persistencia en `cvss_score`; el hallazgo temporal fue eliminado.
+
+#### **B7h - Boton ver timeline redirige a dashboard**
+- **Estado:** ✅ Completado
+- **Fecha:** 2026-05-12
+- **Descripcion:** En `/findings`, al presionar el icono de historial/timeline, la app navegaba a `/findings/:id/timeline` pero terminaba en `/dashboard`.
+- **Causa raiz:** El router no tenia declarada la ruta `/findings/:id/timeline`; Angular caia en la ruta wildcard `**` y redirigia a `dashboard`.
+- **Solucion aplicada:** Se agrego la ruta `/findings/:id/timeline` reutilizando `FindingDetailComponent` con `data: { tabIndex: 3 }`. El componente ahora permite seleccionar la pestaña inicial y abre directamente `Seguimiento`.
+- **Validacion:** Build frontend exitoso con `npm.cmd run build`; contenedor `frontend` reconstruido con `docker compose up --build -d frontend`.
+
+#### **B7i - Seguimiento con evidencia no aparece tras guardar**
+- **Estado:** ✅ Completado
+- **Fecha:** 2026-05-12
+- **Descripcion:** En `/findings/:id/timeline`, al agregar un seguimiento con evidencia, podia aparecer inmediatamente pero desaparecer al salir y volver a entrar. Tambien se podia desordenar el render del timeline al recibir evidencias pobladas.
+- **Causa raiz:** `FindingUpdate` define `findingId`, `createdBy` y `evidenceIds` como `ObjectId`, pero el servicio creaba updates usando strings del DTO. Ademas, el seed de Docker se ejecutaba en cada arranque y recreaba los hallazgos de prueba con IDs nuevos, dejando huerfanos los seguimientos creados sobre esos hallazgos.
+- **Solucion aplicada:** `FindingService.createUpdate()`, `getTimeline()` y los cambios de estado ahora convierten IDs a `ObjectId` de forma explicita. Se migraron los updates existentes en MongoDB para recuperar los seguimientos ya creados. El seed de prueba usa IDs estables para tenants, clientes, areas, proyectos, usuarios y hallazgos. En frontend, `FindingDetailComponent` normaliza y ordena los updates antes de renderizar, soportando evidencias como IDs o documentos poblados.
+- **Validacion:** Se confirmo por API que `/api/findings/6a0376fcba97a85a6ae4a3c4/timeline` devuelve `COUNT=1` con el seguimiento `6a0377695d0c126a104e0e10` y 1 evidencia despues de reconstruir Docker. Build frontend exitoso, build Docker backend/frontend exitoso y contenedores reconstruidos.
+
+#### **B7j - Modal Agregar Seguimiento desordenado**
+- **Estado:** ✅ Completado
+- **Fecha:** 2026-05-12
+- **Descripcion:** Al presionar `Agregar Seguimiento`, el formulario del modal se veia desordenado y dificil de usar.
+- **Causa raiz:** El dialogo tenia textos largos dentro de `mat-option`, caracteres rotos y chips de archivos sin una estructura visual estable.
+- **Solucion aplicada:** Se restauro `AddUpdateDialogComponent` con el formato original: titulo, selector de tipo, descripcion, adjuntar evidencias y recuadro de ejemplos. Se corrigieron textos/estilos que desordenaban el modal y se conserva el mismo payload (`type`, `content`, `files`) usado por `FindingDetailComponent`.
+- **Validacion:** Build frontend exitoso con `npm.cmd run build`.
 
 #### **B1a — Evidencias no se ven ni previsualizan**
 - **Estado:** Pendiente  

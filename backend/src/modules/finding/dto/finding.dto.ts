@@ -84,6 +84,16 @@ export class CreateFindingDto {
   @IsNumber()
   cvssScore?: number;
 
+  @ApiPropertyOptional({ example: "CVE-2024-12345", description: "ID de CVE" })
+  @IsOptional()
+  @IsString()
+  cve_id?: string;
+
+  @ApiPropertyOptional({ description: "IP, URL u origen de detecciÃ³n" })
+  @IsOptional()
+  @IsString()
+  detection_source?: string;
+
   @ApiPropertyOptional({ example: "CWE-89", description: "ID de CWE" })
   @IsOptional()
   @IsString()
@@ -190,6 +200,16 @@ export class UpdateFindingDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
+  cve_id?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  detection_source?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
   cweId?: string;
 
   @ApiPropertyOptional()
@@ -212,6 +232,12 @@ export class UpdateFindingDto {
   @IsArray()
   @IsString({ each: true })
   controls?: string[];
+
+  @ApiPropertyOptional({ type: [String], description: "Referencias externas" })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  references?: string[];
 
   @ApiPropertyOptional({ type: [String] })
   @IsOptional()
@@ -252,8 +278,8 @@ export class BulkCloseFindingsDto {
   @IsMongoId({ each: true, message: "Cada id debe ser un ObjectId válido" })
   ids: string[];
 
-  @ApiPropertyOptional({ description: "Motivo de cierre en bloque" })
+  @ApiPropertyOptional({ enum: CloseReason, description: "Motivo de cierre en bloque" })
   @IsOptional()
-  @IsString()
-  closeReason?: string;
+  @IsEnum(CloseReason)
+  closeReason?: CloseReason;
 }

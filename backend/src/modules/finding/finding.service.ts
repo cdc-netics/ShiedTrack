@@ -15,7 +15,11 @@ import {
   CloseFindingDto,
 } from "./dto/finding.dto";
 import { CreateFindingUpdateDto } from "./dto/finding-update.dto";
-import { FindingStatus, FindingUpdateType } from "../../common/enums";
+import {
+  FindingStatus,
+  FindingUpdateType,
+  CloseReason,
+} from "../../common/enums";
 import { Project } from "../project/schemas/project.schema";
 import { SystemConfig } from "../system-config/schemas/system-config.schema";
 import { Area } from "../area/schemas/area.schema";
@@ -43,6 +47,14 @@ export class FindingService {
 
   private toObjectId(id?: string): Types.ObjectId | undefined {
     if (!id) return undefined;
+    return new Types.ObjectId(id);
+  }
+
+  private toRequiredObjectId(id: string, fieldName: string): Types.ObjectId {
+    if (!Types.ObjectId.isValid(id)) {
+      throw new BadRequestException(`${fieldName} debe ser un ObjectId válido`);
+    }
+
     return new Types.ObjectId(id);
   }
 
@@ -364,6 +376,10 @@ export class FindingService {
       ...(dto as unknown as Record<string, unknown>),
     };
     delete createPayload.code;
+    if (dto.cvssScore !== undefined) {
+      createPayload.cvss_score = dto.cvssScore;
+      delete createPayload.cvssScore;
+    }
 
     const finding = new this.findingModel({
       ...(createPayload as unknown as CreateFindingDto),
@@ -500,6 +516,11 @@ export class FindingService {
       delete (dto as any).tenantId;
     }
 
+    if (dto.cvssScore !== undefined) {
+      (dto as any).cvss_score = dto.cvssScore;
+      delete (dto as any).cvssScore;
+    }
+
     if ((dto as any).projectId !== undefined) {
       const targetProject = await this.findProjectOrFailWithAccess(
         dto.projectId as any,
@@ -580,7 +601,7 @@ export class FindingService {
     ids: string[],
     userId: string,
     currentUser?: any,
-    closeReason: string = "Bulk Close",
+    closeReason: CloseReason = CloseReason.FIXED,
   ): Promise<number> {
     if (!ids || ids.length === 0) return 0;
 
@@ -689,9 +710,18 @@ export class FindingService {
   ): Promise<FindingUpdate> {
     await this.findFindingOrFailWithAccess(dto.findingId, currentUser);
 
+    const findingObjectId = this.toRequiredObjectId(dto.findingId, "findingId");
+    const createdByObjectId = this.toRequiredObjectId(createdBy, "createdBy");
+    const evidenceObjectIds = (dto.evidenceIds || []).map((evidenceId) =>
+      this.toRequiredObjectId(evidenceId, "evidenceIds"),
+    );
+
     const update = new this.updateModel({
-      ...dto,
-      createdBy,
+      findingId: findingObjectId,
+      type: dto.type,
+      content: dto.content,
+      evidenceIds: evidenceObjectIds,
+      createdBy: createdByObjectId,
     });
 
     await update.save();
@@ -711,9 +741,10 @@ export class FindingService {
     currentUser?: any,
   ): Promise<FindingUpdate[]> {
     await this.findFindingOrFailWithAccess(findingId, currentUser);
+    const findingObjectId = this.toRequiredObjectId(findingId, "findingId");
 
     return this.updateModel
-      .find({ findingId })
+      .find({ findingId: findingObjectId })
       .populate("createdBy", "firstName lastName email")
       .populate("evidenceIds", "filename mimeType size")
       .sort({ createdAt: -1 });
@@ -730,12 +761,12 @@ export class FindingService {
     content: string,
   ): Promise<void> {
     const update = new this.updateModel({
-      findingId,
+      findingId: this.toRequiredObjectId(findingId, "findingId"),
       type: FindingUpdateType.STATUS_CHANGE,
       content,
       previousStatus,
       newStatus,
-      createdBy: userId,
+      createdBy: this.toRequiredObjectId(userId, "createdBy"),
     });
 
     await update.save();

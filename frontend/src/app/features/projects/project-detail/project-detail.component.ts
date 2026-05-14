@@ -110,7 +110,6 @@ import { UserRole } from '../../../shared/enums';
                       <mat-option [value]="client._id">{{ client.name }}</mat-option>
                     }
                   </mat-select>
-                  <mat-hint>Si el backend no lo acepta, no se enviará</mat-hint>
                 </mat-form-field>
               </div>
 
@@ -539,6 +538,7 @@ saveProject(): void {
   // ✅ UPDATE payload (PUT) — no mandamos tenantId
   const updatePayload: any = this.cleanUndefined({
     ...basePayload,
+    clientId: selectedClientId || undefined,
   });
 
   console.log('✅ tenantId resuelto:', tenantId);

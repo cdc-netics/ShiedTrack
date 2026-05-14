@@ -93,6 +93,11 @@ export class UpdateClientDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
+  displayName?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
   code?: string;
 
   @ApiPropertyOptional()

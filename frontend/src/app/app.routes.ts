@@ -56,6 +56,16 @@ export const routes: Routes = [
         loadComponent: () => import('./features/findings/finding-wizard').then(m => m.FindingWizardComponent)
       },
       {
+        path: 'findings/:id/edit',
+        loadComponent: () => import('./features/findings/finding-detail/finding-detail.component').then(m => m.FindingDetailComponent),
+        data: { editMode: true }
+      },
+      {
+        path: 'findings/:id/timeline',
+        loadComponent: () => import('./features/findings/finding-detail/finding-detail.component').then(m => m.FindingDetailComponent),
+        data: { tabIndex: 3 }
+      },
+      {
         path: 'templates',
         loadComponent: () => import('./features/admin/templates/template-list.component').then(m => m.TemplateListComponent)
       },

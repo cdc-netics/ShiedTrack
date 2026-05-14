@@ -198,17 +198,30 @@ export class TemplateDialogComponent {
     this.saving.set(true);
     const formData = this.templateForm.value;
 
-    // Convertir referencias de string a array
-    const templateData = {
-      ...formData,
-      references: formData.referencesText
-        ? formData.referencesText
-            .split('\n')
-            .map((url: string) => url.trim())
-            .filter((url: string) => url)
-            .map((url: string) => ({ label: url, url }))
-        : []
+    const references = formData.referencesText
+      ? formData.referencesText
+          .split('\n')
+          .map((url: string) => url.trim())
+          .filter((url: string) => url)
+          .map((url: string) => ({ label: url, url }))
+      : [];
+
+    const templateData: Record<string, unknown> = {
+      title: formData.title,
+      description: formData.description,
+      recommendation: formData.recommendation,
+      severity: formData.severity,
+      scope: formData.scope || 'USER',
+      references,
     };
+
+    if (formData.cvss_score !== null && formData.cvss_score !== undefined && formData.cvss_score !== '') {
+      templateData['cvss_score'] = Number(formData.cvss_score);
+    }
+
+    if (formData.cwe_id) {
+      templateData['cwe_id'] = formData.cwe_id;
+    }
 
     const request = this.isEditMode
       ? this.http.patch(`${this.API_URL}/${this.data._id}`, templateData)
