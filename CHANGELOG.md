@@ -7,6 +7,18 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 ## [Unreleased]
 
+- **FIX (Findings - seguimiento):** al agregar un seguimiento desde la pestaña `Seguimiento`, la UI ahora inserta el update creado inmediatamente en el timeline, apaga el loader del timeline y recarga datos/evidencias en segundo plano.
+- **FIX (Findings - timeline persistente):** los seguimientos ahora guardan `findingId`, `createdBy` y `evidenceIds` como `ObjectId`; se migraron los updates existentes que habian quedado como strings y el frontend normaliza el timeline antes de renderizarlo.
+- **FIX (Seeds Docker):** los datos de prueba ahora usan IDs estables para usuarios, tenants, proyectos y hallazgos; reiniciar/reconstruir Docker ya no deja huerfanos los timelines asociados a hallazgos seed.
+- **FIX (Findings - dialogo seguimiento):** el modal `Agregar Seguimiento` recupera el formato original con ejemplos y adjuntos, corrigiendo el orden visual y manteniendo el guardado/visualizacion del timeline.
+- **FIX (Findings - timeline):** se agrega la ruta `/findings/:id/timeline`; el boton de historial ahora abre el detalle del hallazgo directamente en la pestaña `Seguimiento`.
+- **FIX (Findings - guardar edicion):** el detalle de hallazgo ahora envia `cvssScore` y `references` en el formato aceptado por el backend; `UpdateFindingDto` acepta referencias y el servicio persiste CVSS en `cvss_score`.
+- **FIX (Findings - edicion):** se agrega la ruta `/findings/:id/edit` y el detalle de hallazgo abre automaticamente en modo edicion cuando se entra desde el icono del lapiz.
+- **FIX (Findings - cierre masivo):** el listado de hallazgos ahora envia `ids` con `_id` reales al endpoint `/findings/bulk-close`, usa motivo valido `FIXED` por defecto y refresca la lista para ocultar los hallazgos cerrados.
+- **FIX (Findings - Wizard):** el frontend ahora envia `references` como arreglo de strings al crear hallazgos, en vez de objetos `{ label, url }`, evitando el error `each value in references must be a string`.
+- **FIX (Findings - API):** `CreateFindingDto` y `UpdateFindingDto` aceptan los campos tecnicos `cve_id` y `detection_source`, alineados con el schema de Mongo y con el payload del wizard.
+- **FIX (Findings - CVSS):** al crear hallazgos, el backend mapea `cvssScore` al campo persistido `cvss_score` para no perder el valor enviado por el frontend.
+- **FIX (Findings - correlativos):** el generador de `code` sincroniza el contador con el mayor codigo existente por prefijo/anio antes de incrementar, evitando colisiones `E11000 duplicate key` cuando hay datos seed o contadores desfasados.
 - **FIX (Docker - backend seeds / login):** la imagen runtime del backend ahora copia `package*.json` y `scripts/`, permitiendo que `docker-entrypoint.sh` ejecute `npm run seed:owner` y `npm run seed:test` al iniciar. Antes el entrypoint intentaba correr seeds que no existian dentro del contenedor.
 - **FIX (Seeds - credenciales de desarrollo):** `create-owner.js` y `seed-test-data.js` usan `bcryptjs`, alineado con la dependencia real del backend. Esto corrige fallos en Docker donde `bcrypt` no estaba instalado.
 - **FIX (Seeds - idempotencia):** `create-owner.js` ahora normaliza el usuario `admin@shieldtrack.com` si ya existe, reactivandolo y dejando la contrasena de desarrollo en `Admin123!`. Esto evita credenciales antiguas en volumenes persistentes de Mongo.

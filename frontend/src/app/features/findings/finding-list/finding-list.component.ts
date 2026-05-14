@@ -527,13 +527,16 @@ export class FindingListComponent implements OnInit {
 
   /** Cierra masivamente los hallazgos seleccionados */
   bulkClose() {
-    const selectedIds = this.selection.selected.map(f => f.id);
+    const selectedIds = this.selection.selected
+      .map(f => f._id || f.id)
+      .filter(Boolean);
     if (!selectedIds.length) return;
 
     if (confirm(`¿Estás seguro de cerrar ${selectedIds.length} hallazgos?`)) {
       this.findingService.bulkClose(selectedIds).subscribe({
         next: () => {
           this.selection.clear();
+          this.loadFindings();
           // Opcional: mostrar notificación de éxito
         },
         error: (err) => console.error('Error closing findings', err)

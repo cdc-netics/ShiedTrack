@@ -27,7 +27,12 @@ import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { RolesGuard } from "../auth/guards/roles.guard";
 import { Roles } from "../auth/decorators/roles.decorator";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
-import { UserRole, FindingStatus, FindingSeverity } from "../../common/enums";
+import {
+  UserRole,
+  FindingStatus,
+  FindingSeverity,
+  CloseReason,
+} from "../../common/enums";
 
 @ApiTags("Findings")
 @Controller("findings")
@@ -138,7 +143,7 @@ export class FindingController {
       body.ids,
       user.userId,
       user,
-      body.closeReason || "Bulk Close",
+      body.closeReason || CloseReason.FIXED,
     );
   }
 
