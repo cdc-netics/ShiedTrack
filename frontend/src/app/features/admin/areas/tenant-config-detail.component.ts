@@ -437,7 +437,10 @@ export class TenantConfigDetailComponent implements OnInit {
     console.log('Guardando configuración del área:', this.config());
     
     // En una implementación real, se enviaría al backend
-    this.http.put(`${environment.apiUrl}/areas/${id}`, this.config()).subscribe({
+    const payload = this.buildSavePayload();
+    console.log('Guardando configuracion del area:', payload);
+
+    this.http.put(`${environment.apiUrl}/areas/${id}`, payload).subscribe({
       next: () => {
         this.snackBar.open('✅ Configuración guardada correctamente', 'Cerrar', { duration: 3000 });
       },
@@ -446,6 +449,19 @@ export class TenantConfigDetailComponent implements OnInit {
         this.snackBar.open('❌ Error al guardar la configuración', 'Cerrar', { duration: 3000 });
       }
     });
+  }
+
+  private buildSavePayload(): Partial<TenantConfig> {
+    const current = this.config();
+    return {
+      displayName: current.displayName || '',
+      description: current.description || '',
+      primaryColor: current.primaryColor || '#3F51B5',
+      secondaryColor: current.secondaryColor || '#FF4081',
+      logoUrl: current.logoUrl || '',
+      faviconUrl: current.faviconUrl || '',
+      isActive: current.isActive
+    };
   }
 
   cancel(): void {
