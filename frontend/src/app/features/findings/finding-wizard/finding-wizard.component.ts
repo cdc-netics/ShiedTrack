@@ -1,4 +1,5 @@
-import { Component, inject, signal, OnInit, ViewChild, ElementRef } from '@angular/core';
+import { Component, inject, signal, computed, OnInit, ViewChild, ElementRef, AfterViewInit, DestroyRef } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
@@ -10,7 +11,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatChipsModule } from '@angular/material/chips';
-import { MatAutocompleteModule } from '@angular/material/autocomplete';
+import { MatAutocompleteModule, MatAutocompleteTrigger } from '@angular/material/autocomplete';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -28,9 +29,11 @@ interface Template {
   recommendation?: string;
   cvssScore?: number;
   cweId?: string;
+  scope?: string;
 }
 
 @Component({
+    standalone: true,
     selector: 'app-finding-wizard',
     imports: [
         CommonModule,
@@ -64,7 +67,7 @@ interface Template {
             <mat-step [stepControl]="basicForm">
               <ng-template matStepLabel>Información Básica</ng-template>
               <form [formGroup]="basicForm" class="wizard-form">
-                
+
                 <!-- BUSCADOR DE PLANTILLAS -->
                 <div class="template-section">
                   <mat-form-field appearance="outline" class="full-width">
@@ -77,7 +80,10 @@ interface Template {
                            placeholder="Busca: XSS, SQLi, CSRF, etc...">
                     <mat-icon matSuffix>search</mat-icon>
                   </mat-form-field>
-                  <mat-autocomplete #templateAuto="matAutocomplete" (optionSelected)="applyTemplate($event.option.value)">
+                  <mat-autocomplete
+                    #templateAuto="matAutocomplete"
+                    [displayWith]="displayTemplate"
+                    (optionSelected)="applyTemplate($event.option.value)">
                     @for (template of filteredTemplates(); track template.id) {
                       <mat-option [value]="template">
                         <div class="template-option">
@@ -97,9 +103,11 @@ interface Template {
                 <div class="form-row">
                   <mat-form-field appearance="outline">
                     <mat-label>Cliente *</mat-label>
-                    <input matInput 
+                    <input matInput
                            formControlName="clientName"
                            [matAutocomplete]="clientAuto"
+                           #clientTrigger="matAutocompleteTrigger"
+                           (focus)="onClientInputFocus(clientTrigger)"
                            placeholder="Escribe o selecciona"
                            required>
                     <mat-icon matSuffix>business</mat-icon>
@@ -124,6 +132,8 @@ interface Template {
                     <input matInput 
                            formControlName="projectName"
                            [matAutocomplete]="projectAuto"
+                           #projectTrigger="matAutocompleteTrigger"
+                           (focus)="onProjectInputFocus(projectTrigger)"
                            placeholder="Escribe o selecciona"
                            required>
                     <mat-icon matSuffix>folder</mat-icon>
@@ -160,11 +170,11 @@ interface Template {
                 </div>
 
                 <div class="form-row">
-                  <mat-form-field appearance="outline">
-                    <mat-label>Código (Auto-generado)</mat-label>
-                    <input matInput formControlName="code" readonly>
+                  <mat-form-field appearance="outline" class="code-readonly-hint">
+                    <mat-label>Código operativo</mat-label>
+                    <input matInput readonly value="Se asigna al guardar (servidor)">
                     <mat-icon matPrefix class="code-icon">lock</mat-icon>
-                    <mat-hint>🤖 Irrepetible</mat-hint>
+                    <mat-hint>Correlativo único generado en el backend; no se envía desde el navegador.</mat-hint>
                   </mat-form-field>
 
                   <mat-form-field appearance="outline" [class.severity-border]="basicForm.get('severity')?.value">
@@ -202,8 +212,7 @@ interface Template {
                   <div #editor 
                        contenteditable="true" 
                        class="editor"
-                       (input)="onDescriptionChange($event)"
-                       [innerHTML]="basicForm.get('description')?.value || ''"></div>
+                       (input)="onDescriptionChange($event)"></div>
                   @if (basicForm.get('description')?.errors && basicForm.get('description')?.touched) {
                     <small class="error">La descripción es requerida</small>
                   }
@@ -311,10 +320,9 @@ interface Template {
                       <mat-icon>format_list_bulleted</mat-icon>
                     </button>
                   </div>
-                  <div contenteditable="true" 
+                  <div #recEditor contenteditable="true" 
                        class="editor"
-                       (input)="onRecommendationChange($event)"
-                       [innerHTML]="technicalForm.get('recommendation')?.value || ''"></div>
+                       (input)="onRecommendationChange($event)"></div>
                 </div>
 
                 <mat-form-field appearance="outline" class="full-width">
@@ -478,7 +486,24 @@ interface Template {
   `]
 })
 export class FindingWizardComponent implements OnInit {
-  @ViewChild('editor') editorRef!: ElementRef;
+  // Manejo de editores contenteditable con sincronización manual para evitar bug de caret
+  @ViewChild('editor') set editor(el: ElementRef) {
+    if (el) {
+      this.editorRef = el;
+      this.syncEditor(el.nativeElement, this.basicForm.get('description')?.value);
+    }
+  }
+  editorRef!: ElementRef;
+
+  @ViewChild('recEditor') set recEditor(el: ElementRef) {
+    if (el) {
+      this.recEditorRef = el;
+      this.syncEditor(el.nativeElement, this.technicalForm.get('recommendation')?.value);
+    }
+  }
+  recEditorRef!: ElementRef;
+
+  private destroyRef = inject(DestroyRef);
 
   // Dependencias principales
   private fb = inject(FormBuilder);
@@ -500,12 +525,56 @@ export class FindingWizardComponent implements OnInit {
     { id: 5, name: 'Path Traversal', severity: 'HIGH', description: 'Acceso a archivos del sistema', cvssScore: 8.2, cweId: 'CWE-22' },
   ]);
   filteredTemplates = signal(this.templates());
+
   // Datos para autocompletados de cliente y proyecto
   clients = signal<any[]>([]);
-  filteredClients = signal<any[]>([]);
-  showCreateClient = signal(false);
-  filteredProjects = signal<any[]>([]);
-  showCreateProject = signal(false);
+  private clientSearchSignal = signal<string>('');
+  private clientIdSignal = signal<string | null>(null);
+  private projectSearchSignal = signal<string>('');
+
+  filteredClients = computed(() => {
+    const all = this.clients();
+    const search = this.clientSearchSignal().toLowerCase();
+    if (!search) return all;
+    return all.filter(c => c.name.toLowerCase().includes(search));
+  });
+
+  showCreateClient = computed(() => {
+    const search = this.clientSearchSignal();
+    const filtered = this.filteredClients();
+    return search.length > 0 && filtered.length === 0;
+  });
+
+  // Proyectos: reactivos a clientIdSignal y projectService.projects()
+  currentClientProjects = computed(() => {
+    const clientId = this.clientIdSignal();
+    const projects = this.projectService.projects();
+    if (!clientId || clientId === 'new') return [];
+    
+    return projects.filter(p => {
+      // Manejar clientId como string o como objeto poblado
+      const pClientId = typeof p.clientId === 'object' ? (p.clientId as any)?._id : p.clientId;
+      
+      // Intentar matchear por clientId o por tenantId (que suelen ser lo mismo en este contexto)
+      const pTenantId = (p as any).tenantId;
+      
+      return pClientId === clientId || pTenantId === clientId;
+    });
+  });
+
+  filteredProjects = computed(() => {
+    const projects = this.currentClientProjects();
+    const search = this.projectSearchSignal().toLowerCase();
+    if (!search) return projects;
+    return projects.filter(p => p.name.toLowerCase().includes(search));
+  });
+
+  showCreateProject = computed(() => {
+    const search = this.projectSearchSignal();
+    const filtered = this.filteredProjects();
+    return search.length > 0 && filtered.length === 0;
+  });
+
   // Archivos adjuntos y estado de envio
   selectedFiles = signal<File[]>([]);
   submitting = signal(false);
@@ -529,10 +598,35 @@ export class FindingWizardComponent implements OnInit {
     // Inicializa formularios y listas base del wizard
     this.initForms();
     this.loadClients();
-    this.projectService.loadProjects({});
-    this.generateCode();
+    this.projectService.loadProjects({}).subscribe();
     this.setupClientFilter();
     this.setupProjectFilter();
+    this.setupEditorSync();
+  }
+
+  setupEditorSync(): void {
+    // Sincroniza cambios del modelo a la vista solo si son diferentes
+    this.basicForm.get('description')?.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(val => {
+        if (this.editorRef) {
+          this.syncEditor(this.editorRef.nativeElement, val);
+        }
+      });
+
+    this.technicalForm.get('recommendation')?.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(val => {
+        if (this.recEditorRef) {
+          this.syncEditor(this.recEditorRef.nativeElement, val);
+        }
+      });
+  }
+
+  syncEditor(el: HTMLElement, value: any): void {
+    if (el.innerHTML !== value) {
+      el.innerHTML = value || '';
+    }
   }
 
   initForms(): void {
@@ -542,7 +636,6 @@ export class FindingWizardComponent implements OnInit {
       clientId: [''],
       projectName: ['', Validators.required],
       projectId: [''],
-      code: [{ value: '', disabled: true }],
       title: ['', Validators.required],
       description: ['', Validators.required],
       severity: ['', Validators.required],
@@ -566,14 +659,13 @@ export class FindingWizardComponent implements OnInit {
   }
 
   setupProjectFilter(): void {
-    // Filtra proyectos en base al texto ingresado
+    // Sincroniza el valor del input con el signal de búsqueda
     this.basicForm.get('projectName')?.valueChanges.subscribe(value => {
-      const filter = typeof value === 'string' ? value.toLowerCase() : '';
-      const filtered = this.projectService.projects().filter(p => 
-        p.name.toLowerCase().includes(filter)
-      );
-      this.filteredProjects.set(filtered);
-      this.showCreateProject.set(filter.length > 0 && filtered.length === 0);
+      if (typeof value === 'string') {
+        this.projectSearchSignal.set(value);
+      } else {
+        this.projectSearchSignal.set('');
+      }
     });
   }
 
@@ -582,13 +674,22 @@ export class FindingWizardComponent implements OnInit {
     this.http.get<any[]>(`${environment.apiUrl}/clients`).subscribe({
       next: (clients) => {
         this.clients.set(clients);
-        this.filteredClients.set(clients);
       },
       error: (err) => console.error('Error loading clients:', err)
     });
   }
 
-  onTemplateSearch(term: string): void {
+  displayTemplate(template: Template | string | null): string {
+    if (!template) return '';
+    return typeof template === 'string' ? template : template.name;
+  }
+
+  onTemplateSearch(term: string | Template): void {
+    if (typeof term !== 'string') {
+      this.templateSearch = this.displayTemplate(term);
+      return;
+    }
+
     this.templateSearch = term;
 
     if (!term || term.length < 2) {
@@ -607,10 +708,12 @@ export class FindingWizardComponent implements OnInit {
           recommendation: t.recommendation,
           cvssScore: t.cvss_score,
           cweId: t.cwe_id,
+          scope: t.scope,
         }));
 
-        this.templates.set(mapped.length ? mapped : this.templates());
-        this.filteredTemplates.set(mapped.length ? mapped : this.templates());
+        const sorted = mapped.sort((a, b) => (a.scope === 'USER' ? -1 : 0) - (b.scope === 'USER' ? -1 : 0));
+        this.templates.set(sorted.length ? sorted : this.templates());
+        this.filteredTemplates.set(sorted.length ? sorted : this.templates());
         this.templateLoading.set(false);
       },
       error: () => {
@@ -621,15 +724,31 @@ export class FindingWizardComponent implements OnInit {
   }
 
   setupClientFilter(): void {
-    // Filtra clientes en base al texto ingresado
+    // Sincroniza el nombre del cliente con el signal de búsqueda
     this.basicForm.get('clientName')?.valueChanges.subscribe(value => {
-      const filter = typeof value === 'string' ? value.toLowerCase() : '';
-      const filtered = this.clients().filter(c => 
-        c.name.toLowerCase().includes(filter)
-      );
-      this.filteredClients.set(filtered);
-      this.showCreateClient.set(filter.length > 0 && filtered.length === 0);
+      if (typeof value === 'string') {
+        this.clientSearchSignal.set(value);
+      } else {
+        this.clientSearchSignal.set('');
+      }
     });
+
+    // Sincroniza el clientId con el signal reactivo
+    this.basicForm.get('clientId')?.valueChanges.subscribe(clientId => {
+      this.clientIdSignal.set(clientId);
+    });
+  }
+
+  onClientInputFocus(trigger: MatAutocompleteTrigger): void {
+    // Mostrar todos los clientes al hacer focus
+    this.clientSearchSignal.set('');
+    trigger.openPanel();
+  }
+
+  onProjectInputFocus(trigger: MatAutocompleteTrigger): void {
+    // Mostrar todos los proyectos del cliente al hacer focus
+    this.projectSearchSignal.set('');
+    trigger.openPanel();
   }
 
   selectClient(client: any): void {
@@ -645,28 +764,58 @@ export class FindingWizardComponent implements OnInit {
         clientName: client.name
       });
     }
+    // Al seleccionar o cambiar cliente, resetear proyecto
+    this.basicForm.get('projectName')?.reset('');
+    this.projectSearchSignal.set('');
   }
 
-  generateCode(): void {
-    // Genera un codigo de hallazgo simple basado en timestamp
-    const timestamp = Date.now().toString().slice(-8);
-    const code = `VULN-${timestamp}`;
-    this.basicForm.patchValue({ code });
-  }
 
   applyTemplate(template: Template): void {
+    const selectedTemplate = this.normalizeTemplate(template);
+
     // Copia datos de la plantilla a los formularios
     this.basicForm.patchValue({
-      title: template.name,
-      description: template.description,
-      severity: template.severity
+      title: selectedTemplate.name,
+      description: selectedTemplate.description,
+      severity: selectedTemplate.severity
     });
     this.technicalForm.patchValue({
-      cvssScore: template.cvssScore,
-      cweId: template.cweId,
-      recommendation: template.recommendation
+      cvssScore: selectedTemplate.cvssScore,
+      cweId: selectedTemplate.cweId,
+      recommendation: selectedTemplate.recommendation
     });
     this.templateSearch = '';
+  }
+
+  private normalizeTemplate(template: Template | any): Template {
+    return {
+      id: template.id ?? template._id,
+      name: this.toDisplayText(template.name ?? template.title),
+      description: this.toDisplayText(template.description),
+      severity: this.toDisplayText(template.severity),
+      recommendation: this.toDisplayText(template.recommendation),
+      cvssScore: template.cvssScore ?? template.cvss_score,
+      cweId: this.toDisplayText(template.cweId ?? template.cwe_id),
+      scope: this.toDisplayText(template.scope),
+    };
+  }
+
+  private toDisplayText(value: unknown): string {
+    if (value === null || value === undefined) return '';
+    if (typeof value === 'string') return value;
+    if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+    if (typeof value === 'object') {
+      const objectValue = value as Record<string, unknown>;
+      return this.toDisplayText(
+        objectValue['name'] ??
+        objectValue['title'] ??
+        objectValue['label'] ??
+        objectValue['code'] ??
+        objectValue['_id'] ??
+        ''
+      );
+    }
+    return '';
   }
 
   selectProject(project: any): void {
@@ -760,7 +909,7 @@ export class FindingWizardComponent implements OnInit {
   submitFinding(): void {
     // Orquesta la creacion del hallazgo (y proyecto si aplica)
     if (!this.basicForm.valid) {
-      alert('⚠️ Completa los campos obligatorios: Cliente, Proyecto, Código, Título, Descripción y Severidad');
+      alert('⚠️ Completa los campos obligatorios: Cliente, Proyecto, Título, Descripción y Severidad');
       return;
     }
 
@@ -805,8 +954,8 @@ export class FindingWizardComponent implements OnInit {
               // Crear el proyecto
               this.http.post<any>(`${environment.apiUrl}/projects`, {
                 name: projectName,
+                tenantId: clientId,
                 clientId: clientId,
-                areaId: clientId, // TODO: Fix this, areaId should not be clientId
                 description: `Proyecto creado automáticamente desde hallazgo`,
                 serviceArchitecture: serviceArchitecture
               }).subscribe({
@@ -849,7 +998,6 @@ export class FindingWizardComponent implements OnInit {
     const internalCode = `${severityPrefix}-${Date.now().toString().slice(-6)}`;
     
     const data = {
-      code: basicData.code,
       internal_code: internalCode,
       title: basicData.title,
       description: basicData.description,
@@ -868,6 +1016,8 @@ export class FindingWizardComponent implements OnInit {
       implications: technicalData.implications || undefined,
       controls: this.controls(),
       references: this.references()
+        .map((reference) => reference.url || reference.label)
+        .filter(Boolean)
     };
 
     console.log('📤 Enviando hallazgo:', data);

@@ -10,10 +10,12 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule } from '@angular/material/select';
 import { MatDividerModule } from '@angular/material/divider';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
 import { environment } from '../../../../environments/environment';
 
 @Component({
+  standalone: true,
     selector: 'app-system-config',
     imports: [
         CommonModule,
@@ -78,59 +80,59 @@ import { environment } from '../../../../environments/environment';
           </mat-action-row>
         </mat-expansion-panel>
 
-        <!-- CONFIGURACIÓN DE TENANTS -->
+        <!-- CONFIGURACIÓN DE ÁREAS -->
         <mat-expansion-panel>
           <mat-expansion-panel-header>
             <mat-panel-title>
               <mat-icon>domain</mat-icon>
-              Tenants
+              Áreas
             </mat-panel-title>
             <mat-panel-description>
-              Gestión de tenants y configuración por tenant
+              Gestión de áreas y configuración por área
             </mat-panel-description>
           </mat-expansion-panel-header>
 
           <p class="info-text">
             <mat-icon class="info-icon">info</mat-icon>
-            Configura tu Tenant
+            Configura tu Área
           </p>
 
           <div class="form-field">
             <mat-slide-toggle [(ngModel)]="areaConfig().requireAreaPerProject">
-              Requerir tenant para cada proyecto
+              Requerir área para cada proyecto
             </mat-slide-toggle>
-            <p class="hint-text">Los proyectos deberán tener un tenant asignado</p>
+            <p class="hint-text">Los proyectos deberán tener un área asignada</p>
           </div>
 
           <div class="form-field">
             <mat-slide-toggle [(ngModel)]="areaConfig().autoCreateDefaultArea">
-              Crear tenant "General" automáticamente
+              Crear área "General" automáticamente
             </mat-slide-toggle>
-            <p class="hint-text">Para nuevos clientes sin tenants definidos</p>
+            <p class="hint-text">Para nuevos clientes sin áreas definidas</p>
           </div>
 
           <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Prefijo de código de tenant</mat-label>
+            <mat-label>Prefijo de código de área</mat-label>
             <input matInput [(ngModel)]="areaConfig().areaCodePrefix" placeholder="AREA">
-            <mat-hint>Se usará en reportes: TENANT-001, TENANT-002</mat-hint>
+            <mat-hint>Se usará en reportes: AREA-001, AREA-002</mat-hint>
           </mat-form-field>
 
           <mat-form-field appearance="outline" class="full-width">
             <mat-label>Niveles de jerarquía</mat-label>
             <mat-select [(ngModel)]="areaConfig().hierarchyLevels">
               <mat-option [value]="1">1 nivel (Cliente → Proyecto)</mat-option>
-              <mat-option [value]="2">2 niveles (Cliente → Tenant → Proyecto)</mat-option>
-              <mat-option [value]="3">3 niveles (Cliente → Tenant → Sub-tenant → Proyecto)</mat-option>
+              <mat-option [value]="2">2 niveles (Cliente → Área → Proyecto)</mat-option>
+              <mat-option [value]="3">3 niveles (Cliente → Área → Subárea → Proyecto)</mat-option>
             </mat-select>
           </mat-form-field>
 
           <mat-divider></mat-divider>
 
-          <!-- CONFIGURACIÓN DE TENANT/CLIENTE (Display Name, Favicon, Logo, Colores) -->
-          <h3 style="margin-top: 20px; margin-bottom: 10px;">Configuración de Tenant</h3>
+          <!-- CONFIGURACIÓN DE ÁREA/CLIENTE (Display Name, Favicon, Logo, Colores) -->
+          <h3 style="margin-top: 20px; margin-bottom: 10px;">Configuración de Área</h3>
 
           <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Nombre Mostrado del Tenant</mat-label>
+            <mat-label>Nombre Mostrado del Área</mat-label>
             <input matInput placeholder="ej: ACME" [(ngModel)]="tenantConfig().displayName">
             <mat-icon matSuffix>business</mat-icon>
             <mat-hint>Este nombre aparecerá en la interfaz del usuario</mat-hint>
@@ -289,6 +291,17 @@ import { environment } from '../../../../environments/environment';
               Las credenciales se guardan encriptadas en la base de datos.
             </p>
 
+            <div class="smtp-help-box">
+              <p><strong>Guia rapida para Outlook / Microsoft 365</strong></p>
+              <ul>
+                <li>Host recomendado: <code>smtp.office365.com</code></li>
+                <li>STARTTLS: puerto <strong>587</strong> con <strong>SSL/TLS desactivado</strong></li>
+                <li>SSL/TLS directo: puerto <strong>465</strong> con <strong>SSL/TLS activado</strong></li>
+                <li>Si tienes MFA, usa <strong>App Password</strong> (no la clave normal)</li>
+                <li>Si SMTP AUTH basico esta bloqueado, habilitalo por buzon o usa OAuth</li>
+              </ul>
+            </div>
+
             <!-- Host & Port Row -->
             <div class="form-row">
               <mat-form-field appearance="outline">
@@ -330,12 +343,40 @@ import { environment } from '../../../../environments/environment';
               </mat-form-field>
             </div>
 
+            <div class="form-row">
+              <mat-form-field appearance="outline">
+                <mat-label>Reply-To</mat-label>
+                <input matInput [(ngModel)]="smtpConfig().replyTo" placeholder="security@shieldtrack.com">
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>Timeout (ms)</mat-label>
+                <input matInput type="number" [(ngModel)]="smtpConfig().timeoutMs" placeholder="10000">
+              </mat-form-field>
+            </div>
+
             <!-- Security Toggle -->
              <div class="form-field">
               <mat-slide-toggle [(ngModel)]="smtpConfig().secure">
                 Usar SSL/TLS
               </mat-slide-toggle>
             </div>
+
+            <div class="form-field">
+              <mat-slide-toggle [(ngModel)]="smtpConfig().tlsRejectUnauthorized">
+                Validar certificado TLS del servidor
+              </mat-slide-toggle>
+            </div>
+
+            <p class="hint-text">
+              Validacion requerida: secure=false con puerto 587, secure=true con puerto 465.
+            </p>
+
+            @if (isSmtpSecurityPortMismatch()) {
+              <p class="warning-text">
+                {{ getSmtpSecurityPortMismatchMessage() }}
+              </p>
+            }
             
             <div class="actions">
                 <button mat-stroked-button color="accent" (click)="testSmtp()">
@@ -358,15 +399,16 @@ import { environment } from '../../../../environments/environment';
             </mat-panel-description>
           </mat-expansion-panel-header>
 
-          <div class="form-field">
-            <mat-slide-toggle [(ngModel)]="config().emailNotifications">
-              Notificaciones por email
-            </mat-slide-toggle>
-          </div>
-          <p class="hint-text">Configure las credenciales en el panel "Servidor SMTP" arriba.</p>
-          
+          <p class="info-text">
+            <mat-icon class="info-icon">info</mat-icon>
+            Las reglas y plantillas ahora se administran desde un modulo dedicado.
+          </p>
+          <p class="hint-text">
+            Desde ahi puedes activar eventos, seleccionar destinatarios por rol, usuario o email, y asignar plantillas por tenant o proyecto.
+          </p>
+
           <mat-action-row>
-            <button mat-button color="primary" (click)="saveConfig()">Guardar</button>
+            <button mat-raised-button color="primary" (click)="openNotificationCenter()">Abrir Centro de Notificaciones</button>
           </mat-action-row>
         </mat-expansion-panel>
 
@@ -488,6 +530,28 @@ import { environment } from '../../../../environments/environment';
       gap: 16px;
     }
 
+    .smtp-help-box {
+      background: #fff8e1;
+      border-left: 4px solid #ffb300;
+      border-radius: 4px;
+      padding: 12px;
+      font-size: 13px;
+      color: #5d4037;
+    }
+
+    .smtp-help-box p {
+      margin: 0 0 8px 0;
+    }
+
+    .smtp-help-box ul {
+      margin: 0;
+      padding-left: 18px;
+    }
+
+    .smtp-help-box li {
+      margin-bottom: 4px;
+    }
+
     .form-row {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -595,6 +659,7 @@ import { environment } from '../../../../environments/environment';
 export class SystemConfigComponent implements OnInit {
   // Servicio HTTP y estado de permisos
   private http = inject(HttpClient);
+  private router = inject(Router);
   authService = inject(AuthService);
 
   // Estado UI
@@ -608,7 +673,10 @@ export class SystemConfigComponent implements OnInit {
     pass: '',
     secure: false,
     fromEmail: 'noreply@shieldtrack.com',
-    fromName: 'ShieldTrack Security'
+    fromName: 'ShieldTrack Security',
+    replyTo: '',
+    timeoutMs: 10000,
+    tlsRejectUnauthorized: true
   });
 
   // Configuracion general del sistema (mock/placeholder)
@@ -669,7 +737,7 @@ export class SystemConfigComponent implements OnInit {
   }
 
   loadProjects(): void {
-    this.http.get<any[]>('http://localhost:3000/api/projects').subscribe({
+    this.http.get<any[]>(`${environment.apiUrl}/projects`).subscribe({
       next: (projects) => {
         this.projects.set(projects.map(p => ({ id: p._id, name: p.name })));
       },
@@ -678,7 +746,7 @@ export class SystemConfigComponent implements OnInit {
   }
 
   loadSmtpConfig(): void {
-    this.http.get<any>('http://localhost:3000/api/system-config/smtp').subscribe({
+    this.http.get<any>(`${environment.apiUrl}/system-config/smtp`).subscribe({
       next: (config) => {
         this.smtpConfig.set({
           host: config.smtp_host || '',
@@ -687,14 +755,20 @@ export class SystemConfigComponent implements OnInit {
           pass: config.smtp_pass || '', // Masked *******
           secure: config.smtp_secure || false,
           fromEmail: config.smtp_from_email || '',
-          fromName: config.smtp_from_name || ''
+          fromName: config.smtp_from_name || '',
+          replyTo: config.smtp_reply_to || '',
+          timeoutMs: config.smtp_timeout_ms || 10000,
+          tlsRejectUnauthorized: config.smtp_tls_reject_unauthorized !== false
         });
       },
       error: (err) => console.error('Error loading SMTP config:', err)
     });
   }
-
   saveSmtpConfig(): void {
+    if (!this.validateSmtpConfig()) {
+      return;
+    }
+
     const data = {
       smtp_host: this.smtpConfig().host,
       smtp_port: this.smtpConfig().port,
@@ -702,46 +776,127 @@ export class SystemConfigComponent implements OnInit {
       smtp_user: this.smtpConfig().user,
       smtp_pass: this.smtpConfig().pass,
       smtp_from_email: this.smtpConfig().fromEmail,
-      smtp_from_name: this.smtpConfig().fromName
+      smtp_from_name: this.smtpConfig().fromName,
+      smtp_reply_to: this.smtpConfig().replyTo,
+      smtp_timeout_ms: this.smtpConfig().timeoutMs,
+      smtp_tls_reject_unauthorized: this.smtpConfig().tlsRejectUnauthorized
     };
 
-    // Validar si es una contraseña mascara
+    // Si viene enmascarada, el backend debe ignorar la actualizacion de clave
     if (data.smtp_pass && data.smtp_pass.includes('***')) {
         // TODO: Handle password update logic (send only if changed)
         // For now, API handles encryption, but we should not re-encrypt masked password
         // Backend should check if pass == '*******' then ignore update
     }
 
-    console.log('📤 Guardando SMTP:', data);
-    this.http.put('http://localhost:3000/api/system-config/smtp', data).subscribe({
-      next: () => {
-        alert('✅ Configuración SMTP guardada exitosamente');
+    console.log('Guardando SMTP:', data);
+    this.http.put(`${environment.apiUrl}/system-config/smtp`, data).subscribe({next: () => {
+        alert('Configuracion SMTP guardada exitosamente');
+        this.loadSmtpConfig();
       },
       error: (error) => {
-        console.error('❌ Error saving SMTP:', error);
-        alert(`❌ Error: ${error?.error?.message || 'Error al guardar'}`);
+        console.error('Error saving SMTP:', error);
+        alert(`Error: ${error?.error?.message || 'Error al guardar'}`);
       }
     });
   }
 
   testSmtp(): void {
-    this.http.post('http://localhost:3000/api/system-config/smtp/test', {}).subscribe({
-      next: (res: any) => {
+    if (!this.validateSmtpConfig()) {
+      return;
+    }
+
+    this.http.post(`${environment.apiUrl}/system-config/smtp/test`, {}).subscribe({next: (res: any) => {
         if (res.success) {
-          alert('✅ ' + res.message);
+          alert('OK: ' + res.message);
         } else {
-          alert('❌ ' + res.message);
+          alert(`ERROR: ${this.getSmtpTestErrorHelp(res.message)}`);
         }
       },
       error: (error) => {
-        alert(`❌ Error de conexión: ${error?.error?.message || error.message}`);
+        const rawMessage = error?.error?.message || error.message;
+        alert(`ERROR de conexion: ${this.getSmtpTestErrorHelp(rawMessage)}`);
       }
     });
+  }
+
+  isSmtpSecurityPortMismatch(): boolean {
+    const port = Number(this.smtpConfig().port);
+    const secure = this.smtpConfig().secure;
+
+    if (!Number.isFinite(port)) {
+      return false;
+    }
+
+    return (secure && port !== 465) || (!secure && port !== 587);
+  }
+
+  getSmtpSecurityPortMismatchMessage(): string {
+    const secure = this.smtpConfig().secure;
+    const expectedPort = secure ? 465 : 587;
+
+    return `La combinacion actual no es valida. Si SSL/TLS esta ${secure ? 'activado' : 'desactivado'}, el puerto esperado es ${expectedPort}.`;
+  }
+
+  private validateSmtpConfig(): boolean {
+    const smtp = this.smtpConfig();
+    const host = (smtp.host || '').trim();
+    const user = (smtp.user || '').trim();
+    const pass = (smtp.pass || '').trim();
+    const fromEmail = (smtp.fromEmail || '').trim();
+    const port = Number(smtp.port);
+
+    if (!host || !user || !pass || !fromEmail) {
+      alert('Completa SMTP Host, Usuario, Contrasena y Email Remitente antes de guardar o probar.');
+      return false;
+    }
+
+    if (!Number.isFinite(port)) {
+      alert('El puerto SMTP debe ser numerico.');
+      return false;
+    }
+
+    if (![465, 587].includes(port)) {
+      alert('Puerto SMTP invalido. Usa 587 (STARTTLS) o 465 (SSL/TLS).');
+      return false;
+    }
+
+    if (smtp.secure && port !== 465) {
+      alert('Configuracion invalida: con SSL/TLS activado, el puerto debe ser 465.');
+      return false;
+    }
+
+    if (!smtp.secure && port !== 587) {
+      alert('Configuracion invalida: con SSL/TLS desactivado, el puerto debe ser 587.');
+      return false;
+    }
+
+    if (!Number.isFinite(Number(smtp.timeoutMs)) || Number(smtp.timeoutMs) < 0) {
+      alert('El timeout SMTP debe ser un numero mayor o igual a 0.');
+      return false;
+    }
+
+    return true;
+  }
+
+  private getSmtpTestErrorHelp(rawMessage: string): string {
+    const message = rawMessage || 'Error SMTP desconocido';
+    const normalizedMessage = message.toLowerCase();
+
+    if (normalizedMessage.includes('535')) {
+      return `${message}\n\nOutlook/Microsoft 365 suele devolver 535 cuando la autenticacion es rechazada.\nVerifica App Password (si MFA activo), SMTP AUTH habilitado en el buzon y la combinacion secure/puerto.`;
+    }
+
+    return message;
   }
 
   isOwner(): boolean {
     // Permiso para configuracion global
     return this.authService.currentUser()?.role === 'OWNER';
+  }
+
+  openNotificationCenter(): void {
+    this.router.navigate(['/admin/notifications']);
   }
 
   generateCodePreview(): string {
@@ -804,9 +959,9 @@ export class SystemConfigComponent implements OnInit {
     if (confirm(confirmMessage)) {
       console.log('Fusionando proyectos:', this.mergeConfig());
       
-      this.http.post('http://localhost:3000/api/projects/merge', {
-        sourceProjectId: config.sourceProject,
-        targetProjectId: config.targetProject
+    this.http.post(`${environment.apiUrl}/projects/merge`, { 
+      sourceProjectId: config.sourceProject,
+      targetProjectId: config.targetProject
       }).subscribe({
         next: (response: any) => {
           console.log('✅ Fusión exitosa:', response);
@@ -831,7 +986,7 @@ export class SystemConfigComponent implements OnInit {
   saveConfig(): void {
     // Guarda configuracion general en backend
     console.log('📤 Guardando configuración:', this.config());
-    this.http.put('/api/system-config', this.config()).subscribe({
+    this.http.put(`${environment.apiUrl}/system-config`, this.config()).subscribe({
       next: () => {
         console.log('✅ Configuración guardada');
         alert('✅ Configuración guardada exitosamente');
@@ -846,7 +1001,7 @@ export class SystemConfigComponent implements OnInit {
   saveAreaConfig(): void {
     // Guarda configuracion de areas en backend
     console.log('📤 Guardando configuración de áreas:', this.areaConfig());
-    this.http.put('/api/system-config/areas', this.areaConfig()).subscribe({
+    this.http.put(`${environment.apiUrl}/system-config/areas`, this.areaConfig()).subscribe({
       next: () => {
         console.log('✅ Configuración de áreas guardada');
         alert('✅ Configuración de áreas guardada exitosamente');
@@ -914,7 +1069,7 @@ export class SystemConfigComponent implements OnInit {
       formData.append('logo', logo);
     }
 
-    this.http.post('/api/clients/me/branding', formData).subscribe({
+    this.http.post(`${environment.apiUrl}/clients/me/branding`, formData).subscribe({
       next: (response: any) => {
         console.log('✅ Configuración de tenant guardada:', response);
         alert('✅ Configuración de tenant guardada exitosamente');

@@ -1,6 +1,6 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document, Types } from 'mongoose';
-import { multiTenantPlugin } from '../../../common/plugins/multi-tenant.plugin';
+import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
+import { Document, Types } from "mongoose";
+import { multiTenantPlugin } from "../../../common/plugins/multi-tenant.plugin";
 
 /**
  * Entidad Área
@@ -18,12 +18,27 @@ export class Area extends Document {
   @Prop()
   description?: string;
 
+  @Prop()
+  displayName?: string;
+
+  @Prop()
+  primaryColor?: string;
+
+  @Prop()
+  secondaryColor?: string;
+
+  @Prop()
+  logoUrl?: string;
+
+  @Prop()
+  faviconUrl?: string;
+
   /**
    * Cliente asociado (LEGACY)
    * Mantenido solo para compatibilidad hacia atrás.
    * En el nuevo modelo multi-tenant, el límite de seguridad es el tenant.
    */
-  @Prop({ type: Types.ObjectId, ref: 'Client' })
+  @Prop({ type: Types.ObjectId, ref: "Client" })
   clientId?: Types.ObjectId;
 
   @Prop({ default: true })
@@ -39,7 +54,7 @@ export class Area extends Document {
   // Timestamps automáticos: createdAt, updatedAt
 
   // Multi-tenant: referencia al tenant
-  @Prop({ type: Types.ObjectId, ref: 'Tenant', required: true, index: true })
+  @Prop({ type: Types.ObjectId, ref: "Tenant", required: true, index: true })
   tenantId: Types.ObjectId;
 }
 

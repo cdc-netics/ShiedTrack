@@ -1,6 +1,6 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document, Types } from 'mongoose';
-import { FindingUpdateType, FindingStatus } from '../../../common/enums';
+import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
+import { Document, Types } from "mongoose";
+import { FindingUpdateType, FindingStatus } from "../../../common/enums";
 
 /**
  * Entidad FindingUpdate
@@ -9,17 +9,17 @@ import { FindingUpdateType, FindingStatus } from '../../../common/enums';
  */
 @Schema({ timestamps: true })
 export class FindingUpdate extends Document {
-  @Prop({ type: Types.ObjectId, ref: 'Finding', required: true })
-  findingId: Types.ObjectId;
+  @Prop({ type: Types.ObjectId, ref: "Finding", required: true })
+  findingId!: Types.ObjectId;
 
   @Prop({ required: true, enum: FindingUpdateType })
-  type: FindingUpdateType;
+  type!: FindingUpdateType;
 
   @Prop({ required: true })
-  content: string; // Descripción de la actualización
+  content!: string; // Descripción de la actualización
 
-  @Prop({ type: Types.ObjectId, ref: 'User', required: true })
-  createdBy: Types.ObjectId;
+  @Prop({ type: Types.ObjectId, ref: "User", required: true })
+  createdBy!: Types.ObjectId;
 
   // Campos específicos para STATUS_CHANGE
   @Prop({ enum: FindingStatus })
@@ -29,8 +29,8 @@ export class FindingUpdate extends Document {
   newStatus?: FindingStatus;
 
   // Referencias a evidencias subidas en esta actualización
-  @Prop({ type: [Types.ObjectId], ref: 'Evidence', default: [] })
-  evidenceIds: Types.ObjectId[];
+  @Prop({ type: [Types.ObjectId], ref: "Evidence", default: [] })
+  evidenceIds!: Types.ObjectId[];
 
   // Timestamp de creación (inmutable)
   readonly createdAt: Date;

@@ -1,93 +1,67 @@
-import { Injectable, Logger, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
-import { InjectModel, InjectConnection } from '@nestjs/mongoose';
-import { Model, Connection } from 'mongoose';
-import { SystemConfig, encryptText, decryptText } from './schemas/system-config.schema';
-import { SystemBranding } from './schemas/system-branding.schema';
-import * as nodemailer from 'nodemailer';
+import { BadRequestException, Injectable, Logger } from "@nestjs/common";
+import { InjectConnection, InjectModel } from "@nestjs/mongoose";
+import { Connection, Model } from "mongoose";
+import * as nodemailer from "nodemailer";
+import { resolveSmtpHostToIpv4 } from "../../common/utils/smtp-network";
+import { EmailService } from "../email/email.service";
+import { SystemBranding } from "./schemas/system-branding.schema";
+import { SystemConfig, encryptText } from "./schemas/system-config.schema";
 
-/**
- * Servicio de Configuración del Sistema
- * Gestiona credenciales SMTP encriptadas y branding (solo OWNER puede acceder)
- */
 @Injectable()
 export class SystemConfigService {
   private readonly logger = new Logger(SystemConfigService.name);
 
   constructor(
-    @InjectModel(SystemConfig.name) private systemConfigModel: Model<SystemConfig>,
-    @InjectModel(SystemBranding.name) private systemBrandingModel: Model<SystemBranding>,
-    @InjectConnection() private connection: Connection
+    @InjectModel(SystemConfig.name)
+    private readonly systemConfigModel: Model<SystemConfig>,
+    @InjectModel(SystemBranding.name)
+    private readonly systemBrandingModel: Model<SystemBranding>,
+    @InjectConnection()
+    private readonly connection: Connection,
+    private readonly emailService: EmailService,
   ) {}
 
-  /**
-   * Resetea la base de datos (Elimina datos de negocio, preserva Usuarios y Config)
-   * Peligro: Acción destructiva
-   */
-  async resetDatabase(confirmation: string): Promise<{ success: boolean; message: string }> {
-    if (confirmation !== 'DELETE') {
-      throw new BadRequestException('Confirmación inválida. Se requiere "DELETE".');
+  async resetDatabase(
+    confirmation: string,
+  ): Promise<{ success: boolean; message: string }> {
+    if (confirmation !== "DELETE") {
+      throw new BadRequestException(
+        'Confirmacion invalida. Se requiere "DELETE".',
+      );
     }
 
-    const collectionsToClear = ['findings', 'projects', 'clients', 'areas', 'auditlogs'];
-    
-    this.logger.warn('INICIANDO RESET DE BASE DE DATOS - Acción Admin Owner');
-
-    let deletedCounts: any = {};
+    const collectionsToClear = [
+      "findings",
+      "projects",
+      "clients",
+      "areas",
+      "auditlogs",
+    ];
+    this.logger.warn("INICIANDO RESET DE BASE DE DATOS - Accion Admin Owner");
 
     for (const name of collectionsToClear) {
       try {
         const collection = this.connection.collection(name);
         const result = await collection.deleteMany({});
-        deletedCounts[name] = result.deletedCount;
-        this.logger.log(`Colección ${name} limpiada: ${result.deletedCount} documentos eliminados.`);
+        this.logger.log(
+          `Coleccion ${name} limpiada: ${result.deletedCount} documentos eliminados.`,
+        );
       } catch (error) {
-        this.logger.error(`Error limpiando colección ${name}:`, error);
-        // Continuamos con las siguientes aunque falle una
+        this.logger.error(`Error limpiando coleccion ${name}:`, error);
       }
     }
-    
-    // También limpiamos uploads (físicamente no podemos desde aquí fácilmente sin servicio de archivos, 
-    // pero idealmente se debería vaciar la carpeta uploads/evidence)
-    // TODO: Limpiar archivos físicos si es necesario.
 
-    return { 
-      success: true, 
-      message: 'Base de datos de negocio reseteada exitosamente'
+    return {
+      success: true,
+      message: "Base de datos de negocio reseteada exitosamente",
     };
   }
 
-
-  /**
-   * Obtiene o crea configuración SMTP por defecto
-   */
   async getSmtpConfig(): Promise<any> {
-    let config = await this.systemConfigModel.findOne({ configKey: 'smtp_config' });
-
-    // Si no existe, crear config por defecto (debe ser actualizada por OWNER)
-    if (!config) {
-      this.logger.warn('Configuración SMTP no encontrada, creando config por defecto');
-      
-      config = new this.systemConfigModel({
-        configKey: 'smtp_config',
-        smtp_host: 'localhost',
-        smtp_port: 587,
-        smtp_secure: false,
-        smtp_user_encrypted: encryptText('user@example.com'),
-        smtp_pass_encrypted: encryptText('password'),
-        smtp_from_email: 'noreply@shieldtrack.com',
-        smtp_from_name: 'ShieldTrack Notificaciones'
-      });
-      
-      await config.save();
-    }
-
-    // Retornar credenciales desencriptadas
+    const config = await this.getOrCreateSmtpConfig();
     return (config as any).getDecryptedCredentials();
   }
 
-  /**
-   * Actualiza configuración SMTP (SOLO OWNER)
-   */
   async updateSmtpConfig(
     data: {
       smtp_host: string;
@@ -97,155 +71,195 @@ export class SystemConfigService {
       smtp_pass: string;
       smtp_from_email: string;
       smtp_from_name: string;
+      smtp_reply_to?: string;
+      smtp_timeout_ms?: number;
+      smtp_tls_reject_unauthorized?: boolean;
     },
-    userId: string
+    userId: string,
   ): Promise<SystemConfig> {
-    let config = await this.systemConfigModel.findOne({ configKey: 'smtp_config' });
+    const config = await this.getOrCreateSmtpConfig();
+    const nextUser = (data.smtp_user || "").trim();
+    const nextPass = (data.smtp_pass || "").trim();
 
-    if (!config) {
-      config = new this.systemConfigModel({ configKey: 'smtp_config' });
-    }
-
-    // Encriptar credenciales
     config.smtp_host = data.smtp_host;
     config.smtp_port = data.smtp_port;
     config.smtp_secure = data.smtp_secure;
-    config.smtp_user_encrypted = encryptText(data.smtp_user);
-    config.smtp_pass_encrypted = encryptText(data.smtp_pass);
     config.smtp_from_email = data.smtp_from_email;
     config.smtp_from_name = data.smtp_from_name;
+    config.smtp_reply_to = data.smtp_reply_to?.trim() || undefined;
+    config.smtp_timeout_ms = Math.max(0, Number(data.smtp_timeout_ms ?? 10000));
+    config.smtp_tls_reject_unauthorized =
+      data.smtp_tls_reject_unauthorized !== false;
+
+    if (nextUser && !this.isMaskedSecret(nextUser)) {
+      config.smtp_user_encrypted = encryptText(nextUser);
+    }
+
+    if (nextPass && !this.isMaskedSecret(nextPass)) {
+      config.smtp_pass_encrypted = encryptText(nextPass);
+    }
+
     config.lastModifiedBy = userId as any;
-
     await config.save();
+    await this.emailService.refreshTransporter();
 
-    this.logger.log(`Configuración SMTP actualizada por usuario ${userId}`);
+    this.logger.log(`Configuracion SMTP actualizada por usuario ${userId}`);
     return config;
   }
 
-  /**
-   * Obtiene configuración SMTP (sin mostrar credenciales encriptadas)
-   * Para vista de OWNER en frontend
-   */
   async getSmtpConfigMasked(): Promise<any> {
-    let config = await this.systemConfigModel.findOne({ configKey: 'smtp_config' });
-
-    // Si no existe, crear config por defecto
-    if (!config) {
-      this.logger.warn('Configuración SMTP no encontrada, creando config por defecto');
-      
-      config = new this.systemConfigModel({
-        configKey: 'smtp_config',
-        smtp_host: 'localhost',
-        smtp_port: 587,
-        smtp_secure: false,
-        smtp_user_encrypted: encryptText('user@example.com'),
-        smtp_pass_encrypted: encryptText('password'),
-        smtp_from_email: 'noreply@shieldtrack.com',
-        smtp_from_name: 'ShieldTrack Notificaciones'
-      });
-      
-      await config.save();
-    }
+    const config = await this.getOrCreateSmtpConfig();
 
     return {
       smtp_host: config.smtp_host,
       smtp_port: config.smtp_port,
       smtp_secure: config.smtp_secure,
-      smtp_user: '***********', // Oculto
-      smtp_pass: '***********', // Oculto
+      smtp_user: "***********",
+      smtp_pass: "***********",
       smtp_from_email: config.smtp_from_email,
       smtp_from_name: config.smtp_from_name,
+      smtp_reply_to: config.smtp_reply_to,
+      smtp_timeout_ms: config.smtp_timeout_ms,
+      smtp_tls_reject_unauthorized: config.smtp_tls_reject_unauthorized,
       lastModifiedBy: config.lastModifiedBy,
-      updatedAt: (config as any).updatedAt
+      updatedAt: (config as any).updatedAt,
     };
   }
 
-  /**
-   * Prueba conexión SMTP con las credenciales actuales
-   */
   async testSmtpConnection(): Promise<{ success: boolean; message: string }> {
     try {
       const config = await this.getSmtpConfig();
-      
-      // Usar nodemailer para probar conexión
-      const nodemailer = require('nodemailer');
+      const resolvedHost = await resolveSmtpHostToIpv4(config.host);
+
+      if (resolvedHost.resolvedToIpv4) {
+        this.logger.log(
+          `SMTP host ${config.host} resuelto a IPv4 ${resolvedHost.connectionHost} para prueba de conexion`,
+        );
+      }
+
       const transporter = nodemailer.createTransport({
-        host: config.host,
+        host: resolvedHost.connectionHost,
         port: config.port,
         secure: config.secure,
-        auth: config.auth
+        auth: config.auth,
+        tls: {
+          ...(resolvedHost.tlsServername
+            ? { servername: resolvedHost.tlsServername }
+            : {}),
+          rejectUnauthorized: config.tlsRejectUnauthorized !== false,
+        },
+        ...(config.timeoutMs > 0
+          ? {
+              connectionTimeout: config.timeoutMs,
+              greetingTimeout: config.timeoutMs,
+              socketTimeout: config.timeoutMs,
+            }
+          : {}),
       });
 
       await transporter.verify();
-
-      this.logger.log('Conexión SMTP verificada exitosamente');
-      return { success: true, message: 'Conexión SMTP exitosa' };
-    } catch (error) {
-      this.logger.error(`Error verificando SMTP: ${error.message}`);
-      return { success: false, message: error.message };
+      this.logger.log("Conexion SMTP verificada exitosamente");
+      return { success: true, message: "Conexion SMTP exitosa" };
+    } catch (error: any) {
+      this.logger.error(`Error verificando SMTP: ${error?.message || error}`);
+      return {
+        success: false,
+        message: error?.message || "Error SMTP desconocido",
+      };
     }
   }
 
-  // ============================================================================
-  // Branding Configuration Methods
-  // ============================================================================
-
-  /**
-   * Obtiene la configuración de branding activa
-   */
   async getBrandingConfig(): Promise<any> {
-    const config = await this.systemBrandingModel.findOne().sort({ createdAt: -1 }).lean();
+    const config = await this.systemBrandingModel
+      .findOne()
+      .sort({ createdAt: -1 })
+      .lean();
 
-    // Si no existe, crear una configuración por defecto
     if (!config) {
-      this.logger.log('No se encontró configuración de branding, creando una por defecto');
+      this.logger.log(
+        "No se encontro configuracion de branding, creando una por defecto",
+      );
       const newConfig = new this.systemBrandingModel({
-        appName: 'ShieldTrack',
-        primaryColor: '#1976d2',
-        secondaryColor: '#424242',
-        isActive: true
+        appName: "ShieldTrack",
+        primaryColor: "#1976d2",
+        secondaryColor: "#424242",
+        isActive: true,
       });
       await newConfig.save();
-      return await this.systemBrandingModel.findOne().sort({ createdAt: -1 }).lean();
+      return this.systemBrandingModel.findOne().sort({ createdAt: -1 }).lean();
     }
 
     return config;
   }
 
-  /**
-   * Actualiza la configuración de branding (solo OWNER)
-   */
   async updateBrandingConfig(
     data: Partial<any>,
-    updatedBy: string
+    updatedBy: string,
   ): Promise<any> {
-    let config = await this.systemBrandingModel.findOne().sort({ createdAt: -1 });
+    let config = await this.systemBrandingModel
+      .findOne()
+      .sort({ createdAt: -1 });
 
     if (!config) {
-      // Crear nueva configuración si no existe
       config = new this.systemBrandingModel({
-        appName: data.appName || 'ShieldTrack',
+        appName: data.appName || "ShieldTrack",
         faviconUrl: data.faviconUrl,
         logoUrl: data.logoUrl,
-        primaryColor: data.primaryColor || '#1976d2',
-        secondaryColor: data.secondaryColor || '#424242',
+        primaryColor: data.primaryColor || "#1976d2",
+        secondaryColor: data.secondaryColor || "#424242",
         isActive: data.isActive !== undefined ? data.isActive : true,
-        lastModifiedBy: updatedBy
+        lastModifiedBy: updatedBy,
       });
     } else {
-      // Actualizar configuración existente
       if (data.appName !== undefined) config.appName = data.appName;
       if (data.faviconUrl !== undefined) config.faviconUrl = data.faviconUrl;
       if (data.logoUrl !== undefined) config.logoUrl = data.logoUrl;
-      if (data.primaryColor !== undefined) config.primaryColor = data.primaryColor;
-      if (data.secondaryColor !== undefined) config.secondaryColor = data.secondaryColor;
+      if (data.primaryColor !== undefined)
+        config.primaryColor = data.primaryColor;
+      if (data.secondaryColor !== undefined)
+        config.secondaryColor = data.secondaryColor;
       if (data.isActive !== undefined) config.isActive = data.isActive;
       (config as any).lastModifiedBy = updatedBy;
     }
 
     await config.save();
-    this.logger.log(`Configuración de branding actualizada por usuario ${updatedBy}`);
+    this.logger.log(
+      `Configuracion de branding actualizada por usuario ${updatedBy}`,
+    );
 
     return config.toObject();
+  }
+
+  private async getOrCreateSmtpConfig(): Promise<SystemConfig> {
+    let config = await this.systemConfigModel.findOne({
+      configKey: "smtp_config",
+    });
+
+    if (!config) {
+      this.logger.warn(
+        "Configuracion SMTP no encontrada, creando config por defecto",
+      );
+      config = new this.systemConfigModel({
+        configKey: "smtp_config",
+        smtp_host: "localhost",
+        smtp_port: 587,
+        smtp_secure: false,
+        smtp_user_encrypted: encryptText("user@example.com"),
+        smtp_pass_encrypted: encryptText("password"),
+        smtp_from_email: "noreply@shieldtrack.com",
+        smtp_from_name: "ShieldTrack Notificaciones",
+        smtp_reply_to: "",
+        smtp_timeout_ms: 10000,
+        smtp_tls_reject_unauthorized: true,
+      });
+      await config.save();
+    }
+
+    return config;
+  }
+
+  private isMaskedSecret(value?: string): boolean {
+    const normalized = (value || "").trim();
+    return normalized.length >= 3 && /^\*+$/.test(normalized);
   }
 }

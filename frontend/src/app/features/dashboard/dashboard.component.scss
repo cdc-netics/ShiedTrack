@@ -1,0 +1,69 @@
+.dashboard-page {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.dash-muted {
+  margin: 0;
+  color: #6b7280;
+  font-size: 0.9375rem;
+}
+
+.clickable-kpi {
+  cursor: pointer;
+}
+
+.clickable-kpi:hover {
+  transform: translateY(-1px);
+}
+
+.dense-table {
+  width: 100%;
+  font-size: 0.875rem;
+}
+
+.dense-table th,
+.dense-table td {
+  padding: 0.5rem 0.75rem;
+}
+
+.clickable-row {
+  cursor: pointer;
+}
+
+.clickable-row:hover {
+  background: rgba(15, 23, 42, 0.04);
+}
+
+.clickable-row:focus-visible {
+  outline: 2px solid #1e40af;
+  outline-offset: -2px;
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.severity-critical {
+  background: #ffebee;
+  color: #b91c1c;
+}
+
+.severity-high {
+  background: #fff3e0;
+  color: #c2410c;
+}
+
+.severity-medium {
+  background: #fff9c4;
+  color: #a16207;
+}
+
+.severity-low {
+  background: #e3f2fd;
+  color: #1e40af;
+}

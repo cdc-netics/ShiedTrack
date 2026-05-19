@@ -1,11 +1,16 @@
-import { Injectable, NotFoundException, Logger, BadRequestException } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
-import { Client } from './schemas/client.schema';
-import { CreateClientDto, UpdateClientDto } from './dto/client.dto';
-import { ProjectStatus } from '../../common/enums';
-import { AuthService } from '../auth/auth.service';
-import { UserRole } from '../../common/enums';
+import {
+  Injectable,
+  NotFoundException,
+  Logger,
+  BadRequestException,
+} from "@nestjs/common";
+import { InjectModel } from "@nestjs/mongoose";
+import { Model } from "mongoose";
+import { Client } from "./schemas/client.schema";
+import { CreateClientDto, UpdateClientDto } from "./dto/client.dto";
+import { ProjectStatus } from "../../common/enums";
+import { AuthService } from "../auth/auth.service";
+import { UserRole } from "../../common/enums";
 
 /**
  * Servicio de gestión de Clientes (Tenants)
@@ -33,7 +38,7 @@ export class ClientService {
       contactPhone: dto.contactPhone,
     });
     await client.save();
-    
+
     this.logger.log(`Cliente creado: ${client.name} (ID: ${client._id})`);
 
     // Crear admin inicial si se especifica
@@ -47,9 +52,13 @@ export class ClientService {
           role: UserRole.CLIENT_ADMIN,
           clientId: client._id.toString(),
         });
-        this.logger.log(`Admin inicial creado para tenant ${client.name}: ${dto.initialAdmin.email}`);
+        this.logger.log(
+          `Admin inicial creado para tenant ${client.name}: ${dto.initialAdmin.email}`,
+        );
       } catch (error) {
-        this.logger.error(`Error al crear admin inicial para tenant ${client.name}: ${error.message}`);
+        this.logger.error(
+          `Error al crear admin inicial para tenant ${client.name}: ${error.message}`,
+        );
         // No fallar la creación del tenant si el admin falla, solo loggear
       }
     }
@@ -66,32 +75,37 @@ export class ClientService {
    */
   async findAll(includeInactive = false, currentUser?: any): Promise<any[]> {
     const query: any = includeInactive ? {} : { isActive: true };
-    
+
     // SEGURIDAD MULTI-TENANT: Filtrar según rol
     if (currentUser) {
-      const restrictedRoles = ['CLIENT_ADMIN', 'AREA_ADMIN', 'ANALYST', 'VIEWER'];
+      const restrictedRoles = [
+        "CLIENT_ADMIN",
+        "AREA_ADMIN",
+        "ANALYST",
+        "VIEWER",
+      ];
       if (restrictedRoles.includes(currentUser.role) && currentUser.clientId) {
         query._id = currentUser.clientId; // Solo su cliente
       }
     }
-    
+
     const clients = await this.clientModel.find(query).sort({ name: 1 }).lean();
-    
+
     // Agregar conteo de proyectos para cada cliente
-    const Project = this.clientModel.db.model('Project');
+    const Project = this.clientModel.db.model("Project");
     const clientsWithCount = await Promise.all(
       clients.map(async (client) => {
-        const projectsCount = await Project.countDocuments({ 
+        const projectsCount = await Project.countDocuments({
           clientId: client._id,
-          projectStatus: ProjectStatus.ACTIVE 
+          projectStatus: ProjectStatus.ACTIVE,
         });
         return {
           ...client,
-          projectsCount
+          projectsCount,
         };
-      })
+      }),
     );
-    
+
     return clientsWithCount;
   }
 
@@ -110,8 +124,10 @@ export class ClientService {
    * Actualiza un cliente
    */
   async update(id: string, dto: UpdateClientDto): Promise<Client> {
-    const client = await this.clientModel.findByIdAndUpdate(id, dto, { new: true });
-    
+    const client = await this.clientModel.findByIdAndUpdate(id, dto, {
+      new: true,
+    });
+
     if (!client) {
       throw new NotFoundException(`Cliente con ID ${id} no encontrado`);
     }
@@ -143,11 +159,13 @@ export class ClientService {
    */
   async hardDelete(id: string): Promise<void> {
     const result = await this.clientModel.findByIdAndDelete(id);
-    
+
     if (!result) {
       throw new NotFoundException(`Cliente con ID ${id} no encontrado`);
     }
 
-    this.logger.warn(`Cliente ELIMINADO permanentemente: ${result.name} (ID: ${id})`);
+    this.logger.warn(
+      `Cliente ELIMINADO permanentemente: ${result.name} (ID: ${id})`,
+    );
   }
 }

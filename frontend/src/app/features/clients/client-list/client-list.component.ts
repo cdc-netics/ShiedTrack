@@ -1,13 +1,12 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { MatTableModule } from '@angular/material/table';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatCardModule } from '@angular/material/card';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
@@ -24,6 +23,7 @@ import { environment } from '../../../../environments/environment'; // Standardi
  * Gestión de clientes a los que se les presta servicios
  */
 @Component({
+  standalone: true,
     selector: 'app-client-list',
     imports: [
         CommonModule,
@@ -35,7 +35,6 @@ import { environment } from '../../../../environments/environment'; // Standardi
         MatChipsModule,
         MatInputModule,
         MatFormFieldModule,
-        MatCardModule,
         MatTooltipModule,
         MatProgressSpinnerModule,
         MatDialogModule,
@@ -43,55 +42,50 @@ import { environment } from '../../../../environments/environment'; // Standardi
         MatMenuModule // Added
     ],
     template: `
-    <div class="client-list-container">
-      <mat-card class="header-card">
-        <mat-card-header>
-          <mat-card-title>
-            <mat-icon>business</mat-icon>
-            Clientes
-          </mat-card-title>
-        </mat-card-header>
-        <mat-card-content>
-          <div class="actions-bar">
-            <button mat-raised-button color="primary" (click)="openClientDialog()">
-              <mat-icon>add</mat-icon>
-              Nuevo Cliente
-            </button>
-            
-            <div class="filters">
-              <mat-form-field appearance="outline" class="filter-field">
-                <mat-label>Buscar</mat-label>
-                <input matInput [ngModel]="searchTerm()" 
-                       (ngModelChange)="searchTerm.set($event); applyFilters()"
-                       placeholder="Buscar por nombre...">
-                <mat-icon matSuffix>search</mat-icon>
-              </mat-form-field>
-              
-              <button mat-icon-button (click)="loadClients()" matTooltip="Actualizar">
-                <mat-icon>refresh</mat-icon>
-              </button>
-            </div>
-          </div>
-        </mat-card-content>
-      </mat-card>
+    <div class="list-page list-page--narrow ui-stack">
+      <header class="ui-screen-toolbar">
+        <h1 class="ui-screen-title">Clientes</h1>
+      </header>
 
-      <mat-card class="table-card">
+      <section class="ui-cluster ui-cluster--between" aria-label="Filtros y acciones">
+        <button mat-raised-button color="primary" type="button" (click)="openClientDialog()">
+          <mat-icon aria-hidden="true">add</mat-icon>
+          Nuevo cliente
+        </button>
+        <div class="ui-cluster">
+          <mat-form-field appearance="outline" class="filter-field">
+            <mat-label>Buscar</mat-label>
+            <input matInput [ngModel]="searchTerm()" 
+                   (ngModelChange)="searchTerm.set($event); applyFilters()"
+                   placeholder="Buscar por nombre…"
+                   aria-label="Filtrar clientes por nombre">
+            <mat-icon matSuffix aria-hidden="true">search</mat-icon>
+          </mat-form-field>
+          <button mat-icon-button type="button" (click)="loadClients()" matTooltip="Actualizar lista" aria-label="Actualizar lista">
+            <mat-icon aria-hidden="true">refresh</mat-icon>
+          </button>
+        </div>
+      </section>
+
+      <section class="ui-data-panel" aria-labelledby="clients-table-heading">
+        <h2 id="clients-table-heading" class="sr-only">Listado de clientes</h2>
         @if (loading()) {
-          <div class="loading-container">
-            <mat-spinner></mat-spinner>
-            <p>Cargando clientes...</p>
+          <div class="ui-loading-block">
+            <mat-spinner aria-label="Cargando clientes"></mat-spinner>
+            <p>Cargando clientes…</p>
           </div>
         } @else if (filteredClients().length === 0) {
-          <div class="empty-state">
-            <mat-icon>business_center</mat-icon>
-            <h3>No hay clientes</h3>
-            <p>Crea tu primer cliente/tenant para comenzar</p>
-            <button mat-raised-button color="primary" routerLink="/clients/new">
-              <mat-icon>add</mat-icon>
-              Crear Cliente
+          <div class="ui-empty-state">
+            <mat-icon aria-hidden="true">business_center</mat-icon>
+            <p class="ui-empty-state__title">No hay clientes</p>
+            <p>Crea tu primer cliente o tenant para comenzar.</p>
+            <button mat-raised-button color="primary" type="button" (click)="openClientDialog()">
+              <mat-icon aria-hidden="true">add</mat-icon>
+              Crear cliente
             </button>
           </div>
         } @else {
+          <div class="ui-table-scroll">
           <table mat-table [dataSource]="filteredClients()" class="clients-table">
             <!-- Columna Nombre -->
             <ng-container matColumnDef="name">
@@ -136,15 +130,15 @@ import { environment } from '../../../../environments/environment'; // Standardi
             <ng-container matColumnDef="actions">
               <th mat-header-cell *matHeaderCellDef>Acciones</th>
               <td mat-cell *matCellDef="let client">
-                <button mat-icon-button (click)="openClientDialog(client)" 
+                <button mat-icon-button (click)="openClientDialog(client); $event.stopPropagation()" 
                         matTooltip="Editar cliente">
                   <mat-icon>edit</mat-icon>
                 </button>
-                <button mat-icon-button [routerLink]="['/clients', client._id]" 
+                <button mat-icon-button [routerLink]="['/findings']" [queryParams]="{ clientId: client._id }" (click)="$event.stopPropagation()"
                         matTooltip="Ver detalles">
                   <mat-icon>visibility</mat-icon>
                 </button>
-                <button mat-icon-button [matMenuTriggerFor]="exportMenu" matTooltip="Exportar datos">
+                <button mat-icon-button [matMenuTriggerFor]="exportMenu" matTooltip="Exportar datos" (click)="$event.stopPropagation()">
                   <mat-icon>cloud_download</mat-icon>
                 </button>
                 <mat-menu #exportMenu="matMenu">
@@ -157,7 +151,7 @@ import { environment } from '../../../../environments/environment'; // Standardi
                     <span>Reporte General (CSV)</span>
                   </button>
                 </mat-menu>
-                <button mat-icon-button (click)="deleteClient(client)" 
+                <button mat-icon-button (click)="deleteClient(client); $event.stopPropagation()" 
                         matTooltip="Eliminar" color="warn">
                   <mat-icon>delete</mat-icon>
                 </button>
@@ -165,47 +159,24 @@ import { environment } from '../../../../environments/environment'; // Standardi
             </ng-container>
 
             <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-            <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+            <tr mat-row *matRowDef="let row; columns: displayedColumns;" class="clickable-row" (click)="openClientDetails(row)"></tr>
           </table>
+          </div>
         }
-      </mat-card>
+      </section>
     </div>
   `,
     styles: [`
-    .client-list-container {
-      padding: 24px;
-      max-width: 1600px;
-      margin: 0 auto;
-    }
-
-    .header-card {
-      margin-bottom: 24px;
-    }
-
-    .actions-bar {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 16px;
-      margin-top: 16px;
-    }
-
-    .filters {
-      display: flex;
-      gap: 16px;
-      align-items: center;
-    }
-
     .filter-field {
-      width: 250px;
-    }
-
-    .table-card {
-      overflow-x: auto;
+      width: min(100%, 280px);
     }
 
     .clients-table {
       width: 100%;
+    }
+
+    .clickable-row {
+      cursor: pointer;
     }
 
     .client-name {
@@ -265,36 +236,11 @@ import { environment } from '../../../../environments/environment'; // Standardi
       font-weight: 600;
     }
 
-    .loading-container {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 48px;
-      gap: 16px;
-    }
-
-    .empty-state {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 64px;
-      text-align: center;
-      gap: 16px;
-    }
-
-    .empty-state mat-icon {
-      font-size: 64px;
-      width: 64px;
-      height: 64px;
-      color: #bdbdbd;
-    }
-
-    mat-card-title {
-      display: flex;
-      align-items: center;
-      gap: 12px;
+    .ui-empty-state__title {
+      margin: 0;
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: #1f2937;
     }
   `]
 })
@@ -303,7 +249,8 @@ export class ClientListComponent implements OnInit {
   private http = inject(HttpClient);
   private dialog = inject(MatDialog);
   private snackBar = inject(MatSnackBar);
-  private readonly API_URL = 'http://localhost:3000/api/clients';
+  private router = inject(Router);
+  private readonly API_URL = `${environment.apiUrl}/clients`;
   
   // Columnas visibles en la tabla
   displayedColumns = ['name', 'projects', 'status', 'created', 'actions'];
@@ -444,5 +391,10 @@ export class ClientListComponent implements OnInit {
         );
       }
     });
+  }
+
+  openClientDetails(client: any): void {
+    if (!client?._id) return;
+    void this.router.navigate(['/clients', client._id]);
   }
 }

@@ -205,7 +205,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"projectId\": \"{{test_project_id}}\",\n  \"code\": \"FND-VIEWER-001\",\n  \"title\": \"Intento de VIEWER de crear hallazgo\",\n  \"severity\": \"HIGH\",\n  \"status\": \"OPEN\"\n}"
+          "raw": "{\n  \"projectId\": \"{{test_project_id}}\",\n  \"internal_code\": \"CAT-VIEWER-001\",\n  \"title\": \"Intento de VIEWER de crear hallazgo\",\n  \"severity\": \"HIGH\",\n  \"description\": \"Prueba RBAC VIEWER\"\n}"
         },
         "url": {
           "raw": "{{base_url}}/api/findings",
@@ -291,7 +291,7 @@
               "pm.test('Finding creado correctamente', () => {",
               "    const json = pm.response.json();",
               "    pm.expect(json).to.have.property('_id');",
-              "    pm.expect(json.code).to.equal('FND-ANALYST-001');",
+              "    pm.expect(json.code).to.match(/^[A-Z0-9_-]+-\\d{4}-\\d{6}$/);",
               "    pm.collectionVariables.set('test_finding_id', json._id);",
               "});"
             ]
@@ -306,7 +306,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"projectId\": \"{{test_project_id}}\",\n  \"code\": \"FND-ANALYST-001\",\n  \"title\": \"SQL Injection en módulo de autenticación\",\n  \"severity\": \"CRITICAL\",\n  \"status\": \"OPEN\",\n  \"description\": \"Hallazgo de prueba para validar RBAC\",\n  \"retestIncluded\": true\n}"
+          "raw": "{\n  \"projectId\": \"{{test_project_id}}\",\n  \"internal_code\": \"CAT-RBAC-004\",\n  \"title\": \"SQL Injection en módulo de autenticación\",\n  \"severity\": \"CRITICAL\",\n  \"description\": \"Hallazgo de prueba para validar RBAC\",\n  \"retestIncluded\": true\n}"
         },
         "url": {
           "raw": "{{base_url}}/api/findings",

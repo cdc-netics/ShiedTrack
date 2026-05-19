@@ -1,9 +1,9 @@
-import { createParamDecorator, ExecutionContext } from '@nestjs/common';
+import { createParamDecorator, ExecutionContext } from "@nestjs/common";
 
 /**
  * Decorator para obtener el usuario autenticado actual
  * Extrae los datos del usuario del request (inyectados por JwtStrategy)
- * 
+ *
  * @example
  * async createFinding(@CurrentUser() user: any) {
  *   console.log(user.userId, user.email, user.role);

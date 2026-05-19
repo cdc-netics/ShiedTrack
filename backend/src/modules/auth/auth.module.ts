@@ -1,19 +1,22 @@
-import { Module } from '@nestjs/common';
-import { JwtModule } from '@nestjs/jwt';
-import { PassportModule } from '@nestjs/passport';
-import { MongooseModule } from '@nestjs/mongoose';
-import { ConfigModule, ConfigService } from '@nestjs/config';
-import { AuthService } from './auth.service';
-import { UserAreaService } from './user-area.service';
-import { UserAssignmentService } from './user-assignment.service';
-import { AuthController } from './auth.controller';
-import { JwtStrategy } from './strategies/jwt.strategy';
-import { User, UserSchema } from './schemas/user.schema';
-import { UserAreaAssignment, UserAreaAssignmentSchema } from './schemas/user-area-assignment.schema';
-import { Area, AreaSchema } from '../area/schemas/area.schema';
-import { Project, ProjectSchema } from '../project/schemas/project.schema';
-import { Client, ClientSchema } from '../client/schemas/client.schema';
-import { EmailModule } from '../email/email.module';
+import { Module } from "@nestjs/common";
+import { JwtModule } from "@nestjs/jwt";
+import { PassportModule } from "@nestjs/passport";
+import { MongooseModule } from "@nestjs/mongoose";
+import { ConfigModule, ConfigService } from "@nestjs/config";
+import { AuthService } from "./auth.service";
+import { UserAreaService } from "./user-area.service";
+import { UserAssignmentService } from "./user-assignment.service";
+import { AuthController } from "./auth.controller";
+import { JwtStrategy } from "./strategies/jwt.strategy";
+import { User, UserSchema } from "./schemas/user.schema";
+import {
+  UserAreaAssignment,
+  UserAreaAssignmentSchema,
+} from "./schemas/user-area-assignment.schema";
+import { Area, AreaSchema } from "../area/schemas/area.schema";
+import { Project, ProjectSchema } from "../project/schemas/project.schema";
+import { Client, ClientSchema } from "../client/schemas/client.schema";
+import { EmailModule } from "../email/email.module";
 
 /**
  * Módulo de autenticación
@@ -29,13 +32,16 @@ import { EmailModule } from '../email/email.module';
       { name: Client.name, schema: ClientSchema },
     ]),
     EmailModule,
-    PassportModule.register({ defaultStrategy: 'jwt' }),
+    PassportModule.register({ defaultStrategy: "jwt" }),
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({
-        secret: configService.get<string>('JWT_SECRET') || 'shieldtrack-secret-key-change-in-production',
+        secret:
+          configService.get<string>("JWT_SECRET") ||
+          "shieldtrack-secret-key-change-in-production",
         signOptions: {
-          expiresIn: configService.get<string>('JWT_EXPIRES_IN') || '8h',
+          expiresIn: (configService.get<string>("JWT_EXPIRES_IN") ||
+            "8h") as any,
         },
       }),
       inject: [ConfigService],

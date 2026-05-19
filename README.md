@@ -1,166 +1,98 @@
 # 🔒 ShieldTrack
 
-Sistema de gestión de hallazgos de ciberseguridad para reemplazar Excel. Plataforma SOC/MSSP con arquitectura multi-tenant.
+Sistema de gestión de hallazgos de ciberseguridad para reemplazar Excel. Plataforma SOC/MSSP con arquitectura multi-tenant real.
 
 [![License: BSL 1.1](https://img.shields.io/badge/License-BSL%201.1-blue.svg)](LICENSE)
 [![Status: Development](https://img.shields.io/badge/Status-Development-orange.svg)](ISSUES.md)
-[![Node.js](https://img.shields.io/badge/Node.js-18.x-green.svg)](https://nodejs.org/)
-[![NestJS](https://img.shields.io/badge/NestJS-10.x-red.svg)](https://nestjs.com/)
+[![Node.js](https://img.shields.io/badge/Node.js-24.x-green.svg)](https://nodejs.org/)
 [![Angular](https://img.shields.io/badge/Angular-20.x-red.svg)](https://angular.io/)
-[![MongoDB](https://img.shields.io/badge/MongoDB-6.x-green.svg)](https://www.mongodb.com/)
+[![MongoDB](https://img.shields.io/badge/MongoDB-8.x-green.svg)](https://www.mongodb.com/)
 
-## ⚠️ Estado del Proyecto
+---
 
-**⚠️ EN DESARROLLO / NO LISTO PARA PRODUCCIÓN**
+## 🎯 Propósito del Sistema
 
-Este proyecto está en desarrollo activo y aún presenta issues abiertos (ver `ISSUES.md`).  
-No se recomienda su uso en producción hasta resolver los pendientes críticos y completar la validación QA.
+ShieldTrack centraliza el ciclo completo de gestión de hallazgos: registro, asignación, evidencia, seguimiento, retest y auditoría. Diseñado para analistas de SOC, pentesters y equipos de QA que requieren un flujo trazable, seguro y profesional.
 
-## 🎯 Sentido de la aplicación
+### 🧩 Características Principales
+- **Aislamiento Multi-Tenant**: Separación lógica de datos por cliente/organización.
+- **RBAC Granular**: 6 niveles de roles (Owner, Analyst, Viewer, etc.).
+- **Timeline Inmutable**: Historial completo de cambios para auditoría (SOC2/ISO27001).
+- **Retest Automatizado**: Programación de notificaciones y seguimiento de correcciones.
+- **Evidencias Seguras**: Almacenamiento protegido y descarga controlada por JWT.
 
-ShieldTrack existe para reemplazar planillas y flujos informales en la gestión de hallazgos. Centraliza el ciclo completo: registro, asignación, evidencia, seguimiento, cierre y auditoría, con control de acceso por roles y aislamiento por tenant.  
-El objetivo es que equipos distintos trabajen con un flujo trazable, seguro y consistente, reduciendo errores operativos y mejorando la visibilidad para decisiones técnicas y de negocio.
+---
 
-Aunque nació para ciberseguridad, es transversal: puede usarse para hallazgos de QA, pentesting, auditorías internas, revisiones de cumplimiento, post‑mortems, verificaciones operativas y cualquier proceso donde se deba documentar, priorizar y cerrar findings con evidencia.
+## 📚 Mapa de Documentación
 
-En resumen: es un sistema de gestión de hallazgos reusable por múltiples áreas, no limitado a un dominio específico.
+| Documento | Contenido |
+| :--- | :--- |
+| 🚀 **[SETUP.md](SETUP.md)** | Instalación: `.env` en la raíz vs `backend/.env`, puertos, Mongo, seeds y troubleshooting. |
+| 🚢 **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)** | Compose, autenticación Mongo (`MONGO_INITDB_*`, `MONGODB_URI`), CORS, seeds con `docker compose exec`, checklist de producción. |
+| 🔐 **[docs/DEVELOPMENT-CREDENTIALS.md](docs/DEVELOPMENT-CREDENTIALS.md)** | Usuarios y contraseñas de prueba (seed / login dev); no usar en producción. |
+| 🌐 **[docs/API.md](docs/API.md)** | Prefijo `/api`, Swagger, JWT, validación y cabeceras. |
+| 🏢 **[docs/MULTI-TENANCY.md](docs/MULTI-TENANCY.md)** | Tenant, áreas y compatibilidad legacy (fuente canónica). |
+| 🏗️ **[docs/architecture.md](docs/architecture.md)** | Modelo de datos, flujos y decisiones técnicas. |
+| 🧪 **[docs/TESTING-GUIDE.md](docs/TESTING-GUIDE.md)** | Suite P0, Postman/Newman y validación manual. |
+| 📜 **[docs/archive/Promp.txt](docs/archive/Promp.txt)** | Especificación funcional maestra (único archivo en `docs/archive/`). |
+| 🐛 **[ISSUES.md](ISSUES.md)** | Bugs, mejoras y backlog. |
+| 📝 **[CHANGELOG.md](CHANGELOG.md)** | Historial de versiones. |
 
-### 🧩 Cómo lo usaría un equipo de QA
-- Registrar bugs y hallazgos de pruebas con severidad, estado y evidencia (capturas, logs).
-- Asignar responsables, hacer seguimiento y cerrar con motivo/observaciones.
-- Usar el historial (timeline) para auditoría y trazabilidad de cambios.
-- Separar dominios por **Área** (por ejemplo: Frontend, Backend, Mobile) y limitar visibilidad por rol.
+---
 
-### 🧪 Cómo lo usaría un pentester / equipo de ciber
-- Registrar hallazgos con severidad y evidencias técnicas, y controlar su ciclo de vida.
-- Aplicar retest para validar correcciones y medir cumplimiento.
-- Exportar por proyecto/cliente y mantener auditoría de cambios.
+## Inicio rápido (Docker — recomendado)
 
-### 🏢 Separación por tenant y áreas
-- **Tenant**: separa clientes u organizaciones (multi-tenant real).
-- **Áreas**: separa dominios internos (QA vs Ciber, o por sistemas/áreas de negocio).
-- Los usuarios solo ven lo que corresponde a su tenant y área, evitando cruces de información.
+**Requisitos:** Docker y Docker Compose (`docker compose`).
 
-## 📚 Documentación
-
-**¿No sabes dónde empezar?** → Ver **[INDEX.md](INDEX.md)** para guía de documentos
-
-👉 **[DOCUMENTATION.md](DOCUMENTATION.md)** - Documentación completa (instalación, arquitectura, estado de funcionalidades)
-👉 **[SETUP.md](SETUP.md)** - Guía de instalación rápida (5 minutos)
-👉 **[ISSUES.md](ISSUES.md)** - Reportes de bugs y mejoras futuras
-
-## 🚀 Inicio Rápido
+1. En la **raíz del repo**, copie **`.env.example`** → **`.env`**.
+2. Defina al menos un **`JWT_SECRET`** fuerte. Revise **MongoDB**: `MONGO_INITDB_ROOT_USERNAME`, `MONGO_INITDB_ROOT_PASSWORD` y **`MONGODB_URI`** deben coincidir (host del servicio en Compose: **`mongodb`**). Ajuste **`BACKEND_PORT`**, **`FRONTEND_PORT`** y **`MONGO_PORT`** si hay conflictos de puertos.
+3. Arranque:
 
 ```bash
-# Terminal 1: Backend
-cd backend && npm install && npm run build && npm start
-
-# Terminal 2: Frontend
-cd frontend && npm install && npm start
-
-# Acceder: http://localhost:4200
+npm start
 ```
 
-Para más detalles, ver [SETUP.md](SETUP.md) o [DOCUMENTATION.md](DOCUMENTATION.md#-inicio-rápido)
+Otros scripts: `npm run start:detached`, `npm run stop`.
 
-## 🔐 Datos de prueba (modo desarrollo)
+**URLs** (los puertos salen de su `.env`; por defecto `BACKEND_PORT=3000`, `FRONTEND_PORT=80`):
 
-Carga los datos de prueba:
+| Qué | Dónde |
+|-----|--------|
+| App web | `http://localhost` o `http://localhost:<FRONTEND_PORT>` |
+| API / Swagger | `http://localhost:<BACKEND_PORT>/api/docs` |
+
+Usuarios de prueba (tras seeds): [docs/DEVELOPMENT-CREDENTIALS.md](docs/DEVELOPMENT-CREDENTIALS.md). Guía paso a paso y problemas frecuentes: [SETUP.md](SETUP.md). Variables, Compose y producción: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md). Antes de un despliegue real, revise el checklist de **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)** (`JWT_SECRET`, CORS, `NODE_ENV`, Mongo).
+
+### Desarrollo en el host (sin Docker)
+
+Si necesita Node y Mongo instalados localmente:
 
 ```bash
-cd backend
-npm run seed:test
+# Windows (PowerShell)
+npm run start:local:win
+
+# Linux / macOS
+npm run start:local:unix
 ```
 
-**Credenciales de login de prueba:**
-- `admin@shieldtrack.com` / `Admin123!` (Owner Dev)
-- `owner@shieldtrack.com` / `Password123!`
-- `platformadmin@shieldtrack.com` / `Password123!`
-- `clientadmin@acmecorp.com` / `Password123!`
-- `areaadmin@acmecorp.com` / `Password123!`
-- `analyst@shieldtrack.com` / `Password123!`
-- `viewer@shieldtrack.com` / `Password123!`
+Detalle y variables: [SETUP.md](SETUP.md).
 
-## 🔧 Solución de Problemas Comunes
 
-### Error: "Cannot find module './modules/evidence/evidence.module'"
 
-Si obtienes este error al compilar o ejecutar el backend:
+---
 
-```bash
-# 1. Asegúrate de tener la última versión del repositorio
-git pull origin main
+## 🏗️ Arquitectura de Referencia
 
-# 2. Reinstala dependencias
-cd backend
-rm -rf node_modules package-lock.json
-npm install
+- **Backend**: NestJS + MongoDB (Mongoose) + JWT Auth + MFA.
+- **Frontend**: Angular 20 (Standalone Components) + Signals (State Management).
+- **Arranque**: Compose como flujo principal; scripts opcionales `.ps1` / `.sh` solo para desarrollo local sin contenedores.
+- **Contratos frontend/API**: los servicios principales normalizan respuestas de dominio antes de exponerlas a las pantallas. La capa `frontend/src/app/shared/utils/domain-normalizers.ts` mantiene compatibilidad entre campos legacy y canonicos como `mimeType/mimetype`, `filename/originalName`, `tenantId/clientId` y `areaId/areaIds`.
 
-# 3. Compila nuevamente
-npm run build
-```
-
-**Causa:** El archivo `.gitignore` anteriormente bloqueaba el módulo `evidence`. Esto se corrigió en el commit más reciente.
-
-### Vulnerabilidades de npm
-
-**Estado actual:** 12 vulnerabilidades (5 low, 3 moderate, 4 high)
-
-✅ **Ya corregidas:** 24 de 36 vulnerabilidades (67% reducción)
-- diff, fast-xml-parser, AWS SDK, qs: actualizados
-- nodemailer 6.9.7 → 8.0.0: vulnerabilidades moderate corregidas
-
-⚠️ **Pendientes:**
-- 4 HIGH: glob, tar, webpack (solo dev dependencies, no afectan producción)
-- 3 MODERATE: js-yaml, lodash (requieren actualizar NestJS v10 → v11)
-
-Si `npm install` muestra vulnerabilidades:
-
-```bash
-# Ver detalles
-npm audit
-
-# Las versiones corregidas ya están en package.json
-npm install
-
-# Compilar y verificar
-npm run build
-```
-
-**⚠️ ADVERTENCIA:** NO uses `npm audit fix --force` sin revisar cambios. Las vulnerabilidades restantes requieren breaking changes de NestJS v10 → v11.
-
-## 📋 Características Principales
-
-- ✅ **Multi-Tenant**: Gestión por cliente con aislamiento lógico.
-- ✅ **RBAC Completo**: 6 niveles de roles (OWNER, PLATFORM_ADMIN, CLIENT_ADMIN, AREA_ADMIN, ANALYST, VIEWER).
-- ✅ **Retest Scheduler**: Cron job automático con notificaciones por email.
-- ✅ **Timeline Inmutable**: Auditoría completa de cambios en hallazgos.
-- ✅ **MFA Disponible**: MFA con TOTP.
-- ✅ **Almacenamiento Seguro**: Evidencias en disco local con descarga protegida por JWT.
-- ✅ **Desktop-First**: Optimizado para analistas SOC (pantallas ≥1366px).
-
-## 🏗️ Arquitectura
-
-### Backend (NestJS + MongoDB)
-Arquitectura modular con NestJS, Mongoose para MongoDB, y autenticación JWT/MFA.
-- **Módulos**: Auth, Client, Area, Project, Finding, Evidence, Retest Scheduler.
-- **Seguridad**: Guards, Interceptors, ValidationPipe, Helmet, Rate Limiting.
-
-### Frontend (Angular 20+ Standalone)
-Aplicación SPA con Angular 20, Standalone Components y Signals para gestión de estado.
-- **UI**: Angular Material con diseño denso.
-- **Core**: Servicios y Guards funcionales.
+---
 
 ## 📄 Licencia
 
 **Business Source License 1.1**
+---
 
-Este software no es Open Source en el sentido tradicional.
-- ✅ Permitido para uso personal, académico y evaluación.
-- ❌ **PROHIBIDO** para uso comercial en producción, SaaS o reventa sin licencia comercial.
-
-Ver archivo **[LICENSE](LICENSE)** para términos completos.
-
-## 👥 Contribución
-
-Este es un proyecto empresarial privado. Contactar al equipo para colaboraciones.
+**ShieldTrack Team** | 2026

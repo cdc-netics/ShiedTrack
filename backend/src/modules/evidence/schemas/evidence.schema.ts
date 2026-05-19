@@ -1,5 +1,5 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document, Types } from 'mongoose';
+import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
+import { Document, Types } from "mongoose";
 
 /**
  * Entidad Evidence
@@ -23,13 +23,13 @@ export class Evidence extends Document {
   @Prop({ required: true })
   size: number; // Tamaño en bytes
 
-  @Prop({ type: Types.ObjectId, ref: 'Finding', required: true })
+  @Prop({ type: Types.ObjectId, ref: "Finding", required: true })
   findingId: Types.ObjectId;
 
-  @Prop({ type: Types.ObjectId, ref: 'FindingUpdate' })
+  @Prop({ type: Types.ObjectId, ref: "FindingUpdate" })
   updateId?: Types.ObjectId; // Actualización específica a la que pertenece (opcional)
 
-  @Prop({ type: Types.ObjectId, ref: 'User', required: true })
+  @Prop({ type: Types.ObjectId, ref: "User", required: true })
   uploadedBy: Types.ObjectId;
 
   @Prop()
@@ -38,7 +38,7 @@ export class Evidence extends Document {
   // Timestamps automáticos: createdAt, updatedAt
 
   // Multi-tenant: referencia al tenant
-  @Prop({ type: Types.ObjectId, ref: 'Tenant' })
+  @Prop({ type: Types.ObjectId, ref: "Tenant" })
   tenantId?: Types.ObjectId;
 }
 

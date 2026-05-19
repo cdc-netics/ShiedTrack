@@ -1,7 +1,19 @@
-import { IsString, IsOptional, IsEnum, IsBoolean, IsDateString, IsArray, IsEmail, IsNumber, ValidateNested, ArrayMaxSize } from 'class-validator';
-import { Type } from 'class-transformer';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { ServiceArchitecture, ProjectStatus } from '../../../common/enums';
+import {
+  IsString,
+  IsOptional,
+  IsEnum,
+  IsBoolean,
+  IsDateString,
+  IsArray,
+  IsEmail,
+  IsNumber,
+  ValidateNested,
+  ArrayMaxSize,
+  IsMongoId,
+} from "class-validator";
+import { Type } from "class-transformer";
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { ServiceArchitecture, ProjectStatus } from "../../../common/enums";
 
 /**
  * DTO para configuración de notificaciones
@@ -9,34 +21,37 @@ import { ServiceArchitecture, ProjectStatus } from '../../../common/enums';
 export class NotifyConfigDto {
   @IsArray()
   @IsEmail({}, { each: true })
-  @ArrayMaxSize(3, { message: 'Máximo 3 destinatarios de notificaciones' })
-  recipients: string[];
+  @ArrayMaxSize(3, { message: "Máximo 3 destinatarios de notificaciones" })
+  recipients: string[] = [];
 
   @IsArray()
   @IsNumber({}, { each: true })
-  offsetDays: number[];
+  offsetDays: number[] = [];
 }
 
 /**
  * DTO para configuración de política de Retest
  */
 export class RetestPolicyDto {
-  @ApiProperty({ example: true, description: 'Si el retest está habilitado' })
+  @ApiProperty({ example: true, description: "Si el retest está habilitado" })
   @IsBoolean()
   enabled: boolean;
 
-  @ApiPropertyOptional({ example: '2024-06-15', description: 'Fecha del próximo retest' })
+  @ApiPropertyOptional({
+    example: "2024-06-15",
+    description: "Fecha del próximo retest",
+  })
   @IsOptional()
   @IsDateString()
   nextRetestAt?: string;
 
   @ApiPropertyOptional({
-    type: 'object',
+    type: "object",
     properties: {
-      recipients: { type: 'array', items: { type: 'string' } },
-      offsetDays: { type: 'array', items: { type: 'number' } },
+      recipients: { type: "array", items: { type: "string" } },
+      offsetDays: { type: "array", items: { type: "number" } },
     },
-    description: 'Configuración de notificaciones',
+    description: "Configuración de notificaciones",
   })
   @IsOptional()
   @ValidateNested()
@@ -48,51 +63,69 @@ export class RetestPolicyDto {
  * DTO para crear un nuevo proyecto
  */
 export class CreateProjectDto {
-  @ApiProperty({ example: 'Pentest Aplicación Web 2024', description: 'Nombre del proyecto' })
+  @ApiProperty({
+    example: "Pentest Aplicación Web 2024",
+    description: "Nombre del proyecto",
+  })
   @IsString()
   name: string;
 
-  @ApiPropertyOptional({ example: 'PROJ-2024-001', description: 'Código identificador' })
+  @ApiPropertyOptional({
+    example: "PROJ-2024-001",
+    description: "Código identificador",
+  })
   @IsOptional()
   @IsString()
   code?: string;
 
-  @ApiPropertyOptional({ description: 'Descripción del proyecto' })
+  // ✅ AGREGAR ESTO
+  @ApiPropertyOptional({ description: "ID del cliente" })
+  @IsOptional()
+  @IsMongoId({ message: "clientId debe ser un ObjectId válido" })
+  clientId?: string;
+
+  @ApiPropertyOptional({ description: "Descripción del proyecto" })
   @IsOptional()
   @IsString()
   description?: string;
 
-  @ApiProperty({ description: 'ID del tenant' })
-  @IsString()
+  @ApiProperty({ description: "ID del tenant" })
+  @IsMongoId({ message: "tenantId debe ser un ObjectId válido" })
   tenantId: string;
 
-  @ApiPropertyOptional({ description: 'ID del área (Legacy)' })
+  @ApiPropertyOptional({ description: "ID del área (Legacy)" })
   @IsOptional()
-  @IsString()
+  @IsMongoId({ message: "areaId debe ser un ObjectId válido" })
   areaId?: string;
 
-  @ApiPropertyOptional({ description: 'IDs de las áreas asignadas', type: [String] })
+  @ApiPropertyOptional({
+    description: "IDs de las áreas asignadas",
+    type: [String],
+  })
   @IsOptional()
   @IsArray()
-  @IsString({ each: true })
+  @IsMongoId({ each: true, message: "Cada areaId debe ser un ObjectId válido" })
   areaIds?: string[];
 
   @ApiProperty({ enum: ServiceArchitecture, example: ServiceArchitecture.WEB })
   @IsEnum(ServiceArchitecture)
   serviceArchitecture: ServiceArchitecture;
 
-  @ApiPropertyOptional({ type: RetestPolicyDto, description: 'Configuración de retest' })
+  @ApiPropertyOptional({
+    type: RetestPolicyDto,
+    description: "Configuración de retest",
+  })
   @IsOptional()
   @ValidateNested()
   @Type(() => RetestPolicyDto)
   retestPolicy?: RetestPolicyDto;
 
-  @ApiPropertyOptional({ example: '2024-01-15' })
+  @ApiPropertyOptional({ example: "2024-01-15" })
   @IsOptional()
   @IsDateString()
   startDate?: string;
 
-  @ApiPropertyOptional({ example: '2024-12-31' })
+  @ApiPropertyOptional({ example: "2024-12-31" })
   @IsOptional()
   @IsDateString()
   endDate?: string;
@@ -112,6 +145,12 @@ export class UpdateProjectDto {
   @IsString()
   code?: string;
 
+  // ✅ si quieres permitir update del cliente también, agrega esto:
+  @ApiPropertyOptional({ description: "ID del cliente" })
+  @IsOptional()
+  @IsMongoId({ message: "clientId debe ser un ObjectId válido" })
+  clientId?: string;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
@@ -130,7 +169,7 @@ export class UpdateProjectDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsArray()
-  @IsString({ each: true })
+  @IsMongoId({ each: true, message: "Cada areaId debe ser un ObjectId válido" })
   areaIds?: string[];
 
   @ApiPropertyOptional({ type: RetestPolicyDto })
@@ -148,4 +187,14 @@ export class UpdateProjectDto {
   @IsOptional()
   @IsDateString()
   endDate?: string;
+}
+
+export class MergeProjectsDto {
+  @ApiProperty({ description: "Proyecto origen que se fusionará" })
+  @IsMongoId({ message: "sourceProjectId debe ser un ObjectId válido" })
+  sourceProjectId: string;
+
+  @ApiProperty({ description: "Proyecto destino que recibirá la data" })
+  @IsMongoId({ message: "targetProjectId debe ser un ObjectId válido" })
+  targetProjectId: string;
 }

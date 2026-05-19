@@ -14,6 +14,7 @@ import { BrandingService, SystemBranding } from '../../../core/services/branding
  * Permite configurar favicon, logo, nombre y colores
  */
 @Component({
+  standalone: true,
     selector: 'app-branding-config',
     imports: [
         CommonModule,

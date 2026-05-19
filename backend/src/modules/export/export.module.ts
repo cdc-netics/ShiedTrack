@@ -1,12 +1,13 @@
-import { Module } from '@nestjs/common';
-import { MongooseModule } from '@nestjs/mongoose';
-import { ExportController } from './export.controller';
-import { ExportService } from './export.service';
-import { PdfService } from '../../common/services/pdf.service';
-import { Finding, FindingSchema } from '../finding/schemas/finding.schema';
-import { Project, ProjectSchema } from '../project/schemas/project.schema';
-import { Client, ClientSchema } from '../client/schemas/client.schema';
-import { Evidence, EvidenceSchema } from '../evidence/schemas/evidence.schema';
+import { Module } from "@nestjs/common";
+import { MongooseModule } from "@nestjs/mongoose";
+import { ExportController } from "./export.controller";
+import { ExportService } from "./export.service";
+import { PdfService } from "../../common/services/pdf.service";
+import { Finding, FindingSchema } from "../finding/schemas/finding.schema";
+import { Project, ProjectSchema } from "../project/schemas/project.schema";
+import { Client, ClientSchema } from "../client/schemas/client.schema";
+import { Evidence, EvidenceSchema } from "../evidence/schemas/evidence.schema";
+import { AuthModule } from "../auth/auth.module";
 
 @Module({
   imports: [
@@ -16,9 +17,9 @@ import { Evidence, EvidenceSchema } from '../evidence/schemas/evidence.schema';
       { name: Client.name, schema: ClientSchema },
       { name: Evidence.name, schema: EvidenceSchema },
     ]),
+    AuthModule,
   ],
   controllers: [ExportController],
   providers: [ExportService, PdfService],
-
 })
 export class ExportModule {}

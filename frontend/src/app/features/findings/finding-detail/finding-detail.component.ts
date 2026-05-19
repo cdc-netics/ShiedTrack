@@ -22,6 +22,12 @@ import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { CloseFindingDialogComponent, CloseDialogResult } from '../close-finding-dialog/close-finding-dialog.component';
 import { AddUpdateDialogComponent, AddUpdateDialogResult } from '../add-update-dialog/add-update-dialog.component';
+import {
+  getEvidenceMimeType as getNormalizedEvidenceMimeType,
+  getEvidenceName as getNormalizedEvidenceName,
+  normalizeEvidence as normalizeEvidenceModel,
+  normalizeFindingUpdate
+} from '../../../shared/utils/domain-normalizers';
 import { environment } from '../../../../environments/environment';
 
 interface Finding {
@@ -58,11 +64,21 @@ interface Evidence {
   _id: string;
   findingId: string;
   filename: string;
-  originalName: string;
-  mimetype: string;
+  originalName?: string;
+  mimetype?: string;
+  mimeType?: string;
   size: number;
   uploadedBy: any;
   createdAt: string;
+}
+
+interface EvidenceRef {
+  _id: string;
+  filename?: string;
+  originalName?: string;
+  mimeType?: string;
+  mimetype?: string;
+  size?: number;
 }
 
 interface FindingUpdate {
@@ -73,7 +89,7 @@ interface FindingUpdate {
   createdBy: any;
   previousStatus?: string;
   newStatus?: string;
-  evidenceIds?: string[];
+  evidenceIds?: Array<string | EvidenceRef>;
   createdAt: string;
 }
 
@@ -82,6 +98,7 @@ interface FindingUpdate {
  * Visualización completa y edición de hallazgos de seguridad
  */
 @Component({
+    standalone: true,
     selector: 'app-finding-detail',
     imports: [
         CommonModule,
@@ -138,7 +155,6 @@ interface FindingUpdate {
                     Editar
                   </button>
                   <button mat-raised-button color="accent" (click)="openAddUpdateDialog()">
-                    <mat-icon>add_comment</mat-icon>
                     Agregar Seguimiento
                   </button>
                   @if (finding()!.status !== 'CLOSED' && canCloseFinding()) {
@@ -165,7 +181,7 @@ interface FindingUpdate {
           </mat-card-header>
         </mat-card>
 
-        <mat-tab-group class="content-tabs">
+        <mat-tab-group class="content-tabs" [selectedIndex]="selectedTabIndex()" (selectedIndexChange)="selectedTabIndex.set($event)">
           <!-- TAB 1: Información General -->
           <mat-tab label="Información General">
             <div class="tab-content">
@@ -445,20 +461,20 @@ interface FindingUpdate {
                         <mat-card-content>
                           <div class="evidence-header">
                             <div class="evidence-info">
-                              <mat-icon>{{ getFileIcon(evidence.mimetype) }}</mat-icon>
+                              <mat-icon>{{ getFileIcon(getEvidenceMimeType(evidence)) }}</mat-icon>
                               <div class="evidence-details">
-                                <h4>{{ evidence.originalName }}</h4>
+                                <h4>{{ getEvidenceName(evidence) }}</h4>
                                 <p>{{ formatFileSize(evidence.size) }} • {{ evidence.createdAt | date:'dd/MM/yyyy HH:mm' }}</p>
                                 <p class="uploader">Subido por: {{ evidence.uploadedBy?.email || 'Desconocido' }}</p>
                               </div>
                             </div>
                             <div class="evidence-actions">
-                              @if (isTextFile(evidence.mimetype)) {
+                              @if (isTextFile(getEvidenceMimeType(evidence))) {
                                 <button mat-icon-button color="accent" (click)="toggleTextPreview(evidence._id)" matTooltip="Ver contenido">
                                   <mat-icon>description</mat-icon>
                                 </button>
                               }
-                              @if (evidence.mimetype.includes('pdf')) {
+                              @if (getEvidenceMimeType(evidence).includes('pdf')) {
                                 <button mat-icon-button color="accent" (click)="viewEvidence(evidence)" matTooltip="Abrir PDF">
                                   <mat-icon>picture_as_pdf</mat-icon>
                                 </button>
@@ -472,10 +488,10 @@ interface FindingUpdate {
                             </div>
                           </div>
                           <!-- Preview de imagen -->
-                          @if (evidence.mimetype.startsWith('image/')) {
+                          @if (getEvidenceMimeType(evidence).startsWith('image/')) {
                             <div class="image-preview">
                               @if (imageUrls[evidence._id]) {
-                                <img [src]="imageUrls[evidence._id]" [alt]="evidence.originalName" (click)="viewEvidence(evidence)" />
+                                <img [src]="imageUrls[evidence._id]" [alt]="getEvidenceName(evidence)" (click)="viewEvidence(evidence)" />
                               } @else {
                                 <div class="loading-image">
                                   <mat-icon>image</mat-icon>
@@ -485,7 +501,7 @@ interface FindingUpdate {
                             </div>
                           }
                           <!-- Preview de texto -->
-                          @if (isTextFile(evidence.mimetype) && textPreviews[evidence._id]) {
+                          @if (isTextFile(getEvidenceMimeType(evidence)) && textPreviews[evidence._id]) {
                             <div class="text-preview">
                               <pre>{{ textPreviews[evidence._id] }}</pre>
                             </div>
@@ -515,7 +531,6 @@ interface FindingUpdate {
                 <div class="section-header">
                   <h3><mat-icon>track_changes</mat-icon> Timeline de Seguimiento</h3>
                   <button mat-raised-button color="primary" (click)="openAddUpdateDialog()">
-                    <mat-icon>add</mat-icon>
                     Agregar Seguimiento
                   </button>
                 </div>
@@ -562,7 +577,6 @@ interface FindingUpdate {
                     <mat-icon>track_changes</mat-icon>
                     <p>No hay seguimientos registrados</p>
                     <button mat-raised-button color="primary" (click)="openAddUpdateDialog()">
-                      <mat-icon>add</mat-icon>
                       Agregar Primer Seguimiento
                     </button>
                   </div>
@@ -1238,6 +1252,7 @@ export class FindingDetailComponent implements OnInit {
   loading = signal<boolean>(true);
   finding = signal<Finding | null>(null);
   editMode = signal<boolean>(false);
+  selectedTabIndex = signal<number>(0);
   loadingEvidences = signal<boolean>(false);
   evidences = signal<Evidence[]>([]);
   loadingUpdates = signal<boolean>(false);
@@ -1275,6 +1290,8 @@ export class FindingDetailComponent implements OnInit {
 
   ngOnInit(): void {
     // Carga el hallazgo y recursos asociados al entrar
+    this.editMode.set(this.route.snapshot.data['editMode'] === true);
+    this.selectedTabIndex.set(this.route.snapshot.data['tabIndex'] || 0);
     const id = this.route.snapshot.paramMap.get('id');
     if (id) {
       this.loadFinding(id);
@@ -1294,7 +1311,7 @@ export class FindingDetailComponent implements OnInit {
           this.finding.set(data);
           this.tags.set(data.tags || []);
           this.controls.set(data.controls || []);
-          this.references.set(data.references || []);
+          this.references.set(this.normalizeReferences(data.references || []));
           this.findingForm.patchValue({
             title: data.title,
             description: data.description,
@@ -1327,12 +1344,13 @@ export class FindingDetailComponent implements OnInit {
       .subscribe({
         next: (data) => {
           console.log('✅ Evidencias cargadas:', data.length, 'archivo(s)', data);
-          this.evidences.set(data);
+          const normalizedEvidences = data.map(evidence => this.normalizeEvidence(evidence));
+          this.evidences.set(normalizedEvidences);
           this.loadingEvidences.set(false);
           
           // Cargar automáticamente previews de imágenes
-          data.forEach(evidence => {
-            if (evidence.mimetype?.startsWith('image/')) {
+          normalizedEvidences.forEach(evidence => {
+            if (this.getEvidenceMimeType(evidence).startsWith('image/')) {
               this.loadImagePreview(evidence._id);
             }
           });
@@ -1351,15 +1369,17 @@ export class FindingDetailComponent implements OnInit {
     console.log('⚠️ loadHistory is deprecated, use loadUpdates instead');
   }
 
-  loadUpdates(findingId: string): void {
+  loadUpdates(findingId: string, showLoading = true): void {
     // Carga el timeline de seguimientos del hallazgo
     console.log('📝 Cargando seguimientos para finding:', findingId);
-    this.loadingUpdates.set(true);
+    if (showLoading) {
+      this.loadingUpdates.set(true);
+    }
     this.http.get<FindingUpdate[]>(`${environment.apiUrl}/findings/${findingId}/timeline`)
       .subscribe({
         next: (data) => {
           console.log('✅ Seguimientos cargados:', data.length, 'entrada(s)', data);
-          this.updates.set(data);
+          this.updates.set(this.normalizeUpdates(data));
           this.loadingUpdates.set(false);
         },
         error: (err) => {
@@ -1370,9 +1390,31 @@ export class FindingDetailComponent implements OnInit {
       });
   }
 
+  private normalizeUpdates(updates: FindingUpdate[] = []): FindingUpdate[] {
+    return updates
+      .map(update => this.normalizeUpdate(update))
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }
+
+  private normalizeUpdate(update: FindingUpdate): FindingUpdate {
+    return normalizeFindingUpdate(update) as FindingUpdate;
+  }
+
   toggleEditMode(): void {
     // Activa modo edicion
     this.editMode.set(true);
+  }
+
+  private normalizeReferences(references: Array<string | { label?: string; url?: string }>): { label: string; url: string }[] {
+    return references.map(reference => {
+      if (typeof reference === 'string') {
+        return { label: reference, url: reference };
+      }
+
+      const label = reference.label || reference.url || '';
+      const url = reference.url || reference.label || '';
+      return { label, url };
+    }).filter(reference => reference.label || reference.url);
   }
 
   cancelEdit(): void {
@@ -1382,7 +1424,7 @@ export class FindingDetailComponent implements OnInit {
     if (currentFinding) {
       this.tags.set(currentFinding.tags || []);
       this.controls.set(currentFinding.controls || []);
-      this.references.set(currentFinding.references || []);
+      this.references.set(this.normalizeReferences(currentFinding.references || []));
       this.findingForm.patchValue({
         title: currentFinding.title,
         description: currentFinding.description,
@@ -1411,7 +1453,7 @@ export class FindingDetailComponent implements OnInit {
       status: this.findingForm.value.status,
       affectedAsset: this.findingForm.value.affectedAsset || '',
       cweId: this.findingForm.value.cweId || '',
-      cvss_score: this.findingForm.value.cvss_score || undefined,
+      cvssScore: this.findingForm.value.cvss_score === '' ? undefined : Number(this.findingForm.value.cvss_score),
       cve_id: this.findingForm.value.cve_id || '',
       detection_source: this.findingForm.value.detection_source || '',
       recommendation: this.findingForm.value.recommendation || '',
@@ -1420,6 +1462,8 @@ export class FindingDetailComponent implements OnInit {
       tags: this.tags(),
       controls: this.controls(),
       references: this.references()
+        .map(reference => reference.url || reference.label)
+        .filter(Boolean)
     };
 
     console.log('📤 Guardando hallazgo:', updateData);
@@ -1659,6 +1703,18 @@ export class FindingDetailComponent implements OnInit {
     return 'insert_drive_file';
   }
 
+  private normalizeEvidence(evidence: Evidence): Evidence {
+    return normalizeEvidenceModel(evidence);
+  }
+
+  getEvidenceMimeType(evidence: Evidence | EvidenceRef): string {
+    return getNormalizedEvidenceMimeType(evidence);
+  }
+
+  getEvidenceName(evidence: Evidence | EvidenceRef): string {
+    return getNormalizedEvidenceName(evidence);
+  }
+
   getSeverityLabel(severity: string): string {
     // Etiqueta de severidad en mayusculas
     const labels: { [key: string]: string } = {
@@ -1732,7 +1788,9 @@ export class FindingDetailComponent implements OnInit {
   downloadPdf() {
     // Descargar reporte PDF del hallazgo
     // Asume que el backend expone /api/export/finding/:id/pdf
-    const url = `${environment.apiUrl}/export/finding/${this.finding()!._id}/pdf`;
+    // Pasamos el token por query param para que window.open funcione con el Guard JWT
+    const token = this.authService.getToken();
+    const url = `${environment.apiUrl}/export/finding/${this.finding()!._id}/pdf?token=${token}`;
     window.open(url, '_blank');
   }
 
@@ -1799,7 +1857,8 @@ export class FindingDetailComponent implements OnInit {
    */
   openAddUpdateDialog(): void {
     const dialogRef = this.dialog.open(AddUpdateDialogComponent, {
-      width: '600px',
+      width: '680px',
+      maxWidth: '95vw',
       data: {
         findingId: this.finding()!._id,
         findingTitle: this.finding()!.title
@@ -1860,9 +1919,20 @@ export class FindingDetailComponent implements OnInit {
             : 'Seguimiento agregado correctamente';
             
           this.snackBar.open(message, 'Cerrar', { duration: 3000 });
+          this.selectedTabIndex.set(3);
+          this.loadingUpdates.set(false);
+          this.updates.update(updates => [
+            this.normalizeUpdate({
+              ...createdUpdate,
+              _id: createdUpdate._id || `local-${Date.now()}`,
+              createdAt: createdUpdate.createdAt || new Date().toISOString(),
+              evidenceIds: createdUpdate.evidenceIds?.length ? createdUpdate.evidenceIds : evidenceIds
+            }),
+            ...updates.filter(update => update._id !== createdUpdate._id)
+          ]);
           
           // Recargar seguimientos y evidencias
-          this.loadUpdates(findingId);
+          setTimeout(() => this.loadUpdates(findingId, false), 250);
           if (evidenceIds.length > 0) {
             this.loadEvidences(findingId);
           }

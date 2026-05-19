@@ -1,5 +1,8 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/guards/auth.guard';
+import { environment } from '../environments/environment';
+import { TenantRouteGuard } from './core/guards/tenant-route.guard';
+
 
 /**
  * Definición de rutas de la aplicación
@@ -29,8 +32,16 @@ export const routes: Routes = [
         loadComponent: () => import('./features/clients/client-list/client-list.component').then(m => m.ClientListComponent)
       },
       {
+        path: 'clients/:id',
+        loadComponent: () => import('./features/clients/client-detail/client-detail.component').then(m => m.ClientDetailComponent)
+      },
+      {
         path: 'projects',
         loadComponent: () => import('./features/projects/project-list/project-list.component').then(m => m.ProjectListComponent)
+      },
+      {
+        path: 'projects/new',
+        loadComponent: () => import('./features/projects/project-detail/project-detail.component').then(m => m.ProjectDetailComponent)
       },
       {
         path: 'projects/:id',
@@ -45,24 +56,62 @@ export const routes: Routes = [
         loadComponent: () => import('./features/findings/finding-wizard').then(m => m.FindingWizardComponent)
       },
       {
+        path: 'findings/:id/edit',
+        loadComponent: () => import('./features/findings/finding-detail/finding-detail.component').then(m => m.FindingDetailComponent),
+        data: { editMode: true }
+      },
+      {
+        path: 'findings/:id/timeline',
+        loadComponent: () => import('./features/findings/finding-detail/finding-detail.component').then(m => m.FindingDetailComponent),
+        data: { tabIndex: 3 }
+      },
+      {
+        path: 'templates',
+        loadComponent: () => import('./features/admin/templates/template-list.component').then(m => m.TemplateListComponent)
+      },
+      {
         path: 'findings/:id',
         loadComponent: () => import('./features/findings/finding-detail/finding-detail.component').then(m => m.FindingDetailComponent)
+      },
+      {
+        path: 'profile',
+        loadComponent: () => import('./features/profile/profile.component').then(m => m.ProfileComponent)
+      },
+      {
+        path: 'admin',
+        loadComponent: () => import('./features/admin/admin-home.component').then(m => m.AdminHomeComponent)
       },
       {
         path: 'admin/users',
         loadComponent: () => import('./features/admin/users/user-list-improved.component').then(m => m.UserListImprovedComponent)
       },
       {
+        path: 'admin/areas',
+        loadComponent: () => import('./features/admin/areas/area-list.component').then(m => m.AreaListComponent),
+        canActivate: [TenantRouteGuard]
+      },
+      {
+        path: 'admin/areas/:id',
+        loadComponent: () => import('./features/admin/areas/tenant-config-detail.component').then(m => m.TenantConfigDetailComponent),
+        canActivate: [TenantRouteGuard]
+      },
+      {
         path: 'admin/tenants',
-        loadComponent: () => import('./features/admin/areas/area-list.component').then(m => m.AreaListComponent)
+        redirectTo: 'admin/areas',
+        pathMatch: 'full'
       },
       {
         path: 'admin/tenants/:id',
-        loadComponent: () => import('./features/admin/areas/tenant-config-detail.component').then(m => m.TenantConfigDetailComponent)
+        redirectTo: 'admin/areas/:id',
+        pathMatch: 'full'
       },
       {
         path: 'admin/templates',
         loadComponent: () => import('./features/admin/templates/template-list.component').then(m => m.TemplateListComponent)
+      },
+      {
+        path: 'admin/notifications',
+        loadComponent: () => import('./features/admin/notifications/notification-management.component').then(m => m.NotificationManagementComponent)
       },
       {
         path: 'admin/audit',
