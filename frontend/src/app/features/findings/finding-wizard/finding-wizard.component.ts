@@ -80,7 +80,10 @@ interface Template {
                            placeholder="Busca: XSS, SQLi, CSRF, etc...">
                     <mat-icon matSuffix>search</mat-icon>
                   </mat-form-field>
-                  <mat-autocomplete #templateAuto="matAutocomplete" (optionSelected)="applyTemplate($event.option.value)">
+                  <mat-autocomplete
+                    #templateAuto="matAutocomplete"
+                    [displayWith]="displayTemplate"
+                    (optionSelected)="applyTemplate($event.option.value)">
                     @for (template of filteredTemplates(); track template.id) {
                       <mat-option [value]="template">
                         <div class="template-option">
@@ -676,7 +679,17 @@ export class FindingWizardComponent implements OnInit {
     });
   }
 
-  onTemplateSearch(term: string): void {
+  displayTemplate(template: Template | string | null): string {
+    if (!template) return '';
+    return typeof template === 'string' ? template : template.name;
+  }
+
+  onTemplateSearch(term: string | Template): void {
+    if (typeof term !== 'string') {
+      this.templateSearch = this.displayTemplate(term);
+      return;
+    }
+
     this.templateSearch = term;
 
     if (!term || term.length < 2) {
@@ -758,18 +771,51 @@ export class FindingWizardComponent implements OnInit {
 
 
   applyTemplate(template: Template): void {
+    const selectedTemplate = this.normalizeTemplate(template);
+
     // Copia datos de la plantilla a los formularios
     this.basicForm.patchValue({
-      title: template.name,
-      description: template.description,
-      severity: template.severity
+      title: selectedTemplate.name,
+      description: selectedTemplate.description,
+      severity: selectedTemplate.severity
     });
     this.technicalForm.patchValue({
-      cvssScore: template.cvssScore,
-      cweId: template.cweId,
-      recommendation: template.recommendation
+      cvssScore: selectedTemplate.cvssScore,
+      cweId: selectedTemplate.cweId,
+      recommendation: selectedTemplate.recommendation
     });
     this.templateSearch = '';
+  }
+
+  private normalizeTemplate(template: Template | any): Template {
+    return {
+      id: template.id ?? template._id,
+      name: this.toDisplayText(template.name ?? template.title),
+      description: this.toDisplayText(template.description),
+      severity: this.toDisplayText(template.severity),
+      recommendation: this.toDisplayText(template.recommendation),
+      cvssScore: template.cvssScore ?? template.cvss_score,
+      cweId: this.toDisplayText(template.cweId ?? template.cwe_id),
+      scope: this.toDisplayText(template.scope),
+    };
+  }
+
+  private toDisplayText(value: unknown): string {
+    if (value === null || value === undefined) return '';
+    if (typeof value === 'string') return value;
+    if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+    if (typeof value === 'object') {
+      const objectValue = value as Record<string, unknown>;
+      return this.toDisplayText(
+        objectValue['name'] ??
+        objectValue['title'] ??
+        objectValue['label'] ??
+        objectValue['code'] ??
+        objectValue['_id'] ??
+        ''
+      );
+    }
+    return '';
   }
 
   selectProject(project: any): void {
@@ -908,8 +954,8 @@ export class FindingWizardComponent implements OnInit {
               // Crear el proyecto
               this.http.post<any>(`${environment.apiUrl}/projects`, {
                 name: projectName,
+                tenantId: clientId,
                 clientId: clientId,
-                areaId: clientId, // TODO: Fix this, areaId should not be clientId
                 description: `Proyecto creado automáticamente desde hallazgo`,
                 serviceArchitecture: serviceArchitecture
               }).subscribe({
@@ -970,6 +1016,8 @@ export class FindingWizardComponent implements OnInit {
       implications: technicalData.implications || undefined,
       controls: this.controls(),
       references: this.references()
+        .map((reference) => reference.url || reference.label)
+        .filter(Boolean)
     };
 
     console.log('📤 Enviando hallazgo:', data);

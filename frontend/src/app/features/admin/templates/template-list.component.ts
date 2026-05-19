@@ -274,20 +274,19 @@ export class TemplateListComponent implements OnInit {
   }
 
   loadTemplates(): void {
-    // Intenta cargar desde backend; si falla, usa templates por defecto
+    // Carga plantillas persistidas y mantiene visibles las plantillas base.
     this.loading.set(true);
     this.http.get<any[]>(this.API_URL).subscribe({
       next: (data) => {
-        const raw = data.length > 0 ? data : this.getDefaultTemplates();
-        this.templates.set(raw.map((t) => this.normalizeTemplate(t)));
-        this.filteredTemplates.set(this.templates());
+        this.templates.set(this.mergeTemplates(data, this.getDefaultTemplates()));
+        this.applyFilters();
         this.loading.set(false);
       },
       error: (err) => {
         console.error('Error al cargar plantillas:', err);
         // Si hay error, usar plantillas por defecto
         this.templates.set(this.getDefaultTemplates().map((t) => this.normalizeTemplate(t)));
-        this.filteredTemplates.set(this.templates());
+        this.applyFilters();
         this.loading.set(false);
       }
     });
@@ -456,5 +455,25 @@ export class TemplateListComponent implements OnInit {
       cvss_score: template.cvss_score ?? template.cvssScore ?? null,
       scope: template.scope ?? 'GLOBAL',
     };
+  }
+
+  private mergeTemplates(persisted: any[], defaults: any[]): any[] {
+    const normalizedPersisted = persisted.map((template) => this.normalizeTemplate(template));
+    const existingKeys = new Set(
+      normalizedPersisted.map((template) => this.templateKey(template))
+    );
+    const missingDefaults = defaults
+      .map((template) => this.normalizeTemplate(template))
+      .filter((template) => !existingKeys.has(this.templateKey(template)));
+
+    return [...normalizedPersisted, ...missingDefaults];
+  }
+
+  private templateKey(template: any): string {
+    return [
+      template.title?.trim().toLowerCase() || '',
+      template.cwe_id?.trim().toLowerCase() || '',
+      template.severity || '',
+    ].join('|');
   }
 }

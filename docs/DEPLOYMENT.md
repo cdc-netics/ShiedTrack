@@ -58,7 +58,8 @@ Defaults comunes: `27017`, `3000`, `80`.
 ## Levantar con Docker Compose
 
 ```bash
-docker compose up --build -d
+docker compose build --no-cache
+docker compose up -d
 docker compose ps
 ```
 

@@ -48,6 +48,10 @@ export class ProjectService {
     return ["AREA_ADMIN", "ANALYST", "VIEWER"].includes(currentUser?.role);
   }
 
+  private isGlobalUser(currentUser?: any): boolean {
+    return ["OWNER", "PLATFORM_ADMIN"].includes(currentUser?.role);
+  }
+
   /** Obtiene áreas asignadas al usuario */
   private getUserAreaIds(currentUser?: any): string[] {
     return currentUser?.areaIds?.map((id: any) => id.toString()) || [];
@@ -145,6 +149,7 @@ export class ProjectService {
     const projectTenantId = (project as any).tenantId?.toString?.();
 
     if (
+      !this.isGlobalUser(currentUser) &&
       currentTenantId &&
       projectTenantId &&
       currentTenantId !== projectTenantId
@@ -179,11 +184,20 @@ export class ProjectService {
     }
 
     const currentTenantId = this.getCurrentTenantId(user);
+    const requestedTenantId = dto.tenantId || dto.clientId;
+    const finalTenantId =
+      this.isGlobalUser(user) && requestedTenantId
+        ? requestedTenantId
+        : currentTenantId || requestedTenantId;
 
-    if (!currentTenantId) {
+    if (!finalTenantId) {
       throw new BadRequestException(
         "No se pudo determinar el tenant del usuario actual",
       );
+    }
+
+    if (!this.isGlobalUser(user)) {
+      this.validateClientMatchesTenant(dto.clientId, currentTenantId);
     }
 
     const projectToCreate: any = {
@@ -192,8 +206,8 @@ export class ProjectService {
       description: dto.description,
       serviceArchitecture: dto.serviceArchitecture,
 
-      tenantId: this.toObjectId(currentTenantId),
-      clientId: dto.clientId ? this.toObjectId(dto.clientId) : undefined,
+      tenantId: this.toObjectId(finalTenantId),
+      clientId: this.toObjectId(dto.clientId || finalTenantId),
 
       areaId: this.toObjectId(dto.areaId),
       areaIds: Array.isArray(dto.areaIds)
@@ -231,7 +245,7 @@ export class ProjectService {
     const visibleProjectIds = this.getUserVisibleProjectIds(currentUser);
     const currentTenantId = this.getCurrentTenantId(currentUser);
 
-    if (currentTenantId) {
+    if (currentTenantId && !this.isGlobalUser(currentUser)) {
       query.tenantId = this.toObjectId(currentTenantId);
     }
 
@@ -327,8 +341,9 @@ export class ProjectService {
   ): Promise<Project> {
     const project = await this.findProjectOrFailWithAccess(id, currentUser);
     const currentTenantId = this.getCurrentTenantId(currentUser);
+    const isGlobalUser = this.isGlobalUser(currentUser);
 
-    if (!currentTenantId) {
+    if (!currentTenantId && !isGlobalUser) {
       throw new BadRequestException(
         "No se pudo determinar el cliente del usuario actual",
       );
@@ -363,9 +378,17 @@ export class ProjectService {
         .filter(Boolean);
     }
 
-    // Si viene clientId en el body, usarlo; si no, mantener el actual del proyecto
+    if (!isGlobalUser) {
+      this.validateClientMatchesTenant((dto as any).clientId, currentTenantId);
+    }
+
+    // Si viene clientId en el body, usarlo; para usuarios globales también
+    // movemos el proyecto a ese tenant para mantener tenantId/clientId alineados.
     if ((dto as any).clientId !== undefined) {
       (dto as any).clientId = this.toObjectId((dto as any).clientId);
+      if (isGlobalUser) {
+        (dto as any).tenantId = (dto as any).clientId;
+      }
     }
 
     Object.assign(project, dto);
@@ -374,6 +397,7 @@ export class ProjectService {
     if (!(project as any).clientId) {
       const fallbackClientId = this.getCurrentClientId(currentUser);
       if (fallbackClientId) {
+        (project as any).clientId = this.toObjectId(fallbackClientId);
         (project as any).tenantId = this.toObjectId(currentTenantId);
       }
     }

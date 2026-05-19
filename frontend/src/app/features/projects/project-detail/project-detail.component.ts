@@ -101,8 +101,6 @@ import { UserRole } from '../../../shared/enums';
                   <mat-hint>Opcional, se genera automáticamente</mat-hint>
                 </mat-form-field>
 
-                <!-- OJO: lo dejamos visible, pero NO lo enviamos al backend porque te da:
-                     "property clientId should not exist" -->
                 <mat-form-field appearance="outline" class="half-width">
                   <mat-label>Cliente</mat-label>
                   <mat-select formControlName="clientId">
@@ -110,7 +108,6 @@ import { UserRole } from '../../../shared/enums';
                       <mat-option [value]="client._id">{{ client.name }}</mat-option>
                     }
                   </mat-select>
-                  <mat-hint>Si el backend no lo acepta, no se enviará</mat-hint>
                 </mat-form-field>
               </div>
 
@@ -509,7 +506,7 @@ saveProject(): void {
   // ✅ Resuelve tenantId (como lo venías haciendo)
   // (si estabas usando effectiveTenantId, mantenlo aquí)
   const tenantId = this.resolveTenantId();
-  if (!tenantId) {
+  if (!tenantId && !selectedClientId) {
     this.snackBar.open('❌ No se pudo resolver el tenantId del usuario', 'Cerrar', { duration: 5000 });
     return;
   }
@@ -527,18 +524,18 @@ saveProject(): void {
     areaIds: cleanAreaIds.length ? cleanAreaIds : undefined,
   });
 
-  // ✅ CREATE payload (POST) — NO mandamos clientId aquí para evitar el 400 del backend
+  const tenantIdForCreate = selectedClientId || tenantId;
+
   const createPayload: any = this.cleanUndefined({
     ...basePayload,
-    tenantId: String(tenantId),
+    tenantId: tenantIdForCreate ? String(tenantIdForCreate) : undefined,
+    clientId: selectedClientId || undefined,
   });
-
-  // 🔥 Aseguramos que no se vaya clientId en CREATE
-  delete createPayload.clientId;
 
   // ✅ UPDATE payload (PUT) — no mandamos tenantId
   const updatePayload: any = this.cleanUndefined({
     ...basePayload,
+    clientId: selectedClientId || undefined,
   });
 
   console.log('✅ tenantId resuelto:', tenantId);
@@ -555,33 +552,6 @@ saveProject(): void {
   req$.subscribe({
     next: (createdOrUpdated: any) => {
       console.log('🧾 Resultado create/update:', createdOrUpdated);
-
-      // ✅ Si fue CREATE y hay cliente seleccionado, lo asignamos con PUT
-      if (!this.isEditMode() && selectedClientId && createdOrUpdated?._id) {
-        console.log('🧩 Asignando cliente al proyecto:', createdOrUpdated._id, selectedClientId);
-
-        this.http.put(`${this.API_URL}/${createdOrUpdated._id}`, { clientId: selectedClientId }).subscribe({
-          next: (r) => {
-            console.log('✅ Cliente asignado OK:', r);
-            this.snackBar.open('✅ Proyecto creado y cliente asignado', 'Cerrar', { duration: 3000 });
-            this.router.navigate(['/projects']);
-          },
-          error: (e) => {
-            console.error('❌ Falló asignación de cliente:', e);
-            console.log('❌ Error body asignación:', e?.error);
-
-            this.snackBar.open(
-              '⚠️ Proyecto creado pero no se pudo asignar el cliente',
-              'Cerrar',
-              { duration: 7000 }
-            );
-
-            this.router.navigate(['/projects']);
-          },
-        });
-
-        return; // 🔥 importante: no seguir con el flujo normal
-      }
 
       // ✅ Flujo normal (UPDATE o CREATE sin cliente)
       this.snackBar.open(this.isEditMode() ? '✅ Proyecto actualizado' : '✅ Proyecto creado', 'Cerrar', { duration: 3000 });
