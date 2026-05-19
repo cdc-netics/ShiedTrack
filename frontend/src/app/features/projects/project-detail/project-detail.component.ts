@@ -506,7 +506,7 @@ saveProject(): void {
   // ✅ Resuelve tenantId (como lo venías haciendo)
   // (si estabas usando effectiveTenantId, mantenlo aquí)
   const tenantId = this.resolveTenantId();
-  if (!tenantId) {
+  if (!tenantId && !selectedClientId) {
     this.snackBar.open('❌ No se pudo resolver el tenantId del usuario', 'Cerrar', { duration: 5000 });
     return;
   }
@@ -528,7 +528,7 @@ saveProject(): void {
 
   const createPayload: any = this.cleanUndefined({
     ...basePayload,
-    tenantId: String(tenantIdForCreate),
+    tenantId: tenantIdForCreate ? String(tenantIdForCreate) : undefined,
     clientId: selectedClientId || undefined,
   });
 

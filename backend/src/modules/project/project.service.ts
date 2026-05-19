@@ -149,6 +149,7 @@ export class ProjectService {
     const projectTenantId = (project as any).tenantId?.toString?.();
 
     if (
+      !this.isGlobalUser(currentUser) &&
       currentTenantId &&
       projectTenantId &&
       currentTenantId !== projectTenantId
@@ -244,7 +245,7 @@ export class ProjectService {
     const visibleProjectIds = this.getUserVisibleProjectIds(currentUser);
     const currentTenantId = this.getCurrentTenantId(currentUser);
 
-    if (currentTenantId) {
+    if (currentTenantId && !this.isGlobalUser(currentUser)) {
       query.tenantId = this.toObjectId(currentTenantId);
     }
 
