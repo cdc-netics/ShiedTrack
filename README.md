@@ -86,6 +86,7 @@ Detalle y variables: [SETUP.md](SETUP.md).
 - **Backend**: NestJS + MongoDB (Mongoose) + JWT Auth + MFA.
 - **Frontend**: Angular 20 (Standalone Components) + Signals (State Management).
 - **Arranque**: Compose como flujo principal; scripts opcionales `.ps1` / `.sh` solo para desarrollo local sin contenedores.
+- **Contratos frontend/API**: los servicios principales normalizan respuestas de dominio antes de exponerlas a las pantallas. La capa `frontend/src/app/shared/utils/domain-normalizers.ts` mantiene compatibilidad entre campos legacy y canonicos como `mimeType/mimetype`, `filename/originalName`, `tenantId/clientId` y `areaId/areaIds`.
 
 ---
 

@@ -22,6 +22,12 @@ import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { CloseFindingDialogComponent, CloseDialogResult } from '../close-finding-dialog/close-finding-dialog.component';
 import { AddUpdateDialogComponent, AddUpdateDialogResult } from '../add-update-dialog/add-update-dialog.component';
+import {
+  getEvidenceMimeType as getNormalizedEvidenceMimeType,
+  getEvidenceName as getNormalizedEvidenceName,
+  normalizeEvidence as normalizeEvidenceModel,
+  normalizeFindingUpdate
+} from '../../../shared/utils/domain-normalizers';
 import { environment } from '../../../../environments/environment';
 
 interface Finding {
@@ -58,8 +64,9 @@ interface Evidence {
   _id: string;
   findingId: string;
   filename: string;
-  originalName: string;
-  mimetype: string;
+  originalName?: string;
+  mimetype?: string;
+  mimeType?: string;
   size: number;
   uploadedBy: any;
   createdAt: string;
@@ -454,20 +461,20 @@ interface FindingUpdate {
                         <mat-card-content>
                           <div class="evidence-header">
                             <div class="evidence-info">
-                              <mat-icon>{{ getFileIcon(evidence.mimetype) }}</mat-icon>
+                              <mat-icon>{{ getFileIcon(getEvidenceMimeType(evidence)) }}</mat-icon>
                               <div class="evidence-details">
-                                <h4>{{ evidence.originalName }}</h4>
+                                <h4>{{ getEvidenceName(evidence) }}</h4>
                                 <p>{{ formatFileSize(evidence.size) }} • {{ evidence.createdAt | date:'dd/MM/yyyy HH:mm' }}</p>
                                 <p class="uploader">Subido por: {{ evidence.uploadedBy?.email || 'Desconocido' }}</p>
                               </div>
                             </div>
                             <div class="evidence-actions">
-                              @if (isTextFile(evidence.mimetype)) {
+                              @if (isTextFile(getEvidenceMimeType(evidence))) {
                                 <button mat-icon-button color="accent" (click)="toggleTextPreview(evidence._id)" matTooltip="Ver contenido">
                                   <mat-icon>description</mat-icon>
                                 </button>
                               }
-                              @if (evidence.mimetype.includes('pdf')) {
+                              @if (getEvidenceMimeType(evidence).includes('pdf')) {
                                 <button mat-icon-button color="accent" (click)="viewEvidence(evidence)" matTooltip="Abrir PDF">
                                   <mat-icon>picture_as_pdf</mat-icon>
                                 </button>
@@ -481,10 +488,10 @@ interface FindingUpdate {
                             </div>
                           </div>
                           <!-- Preview de imagen -->
-                          @if (evidence.mimetype.startsWith('image/')) {
+                          @if (getEvidenceMimeType(evidence).startsWith('image/')) {
                             <div class="image-preview">
                               @if (imageUrls[evidence._id]) {
-                                <img [src]="imageUrls[evidence._id]" [alt]="evidence.originalName" (click)="viewEvidence(evidence)" />
+                                <img [src]="imageUrls[evidence._id]" [alt]="getEvidenceName(evidence)" (click)="viewEvidence(evidence)" />
                               } @else {
                                 <div class="loading-image">
                                   <mat-icon>image</mat-icon>
@@ -494,7 +501,7 @@ interface FindingUpdate {
                             </div>
                           }
                           <!-- Preview de texto -->
-                          @if (isTextFile(evidence.mimetype) && textPreviews[evidence._id]) {
+                          @if (isTextFile(getEvidenceMimeType(evidence)) && textPreviews[evidence._id]) {
                             <div class="text-preview">
                               <pre>{{ textPreviews[evidence._id] }}</pre>
                             </div>
@@ -1337,12 +1344,13 @@ export class FindingDetailComponent implements OnInit {
       .subscribe({
         next: (data) => {
           console.log('✅ Evidencias cargadas:', data.length, 'archivo(s)', data);
-          this.evidences.set(data);
+          const normalizedEvidences = data.map(evidence => this.normalizeEvidence(evidence));
+          this.evidences.set(normalizedEvidences);
           this.loadingEvidences.set(false);
           
           // Cargar automáticamente previews de imágenes
-          data.forEach(evidence => {
-            if (evidence.mimetype?.startsWith('image/')) {
+          normalizedEvidences.forEach(evidence => {
+            if (this.getEvidenceMimeType(evidence).startsWith('image/')) {
               this.loadImagePreview(evidence._id);
             }
           });
@@ -1389,14 +1397,7 @@ export class FindingDetailComponent implements OnInit {
   }
 
   private normalizeUpdate(update: FindingUpdate): FindingUpdate {
-    return {
-      ...update,
-      _id: update._id || `local-${Date.now()}`,
-      type: update.type || 'COMMENT',
-      content: update.content || '',
-      evidenceIds: update.evidenceIds || [],
-      createdAt: update.createdAt || new Date().toISOString()
-    };
+    return normalizeFindingUpdate(update) as FindingUpdate;
   }
 
   toggleEditMode(): void {
@@ -1700,6 +1701,18 @@ export class FindingDetailComponent implements OnInit {
     if (mimetype.includes('zip') || mimetype.includes('rar')) return 'archive';
     if (mimetype.includes('text') || mimetype.includes('json') || mimetype.includes('xml')) return 'code';
     return 'insert_drive_file';
+  }
+
+  private normalizeEvidence(evidence: Evidence): Evidence {
+    return normalizeEvidenceModel(evidence);
+  }
+
+  getEvidenceMimeType(evidence: Evidence | EvidenceRef): string {
+    return getNormalizedEvidenceMimeType(evidence);
+  }
+
+  getEvidenceName(evidence: Evidence | EvidenceRef): string {
+    return getNormalizedEvidenceName(evidence);
   }
 
   getSeverityLabel(severity: string): string {

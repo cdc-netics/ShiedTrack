@@ -7,6 +7,10 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 ## [Unreleased]
 
+- **FIX (Findings - evidencias de seguimiento):** el detalle de hallazgo ya no falla al renderizar evidencias cuando la API devuelve `mimeType/filename`; el frontend normaliza tambien `mimetype/originalName` para mantener compatibilidad con datos viejos y nuevos.
+- **FIX (Projects - cliente en creacion/listado/edicion):** la creacion de proyectos envia `clientId` desde el primer `POST`, elimina la asignacion posterior por `PUT`, permite reasignar cliente a usuarios globales y evita que el listado oculte proyectos creados para otros clientes.
+- **FIX (Clients/Areas - edicion):** los DTOs y payloads aceptan campos usados por la UI (`displayName`, colores, logo, favicon) y el backend aumenta el limite del body JSON para guardar configuraciones con imagenes base64.
+- **CHANGED (Frontend - estandarizacion de contratos):** se agrego una capa central de normalizacion de dominio para proyectos, hallazgos, seguimientos y evidencias, alineando `tenantId/clientId`, `areaId/areaIds`, `mimeType/mimetype`, `filename/originalName` y fechas `Date|string`.
 - **FIX (Findings - seguimiento):** al agregar un seguimiento desde la pestaña `Seguimiento`, la UI ahora inserta el update creado inmediatamente en el timeline, apaga el loader del timeline y recarga datos/evidencias en segundo plano.
 - **FIX (Findings - timeline persistente):** los seguimientos ahora guardan `findingId`, `createdBy` y `evidenceIds` como `ObjectId`; se migraron los updates existentes que habian quedado como strings y el frontend normaliza el timeline antes de renderizarlo.
 - **FIX (Seeds Docker):** los datos de prueba ahora usan IDs estables para usuarios, tenants, proyectos y hallazgos; reiniciar/reconstruir Docker ya no deja huerfanos los timelines asociados a hallazgos seed.
