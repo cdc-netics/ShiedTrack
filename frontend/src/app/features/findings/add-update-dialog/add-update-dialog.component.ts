@@ -47,41 +47,32 @@ export interface AddUpdateDialogResult {
       <p class="dialog-subtitle">{{ data.findingTitle }}</p>
 
       <form [formGroup]="updateForm">
-        <mat-form-field appearance="outline" class="full-width">
-          <mat-label>Tipo de Seguimiento</mat-label>
-          <mat-select formControlName="type" required>
-            <mat-option value="FOLLOWUP">
-              <span class="option-row">
-                <mat-icon>track_changes</mat-icon>
-                Seguimiento - Progreso, coordinacion cliente, avances
-              </span>
-            </mat-option>
-            <mat-option value="COMMENT">
-              <span class="option-row">
-                <mat-icon>comment</mat-icon>
-                Comentario - Notas generales, observaciones
-              </span>
-            </mat-option>
-          </mat-select>
+        <div class="type-field">
+          <label for="update-type">Tipo de Seguimiento</label>
+          <select id="update-type" class="type-select" formControlName="type" required>
+            <option value="FOLLOWUP">Seguimiento - Progreso, coordinacion cliente, avances</option>
+            <option value="COMMENT">Comentario - Notas generales, observaciones</option>
+          </select>
           @if (updateForm.get('type')?.hasError('required') && updateForm.get('type')?.touched) {
-            <mat-error>El tipo es requerido</mat-error>
+            <div class="content-error">El tipo es requerido</div>
           }
-        </mat-form-field>
+        </div>
 
-        <mat-form-field appearance="outline" class="full-width">
-          <mat-label>Descripcion del Seguimiento</mat-label>
+        <div class="content-field">
+          <label for="update-content">Descripcion del Seguimiento</label>
           <textarea
-            matInput
+            id="update-content"
+            class="content-textarea"
             formControlName="content"
             rows="8"
             placeholder="Ej: Cliente confirmo que comenzaron remediacion. Fecha estimada: 15/01/2025. Se adjunta evidencia del plan de accion."
             required
           ></textarea>
-          <mat-hint>Documenta el progreso, acciones tomadas, coordinacion, etc.</mat-hint>
+          <div class="content-hint">Documenta el progreso, acciones tomadas, coordinacion, etc.</div>
           @if (updateForm.get('content')?.hasError('required') && updateForm.get('content')?.touched) {
-            <mat-error>La descripcion es requerida</mat-error>
+            <div class="content-error">La descripcion es requerida</div>
           }
-        </mat-form-field>
+        </div>
 
         <div class="file-upload-section">
           <button type="button" mat-stroked-button color="primary" (click)="selectFiles()">
@@ -164,27 +155,83 @@ export interface AddUpdateDialogResult {
       width: 100%;
     }
 
-    .option-row {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      min-width: 0;
-      max-width: 100%;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
+    .type-field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
     }
 
-    .option-row mat-icon {
-      font-size: 20px;
-      width: 20px;
-      height: 20px;
-      flex: 0 0 auto;
+    .type-field label {
+      color: rgba(0, 0, 0, 0.74);
+      font-size: 14px;
+      font-weight: 500;
     }
 
-    textarea {
+    .type-select {
+      width: 100%;
+      box-sizing: border-box;
+      border: 1px solid #cfd8dc;
+      border-radius: 4px;
+      background: #fff;
+      color: rgba(0, 0, 0, 0.87);
+      font-family: inherit;
+      font-size: 14px;
+      height: 48px;
+      line-height: 48px;
+      padding: 0 40px 0 14px;
+      outline: none;
+    }
+
+    .type-select:focus {
+      border-color: #1976d2;
+      box-shadow: 0 0 0 1px #1976d2;
+    }
+
+    .content-field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .content-field label {
+      color: rgba(0, 0, 0, 0.74);
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .content-textarea {
+      width: 100%;
+      box-sizing: border-box;
+      border: 1px solid #cfd8dc;
+      border-radius: 4px;
+      background: #fff;
+      color: rgba(0, 0, 0, 0.87);
+      font-family: inherit;
+      font-size: 14px;
+      line-height: 1.45;
+      padding: 12px 14px;
       resize: vertical;
       min-height: 150px;
+      outline: none;
+    }
+
+    .content-textarea::placeholder {
+      color: rgba(0, 0, 0, 0.42);
+    }
+
+    .content-textarea:focus {
+      border-color: #1976d2;
+      box-shadow: 0 0 0 1px #1976d2;
+    }
+
+    .content-hint {
+      color: rgba(0, 0, 0, 0.58);
+      font-size: 12px;
+    }
+
+    .content-error {
+      color: #d32f2f;
+      font-size: 12px;
     }
 
     .file-upload-section {
