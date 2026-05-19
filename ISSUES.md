@@ -647,5 +647,42 @@ Esto facilita el mantenimiento del proyecto y evita duplicación de scripts.
 
 
 
+-------------------------------------------------------------------------------------------------------------------
+
+**Fecha de actualizacion:** 19 de Mayo de 2026
+
+### **B7k - Evidencias de seguimiento rompen el render del timeline**
+- **Estado:** Completado
+- **Descripcion:** En `/findings/:id/timeline`, al adjuntar una evidencia a un seguimiento, la consola mostraba `Cannot read properties of undefined (reading 'includes')` y la vista podia dejar de renderizar evidencias correctamente.
+- **Causa raiz:** El backend guarda y devuelve evidencias con `mimeType` y `filename`, mientras partes del frontend esperaban `mimetype` y `originalName`.
+- **Solucion aplicada:** Se normalizan evidencias en frontend para soportar `mimeType/mimetype` y `filename/originalName`; la plantilla usa helpers seguros antes de llamar `includes()` o `startsWith()`.
+- **Validacion:** Build frontend exitoso con `npm.cmd run build`; contenedor frontend reconstruido con Docker.
+
+### **B2e - Proyecto creado no muestra cliente o no aparece en listado**
+- **Estado:** Completado
+- **Descripcion:** Al crear un proyecto desde `/projects`, el proyecto se guardaba, pero podia quedar con cliente `N/A` o no aparecer en el listado.
+- **Causa raiz:** La UI creaba el proyecto sin `clientId` y luego intentaba asignarlo con un segundo `PUT`; ademas el listado del backend filtraba por tenant actual incluso para usuarios globales.
+- **Solucion aplicada:** La creacion envia `clientId` en el `POST` inicial, se elimino la asignacion posterior y el listado de proyectos permite a usuarios globales ver proyectos de distintos clientes.
+- **Validacion:** Build frontend y reconstruccion Docker completados; creacion de proyectos validada manualmente en `localhost/projects`.
+
+### **B2f - Editar proyecto y cambiar cliente responde 400**
+- **Estado:** Completado
+- **Descripcion:** Al editar un proyecto y cambiar el cliente, el backend respondia `No se pudo determinar el cliente del usuario actual`.
+- **Causa raiz:** `ProjectService.update()` exigia siempre un tenant/cliente propio en el usuario autenticado, lo que falla para usuarios globales como `OWNER` o `PLATFORM_ADMIN`.
+- **Solucion aplicada:** Usuarios globales pueden reasignar `clientId`; cuando lo hacen, el backend alinea tambien `tenantId` para mantener consistencia.
+- **Validacion:** Backend reconstruido en Docker; cambio de cliente validado manualmente.
+
+### **B3c - Configuracion completa de area falla al guardar branding**
+- **Estado:** Completado
+- **Descripcion:** Guardar la configuracion completa de area con textos, colores, logo y favicon podia devolver 500.
+- **Causa raiz:** Faltaban campos visuales en DTO/schema y el body JSON por defecto no soportaba payloads grandes con imagenes base64.
+- **Solucion aplicada:** `UpdateAreaDto` y `AreaSchema` aceptan campos de branding; `main.ts` configura body parser con limite mayor para JSON/urlencoded.
+- **Validacion:** Backend reconstruido en Docker y guardado validado desde la UI.
+
+### **M7 - Estandarizacion frontend de contratos API**
+- **Estado:** Completado
+- **Descripcion:** El frontend recibia respuestas con variantes de nombre y tipo (`mimeType/mimetype`, `filename/originalName`, `tenantId/clientId`, `areaId/areaIds`, fechas `Date|string`), lo que generaba bugs puntuales entre pantallas.
+- **Solucion aplicada:** Se agrego `frontend/src/app/shared/utils/domain-normalizers.ts` con normalizadores de evidencias, seguimientos, hallazgos y proyectos; `ProjectService`, `FindingService` y `FindingDetailComponent` consumen esa capa.
+- **Validacion:** Build frontend exitoso y contenedor frontend reconstruido.
 
 
