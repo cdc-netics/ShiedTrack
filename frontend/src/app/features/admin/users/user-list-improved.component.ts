@@ -93,6 +93,11 @@ import { UserDialogComponent } from './user-dialog.component';
           <button mat-icon-button (click)="loadUsers()" matTooltip="Actualizar">
             <mat-icon>refresh</mat-icon>
           </button>
+
+          <button mat-raised-button color="primary" (click)="createUser()">
+            <mat-icon>person_add</mat-icon>
+            Nuevo usuario
+          </button>
         </div>
 
         <!-- Tabla de usuarios -->
@@ -400,6 +405,16 @@ export class UserListImprovedComponent implements OnInit {
     this.dialog.open(UserDialogComponent, {
       width: '640px',
       data: user,
+    }).afterClosed().subscribe((result) => {
+      if (result) {
+        this.loadUsers();
+      }
+    });
+  }
+
+  createUser(): void {
+    this.dialog.open(UserDialogComponent, {
+      width: '640px'
     }).afterClosed().subscribe((result) => {
       if (result) {
         this.loadUsers();
