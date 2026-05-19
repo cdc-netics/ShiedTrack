@@ -7,6 +7,12 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 ## [Unreleased]
 
+- **CHANGED (Config - unica fuente de verdad):** se eliminaron duplicaciones en `.env`/`.env.example`; `MONGODB_URI`, `FRONTEND_URL` y `CORS_ORIGINS` se construyen en `docker-compose.yml` desde variables base (`MONGO_INITDB_ROOT_*`, `FRONTEND_PORT`).
+- **CHANGED (Config - credenciales Mongo):** `docker-compose.yml` ya no deja credenciales root hardcodeadas en defaults para Mongo; toma `MONGO_INITDB_ROOT_USERNAME` y `MONGO_INITDB_ROOT_PASSWORD` desde `.env`.
+- **CHANGED (Seeds Docker):** `seed:test` pasa a ser opcional por variable `RUN_TEST_SEEDS` (default `false`); el arranque del backend ejecuta siempre `seed:owner` y solo carga datos de prueba cuando se habilita explicitamente.
+- **SECURITY (Seed OWNER):** `create-owner.js` ya no resetea automaticamente un owner existente; solo lo normaliza si `ALLOW_OWNER_RESET=true`. Se agregan variables `OWNER_SEED_EMAIL` y `OWNER_SEED_PASSWORD` para bootstrap controlado.
+- **DOCS (Entorno):** `.env.example` y comentarios de `.env` actualizados para reflejar el flujo seguro de seeds y la nueva configuracion de variables.
+
 - **FIX (Findings - evidencias de seguimiento):** el detalle de hallazgo ya no falla al renderizar evidencias cuando la API devuelve `mimeType/filename`; el frontend normaliza tambien `mimetype/originalName` para mantener compatibilidad con datos viejos y nuevos.
 - **FIX (Projects - cliente en creacion/listado/edicion):** la creacion de proyectos envia `clientId` desde el primer `POST`, elimina la asignacion posterior por `PUT`, permite reasignar cliente a usuarios globales y evita que el listado oculte proyectos creados para otros clientes.
 - **FIX (Clients/Areas - edicion):** los DTOs y payloads aceptan campos usados por la UI (`displayName`, colores, logo, favicon) y el backend aumenta el limite del body JSON para guardar configuraciones con imagenes base64.
