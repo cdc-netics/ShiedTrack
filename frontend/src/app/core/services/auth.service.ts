@@ -2,6 +2,7 @@ import { Injectable, signal, computed } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { tap } from 'rxjs/operators';
+import { environment } from '../../../environments/environment';
 import { User } from '../../shared/models';
 
 /**
@@ -12,8 +13,8 @@ import { User } from '../../shared/models';
   providedIn: 'root'
 })
 export class AuthService {
-  private readonly API_URL = 'http://localhost:3000/api/auth';
-  
+  private readonly API_URL = `${environment.apiUrl}/auth`;
+
   // Signal para el usuario actual
   private currentUserSignal = signal<User | null>(null);
   
@@ -136,6 +137,21 @@ export class AuthService {
         if (user) {
           this.currentUserSignal.set({ ...user, mfaEnabled: true });
         }
+      })
+    );
+  }
+
+  updateProfile(payload: {
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    avatarUrl?: string;
+    currentPassword?: string;
+    newPassword?: string;
+  }) {
+    return this.http.patch<User>(`${this.API_URL}/profile`, payload).pipe(
+      tap((updatedUser) => {
+        this.currentUserSignal.set(updatedUser);
       })
     );
   }

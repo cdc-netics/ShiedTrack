@@ -1,24 +1,38 @@
-import { IsString, IsOptional, IsEnum, IsBoolean, IsNumber, IsArray } from 'class-validator';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { FindingSeverity, FindingStatus, CloseReason } from '../../../common/enums';
+import {
+  IsString,
+  IsOptional,
+  IsEnum,
+  IsBoolean,
+  IsNumber,
+  IsArray,
+  IsMongoId,
+} from "class-validator";
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import {
+  FindingSeverity,
+  FindingStatus,
+  CloseReason,
+} from "../../../common/enums";
 
 /**
  * DTO para crear un nuevo hallazgo
  */
 export class CreateFindingDto {
-  @ApiProperty({ example: 'FIND-2024-001', description: 'Código identificador del hallazgo' })
-  @IsString()
-  code: string;
-
-  @ApiProperty({ example: 'CAT-HIGH-001', description: 'Código interno de categorización' })
+  @ApiProperty({
+    example: "CAT-HIGH-001",
+    description: "Código interno de categorización",
+  })
   @IsString()
   internal_code: string;
 
-  @ApiProperty({ example: 'SQL Injection en formulario de login', description: 'Título del hallazgo' })
+  @ApiProperty({
+    example: "SQL Injection en formulario de login",
+    description: "Título del hallazgo",
+  })
   @IsString()
   title: string;
 
-  @ApiProperty({ description: 'Descripción detallada del hallazgo' })
+  @ApiProperty({ description: "Descripción detallada del hallazgo" })
   @IsString()
   description: string;
 
@@ -26,82 +40,105 @@ export class CreateFindingDto {
   @IsEnum(FindingSeverity)
   severity: FindingSeverity;
 
-  @ApiProperty({ description: 'ID del proyecto al que pertenece' })
-  @IsString()
+  @ApiProperty({ description: "ID del proyecto al que pertenece" })
+  @IsMongoId({ message: "projectId debe ser un ObjectId válido" })
   projectId: string;
 
-  @ApiPropertyOptional({ example: true, description: 'Si debe incluirse en el retest' })
+  @ApiPropertyOptional({
+    example: true,
+    description: "Si debe incluirse en el retest",
+  })
   @IsOptional()
   @IsBoolean()
   retestIncluded?: boolean;
 
-  @ApiPropertyOptional({ description: 'Sistema o activo afectado' })
+  @ApiPropertyOptional({ description: "Sistema o activo afectado" })
   @IsOptional()
   @IsString()
   affectedAsset?: string;
 
-  @ApiPropertyOptional({ type: [String], description: 'Lista de activos afectados' })
+  @ApiPropertyOptional({
+    type: [String],
+    description: "Lista de activos afectados",
+  })
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
   affectedAssets?: string[];
 
-  @ApiPropertyOptional({ enum: FindingSeverity, description: 'Nivel de riesgo de negocio' })
+  @ApiPropertyOptional({
+    enum: FindingSeverity,
+    description: "Nivel de riesgo de negocio",
+  })
   @IsOptional()
   @IsEnum(FindingSeverity)
   businessRisk?: FindingSeverity;
 
-  @ApiPropertyOptional({ description: 'Justificación del nivel de riesgo' })
+  @ApiPropertyOptional({ description: "Justificación del nivel de riesgo" })
   @IsOptional()
   @IsString()
   riskJustification?: string;
 
-  @ApiPropertyOptional({ example: 7.5, description: 'Puntaje CVSS' })
+  @ApiPropertyOptional({ example: 7.5, description: "Puntaje CVSS" })
   @IsOptional()
   @IsNumber()
   cvssScore?: number;
 
-  @ApiPropertyOptional({ example: 'CWE-89', description: 'ID de CWE' })
+  @ApiPropertyOptional({ example: "CVE-2024-12345", description: "ID de CVE" })
+  @IsOptional()
+  @IsString()
+  cve_id?: string;
+
+  @ApiPropertyOptional({ description: "IP, URL u origen de detecciÃ³n" })
+  @IsOptional()
+  @IsString()
+  detection_source?: string;
+
+  @ApiPropertyOptional({ example: "CWE-89", description: "ID de CWE" })
   @IsOptional()
   @IsString()
   cweId?: string;
 
-  @ApiPropertyOptional({ description: 'Recomendación de remediación' })
+  @ApiPropertyOptional({ description: "Recomendación de remediación" })
   @IsOptional()
   @IsString()
   recommendation?: string;
 
-  @ApiPropertyOptional({ description: 'Descripción del impacto' })
+  @ApiPropertyOptional({ description: "Descripción del impacto" })
   @IsOptional()
   @IsString()
   impact?: string;
 
-  @ApiPropertyOptional({ description: 'Implicancias del hallazgo' })
+  @ApiPropertyOptional({ description: "Implicancias del hallazgo" })
   @IsOptional()
   @IsString()
   implications?: string;
 
-  @ApiPropertyOptional({ type: [String], example: ['CIS 5.1', 'NIST AC-2'], description: 'Controles aplicables' })
+  @ApiPropertyOptional({
+    type: [String],
+    example: ["CIS 5.1", "NIST AC-2"],
+    description: "Controles aplicables",
+  })
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
   controls?: string[];
 
-  @ApiPropertyOptional({ type: [String], description: 'Referencias externas' })
+  @ApiPropertyOptional({ type: [String], description: "Referencias externas" })
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
   references?: string[];
 
-  @ApiPropertyOptional({ type: [String], example: ['web', 'injection'] })
+  @ApiPropertyOptional({ type: [String], example: ["web", "injection"] })
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
   tags?: string[];
 
-  @ApiPropertyOptional({ description: 'ID del usuario asignado' })
+  @ApiPropertyOptional({ description: "ID del usuario asignado" })
   @IsOptional()
-  @IsString()
+  @IsMongoId({ message: "assignedTo debe ser un ObjectId válido" })
   assignedTo?: string;
 }
 
@@ -163,6 +200,16 @@ export class UpdateFindingDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
+  cve_id?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  detection_source?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
   cweId?: string;
 
   @ApiPropertyOptional()
@@ -186,6 +233,12 @@ export class UpdateFindingDto {
   @IsString({ each: true })
   controls?: string[];
 
+  @ApiPropertyOptional({ type: [String], description: "Referencias externas" })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  references?: string[];
+
   @ApiPropertyOptional({ type: [String] })
   @IsOptional()
   @IsArray()
@@ -194,8 +247,15 @@ export class UpdateFindingDto {
 
   @ApiPropertyOptional()
   @IsOptional()
-  @IsString()
+  @IsMongoId({ message: "assignedTo debe ser un ObjectId válido" })
   assignedTo?: string;
+
+  @ApiPropertyOptional({
+    description: "Proyecto asociado (uso interno controlado)",
+  })
+  @IsOptional()
+  @IsMongoId({ message: "projectId debe ser un ObjectId válido" })
+  projectId?: string;
 }
 
 /**
@@ -206,8 +266,20 @@ export class CloseFindingDto {
   @IsEnum(CloseReason)
   closeReason: CloseReason;
 
-  @ApiPropertyOptional({ description: 'Comentario sobre el cierre' })
+  @ApiPropertyOptional({ description: "Comentario sobre el cierre" })
   @IsOptional()
   @IsString()
   comment?: string;
+}
+
+export class BulkCloseFindingsDto {
+  @ApiProperty({ type: [String], description: "IDs de hallazgos a cerrar" })
+  @IsArray()
+  @IsMongoId({ each: true, message: "Cada id debe ser un ObjectId válido" })
+  ids: string[];
+
+  @ApiPropertyOptional({ enum: CloseReason, description: "Motivo de cierre en bloque" })
+  @IsOptional()
+  @IsEnum(CloseReason)
+  closeReason?: CloseReason;
 }

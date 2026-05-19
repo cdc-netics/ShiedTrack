@@ -1,5 +1,5 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document, Types } from 'mongoose';
+import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
+import { Document, Types } from "mongoose";
 
 /**
  * Tabla pivote para asignación explícita Usuario-Área
@@ -7,13 +7,13 @@ import { Document, Types } from 'mongoose';
  */
 @Schema({ timestamps: true })
 export class UserAreaAssignment extends Document {
-  @Prop({ type: Types.ObjectId, ref: 'User', required: true })
+  @Prop({ type: Types.ObjectId, ref: "User", required: true })
   userId: Types.ObjectId;
 
-  @Prop({ type: Types.ObjectId, ref: 'Area', required: true })
+  @Prop({ type: Types.ObjectId, ref: "Area", required: true })
   areaId: Types.ObjectId;
 
-  @Prop({ type: Types.ObjectId, ref: 'User', required: true })
+  @Prop({ type: Types.ObjectId, ref: "User", required: true })
   assignedBy: Types.ObjectId; // Usuario que realizó la asignación (típicamente OWNER)
 
   @Prop()
@@ -25,7 +25,8 @@ export class UserAreaAssignment extends Document {
   // Timestamps automáticos: createdAt, updatedAt
 }
 
-export const UserAreaAssignmentSchema = SchemaFactory.createForClass(UserAreaAssignment);
+export const UserAreaAssignmentSchema =
+  SchemaFactory.createForClass(UserAreaAssignment);
 
 // Índices para consultas eficientes
 UserAreaAssignmentSchema.index({ userId: 1, areaId: 1 }, { unique: true }); // Evita duplicados

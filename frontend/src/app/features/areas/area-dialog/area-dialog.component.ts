@@ -10,6 +10,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { HttpClient } from '@angular/common/http';
+import { environment } from '../../../../environments/environment';
 
 @Component({
   selector: 'app-area-dialog',
@@ -20,7 +21,7 @@ import { HttpClient } from '@angular/common/http';
     ReactiveFormsModule,
     MatDialogModule,
     MatFormFieldModule,
-    MatSelectModule
+    MatSelectModule,
     MatButtonModule,
     MatIconModule,
     MatProgressSpinnerModule,
@@ -82,7 +83,7 @@ import { HttpClient } from '@angular/common/http';
       align-items: center;
       gap: 12px;
     }
-  `]
+  `
 })
 export class AreaDialogComponent {
   // Dependencias para formulario, red y UI
@@ -117,8 +118,8 @@ export class AreaDialogComponent {
     this.saving = true;
     const areaData = this.areaForm.value;
     const url = this.data?.area
-      ? `http://localhost:3000/api/areas/${this.data.area._id}`
-      : 'http://localhost:3000/api/areas';
+      ? `${environment.apiUrl}/areas/${this.data.area._id}`
+      : `${environment.apiUrl}/areas`;
     
     const request = this.data?.area
       ? this.http.put(url, areaData)

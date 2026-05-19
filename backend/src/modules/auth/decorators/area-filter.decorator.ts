@@ -1,16 +1,16 @@
-import { createParamDecorator, ExecutionContext } from '@nestjs/common';
-import { UserRole } from '../../../common/enums';
+import { createParamDecorator, ExecutionContext } from "@nestjs/common";
+import { UserRole } from "../../../common/enums";
 
 /**
  * Decorador para obtener el filtro de áreas del usuario actual
- * 
+ *
  * Retorna:
  * - null si el usuario es OWNER/PLATFORM_ADMIN (acceso global)
  * - array de areaIds si el usuario tiene restricción por área
- * 
+ *
  * Uso en controller:
  * async findAll(@AreaFilter() areaFilter: string[] | null)
- * 
+ *
  * Uso en service:
  * if (areaFilter) {
  *   query.where('areaId').in(areaFilter);

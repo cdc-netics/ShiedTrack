@@ -1,5 +1,5 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document, Types } from 'mongoose';
+import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
+import { Document, Types } from "mongoose";
 
 /**
  * Entidad AuditLog
@@ -7,41 +7,64 @@ import { Document, Types } from 'mongoose';
  */
 @Schema({ timestamps: true })
 export class AuditLog extends Document {
-  @Prop({ required: true })
-  action: string; // Ej: USER_ROLE_CHANGE, PROJECT_CLOSED, HARD_DELETE_CLIENT
+  @Prop({ required: true, trim: true })
+  action!: string; // Ej: POST /api/auth/login, USER_ROLE_CHANGE, PROJECT_CLOSED
 
-  @Prop({ required: true })
-  entityType: string; // User, Client, Project, Finding, etc.
+  @Prop({ required: false, trim: true, uppercase: true })
+  method?: string;
 
-  @Prop({ required: true })
-  entityId: string; // ID de la entidad afectada
+  @Prop({ required: false, trim: true })
+  path?: string;
 
-  @Prop({ type: Types.ObjectId, ref: 'Client' })
-  clientId?: Types.ObjectId; // Contexto de tenant
+  @Prop({ required: true, trim: true })
+  entityType!: string; // HTTP, EXPORT, User, Client, Project, Finding, etc.
 
-  @Prop({ type: Types.ObjectId, ref: 'Area' })
-  areaId?: Types.ObjectId; // Contexto de área
+  @Prop({ required: true, trim: true })
+  entityId!: string; // ID de la entidad afectada o 'N/A'
 
-  @Prop({ type: Types.ObjectId, ref: 'User', required: true })
-  performedBy: Types.ObjectId; // Usuario que ejecutó la acción
+  @Prop({ type: Types.ObjectId, ref: "Client", required: false })
+  clientId?: Types.ObjectId;
 
-  @Prop({ type: Object })
-  metadata?: Record<string, any>; // Datos adicionales (ej: valor anterior, nuevo)
+  @Prop({ type: Types.ObjectId, ref: "Area", required: false })
+  areaId?: Types.ObjectId;
 
-  @Prop()
-  ip?: string; // IP del usuario
+  /**
+   * Usuario que ejecutó la acción (FK a User)
+   * Puede ser null cuando es "anonymous" o sistema.
+   */
+  @Prop({ type: Types.ObjectId, ref: "User", required: false, default: null })
+  performedBy?: Types.ObjectId | null;
 
-  @Prop()
-  userAgent?: string; // User agent del navegador
+  /**
+   * Etiqueta alternativa cuando no hay usuario (ej: "anonymous", "system")
+   */
+  @Prop({ type: String, required: false, default: null, trim: true })
+  performedByLabel?: string | null;
 
-  @Prop({ required: true })
-  severity: string; // INFO, WARNING, CRITICAL
+  @Prop({ type: Object, required: false, default: {} })
+  metadata?: Record<string, any>;
 
-  // Timestamp de creación (inmutable)
-  readonly createdAt: Date;
+  @Prop({ type: String, required: false, trim: true })
+  ip?: string;
+
+  @Prop({ type: String, required: false })
+  userAgent?: string;
+
+  @Prop({ required: true, trim: true, default: "INFO" })
+  severity!: string; // INFO, WARNING, CRITICAL
+
+  @Prop({ required: false })
+  statusCode?: number;
+
+  @Prop({ required: false })
+  durationMs?: number;
+
+  // timestamps (por Schema timestamps: true)
+  createdAt!: Date;
+  updatedAt!: Date;
 
   // Multi-tenant: referencia al tenant
-  @Prop({ type: Types.ObjectId, ref: 'Tenant' })
+  @Prop({ type: Types.ObjectId, ref: "Tenant", required: false })
   tenantId?: Types.ObjectId;
 }
 
@@ -53,3 +76,4 @@ AuditLogSchema.index({ entityType: 1, entityId: 1 });
 AuditLogSchema.index({ action: 1, createdAt: -1 });
 AuditLogSchema.index({ severity: 1, createdAt: -1 });
 AuditLogSchema.index({ tenantId: 1, createdAt: -1 });
+AuditLogSchema.index({ createdAt: 1 }, { expireAfterSeconds: 60 * 60 * 24 * 365 });

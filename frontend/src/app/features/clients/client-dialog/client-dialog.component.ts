@@ -14,6 +14,7 @@ import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../environments/environment';
 
 @Component({
+  standalone: true,
     selector: 'app-client-dialog',
     imports: [
         CommonModule,
@@ -254,11 +255,11 @@ export class ClientDialogComponent {
     if (!this.isFormValid()) return;
 
     this.saving = true;
-    const clientData = { ...this.clientForm.value };
+    const clientData = this.buildClientPayload();
     
     // Agregar datos del admin inicial si está habilitado
     if (this.adminForm.get('createInitialAdmin')?.value) {
-      clientData.initialAdmin = {
+      clientData['initialAdmin'] = {
         email: this.adminForm.get('initialAdminEmail')?.value,
         name: this.adminForm.get('initialAdminName')?.value,
         password: this.adminForm.get('initialAdminPassword')?.value
@@ -291,5 +292,25 @@ export class ClientDialogComponent {
         );
       }
     });
+  }
+
+  private buildClientPayload(): Record<string, unknown> {
+    const payload: Record<string, unknown> = {};
+
+    for (const [key, value] of Object.entries(this.clientForm.value)) {
+      if (typeof value === 'string') {
+        const trimmed = value.trim();
+        if (trimmed) {
+          payload[key] = trimmed;
+        }
+        continue;
+      }
+
+      if (value !== null && value !== undefined) {
+        payload[key] = value;
+      }
+    }
+
+    return payload;
   }
 }

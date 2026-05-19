@@ -8,6 +8,7 @@ import { BrandingService } from './core/services/branding.service';
  * Carga branding dinámico al iniciar
  */
 @Component({
+  standalone: true,
     selector: 'app-root',
     imports: [RouterOutlet],
     template: `

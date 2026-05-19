@@ -33,6 +33,7 @@ const DEV_ADMIN_PASSWORD = 'Admin123!';
  * Standalone component con Material UI y anime.js
  */
 @Component({
+  standalone: true,
     selector: 'app-login',
     imports: [
         CommonModule,
@@ -45,17 +46,15 @@ const DEV_ADMIN_PASSWORD = 'Admin123!';
         MatSelectModule
     ],
     template: `
-    <div class="login-container">
-      <!-- Animación de fondo con partículas -->
-      <div class="particles" #particles>
+    <div class="login-page">
+      <div class="particles" #particles aria-hidden="true">
         @for (particle of particleArray; track $index) {
-          <div class="particle" [attr.data-index]="$index"></div>
+          <span class="particle" [attr.data-index]="$index"></span>
         }
       </div>
 
-      <!-- Shield Logo animado -->
       <div class="shield-logo" #shieldLogo>
-        <svg viewBox="0 0 100 120" class="shield-svg">
+        <svg viewBox="0 0 100 120" class="shield-svg" aria-hidden="true" focusable="false">
           <defs>
             <linearGradient id="shieldGradient" x1="0%" y1="0%" x2="0%" y2="100%">
               <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
@@ -67,20 +66,22 @@ const DEV_ADMIN_PASSWORD = 'Admin123!';
           <path class="shield-check" d="M35,55 L45,65 L65,40" fill="none" stroke="#fff" 
                 stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
-        <h1 class="app-title">ShieldTrack</h1>
+        <p class="app-title">ShieldTrack</p>
         <p class="app-subtitle">Cyber Security Management</p>
       </div>
 
+      <main class="login-main" id="login-main">
       <mat-card class="login-card" #loginCard>
         <mat-card-header>
-          <mat-card-title>🔒 Iniciar Sesión</mat-card-title>
-          <mat-card-subtitle>Sistema de Gestión de Hallazgos</mat-card-subtitle>
+          <mat-card-title>
+            <h1 class="login-card-heading">Iniciar sesión</h1>
+          </mat-card-title>
+          <mat-card-subtitle>Sistema de gestión de hallazgos</mat-card-subtitle>
         </mat-card-header>
         
-        <!-- 🚧 BANNER DE DESARROLLO - REMOVER EN PRODUCCIÓN -->
         @if (showDevCredentials) {
-          <div class="dev-banner">
-            <div class="dev-banner-header">🚧 MODO DESARROLLO</div>
+          <aside class="dev-banner" aria-label="Modo desarrollo">
+            <p class="dev-banner-header">Modo desarrollo</p>
             <div class="dev-credentials">
               <mat-form-field appearance="outline" class="full-width dev-select">
                 <mat-label>Seleccionar Usuario de Prueba</mat-label>
@@ -107,28 +108,27 @@ const DEV_ADMIN_PASSWORD = 'Admin123!';
                 </button>
               }
             </div>
-          </div>
+          </aside>
         }
-        <!-- FIN BANNER DESARROLLO -->
         
         <mat-card-content>
-          <form (ngSubmit)="onLogin()" #loginForm="ngForm">
+          <form (ngSubmit)="onLogin()" #loginForm="ngForm" autocomplete="on">
             <mat-form-field appearance="outline" class="full-width">
-              <mat-label>Email</mat-label>
-              <input matInput type="email" [(ngModel)]="email" name="email" required>
+              <mat-label>Correo electrónico</mat-label>
+              <input matInput type="email" [(ngModel)]="email" name="email" required autocomplete="username">
             </mat-form-field>
 
             <mat-form-field appearance="outline" class="full-width">
               <mat-label>Contraseña</mat-label>
-              <input matInput type="password" [(ngModel)]="password" name="password" required>
+              <input matInput type="password" [(ngModel)]="password" name="password" required autocomplete="current-password">
             </mat-form-field>
 
             @if (error) {
-              <div class="error-message">{{ error }}</div>
+              <div class="error-message" role="alert">{{ error }}</div>
             }
 
             <button mat-raised-button color="primary" type="submit" 
-                    [disabled]="loading || !loginForm.valid" class="full-width">
+                    [disabled]="loading || !loginForm.valid" class="full-width login-submit">
               @if (loading) {
                 <mat-spinner diameter="20"></mat-spinner>
               } @else {
@@ -138,10 +138,11 @@ const DEV_ADMIN_PASSWORD = 'Admin123!';
           </form>
         </mat-card-content>
       </mat-card>
+      </main>
     </div>
   `,
     styles: [`
-    .login-container {
+    .login-page {
       position: relative;
       display: flex;
       flex-direction: column;
@@ -188,6 +189,19 @@ const DEV_ADMIN_PASSWORD = 'Admin123!';
     .shield-check {
       stroke-dasharray: 100;
       stroke-dashoffset: 100;
+    }
+
+    .login-main {
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      z-index: 1;
+    }
+
+    .login-card-heading {
+      margin: 0;
+      font-size: 1.25rem;
+      font-weight: 600;
     }
 
     .app-title {
@@ -238,7 +252,7 @@ const DEV_ADMIN_PASSWORD = 'Admin123!';
       font-weight: 700;
       text-align: center;
       color: #d63031;
-      margin-bottom: 12px;
+      margin: 0 0 12px;
       font-size: 14px;
       letter-spacing: 1px;
     }
@@ -290,13 +304,17 @@ const DEV_ADMIN_PASSWORD = 'Admin123!';
     /* FIN ESTILOS DESARROLLO */
 
     .error-message {
-      color: #f44336;
-      background: #ffebee;
+      color: #b91c1c;
+      background: #fef2f2;
       padding: 12px;
-      border-radius: 4px;
+      border-radius: 6px;
       margin-bottom: 16px;
       text-align: center;
       font-size: 14px;
+    }
+
+    .login-submit {
+      min-height: 48px;
     }
   `]
 })
@@ -452,10 +470,27 @@ export class LoginComponent implements AfterViewInit {
           this.loading = false;
           // La navegación la maneja el servicio
         },
-        error: (err) => {
+        error: (err: unknown) => {
           this.loading = false;
-          this.error = err.error?.message || 'Error al iniciar sesión';
-        }
+          const http = err as {
+            status?: number;
+            message?: string;
+            error?: { message?: string } | string;
+          };
+          const body = http.error;
+          const bodyMsg =
+            typeof body === 'string'
+              ? body
+              : body && typeof body === 'object' && 'message' in body
+                ? String((body as { message?: string }).message)
+                : '';
+          this.error =
+            bodyMsg ||
+            http.message ||
+            (http.status === 0
+              ? 'No hay respuesta del servidor. Compruebe que el backend está en marcha (p. ej. Docker o puerto 3000).'
+              : `Error al iniciar sesión (${http.status ?? '?'})`);
+        },
       });
   }
 }

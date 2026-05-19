@@ -187,8 +187,8 @@ export class UserDialogComponent {
 
   userForm: FormGroup;
   private API_URL = `${environment.apiUrl}/auth`;
-  private CLIENTS_URL = `/api/clients`;
-  private AREAS_URL = `/api/areas`;
+  private CLIENTS_URL = `${environment.apiUrl}/clients`;
+  private AREAS_URL = `${environment.apiUrl}/areas`;
 
   constructor(@Inject(MAT_DIALOG_DATA) public data: any) {
     console.log('[UserDialog] Constructor - Datos recibidos:', this.data);
@@ -334,9 +334,11 @@ export class UserDialogComponent {
       areaIds: this.userForm.value.areaIds
     };
 
-    // En modo creación, incluir email y password obligatorio
+    // Email siempre editable por administradores autorizados
+    userData.email = this.userForm.value.email;
+
+    // En modo creación, incluir password obligatorio
     if (!this.isEditMode) {
-      userData.email = this.userForm.value.email;
       userData.password = this.userForm.value.password;
     }
 

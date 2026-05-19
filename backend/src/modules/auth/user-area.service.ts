@@ -1,10 +1,15 @@
-import { Injectable, BadRequestException, NotFoundException, Logger } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
-import { UserAreaAssignment } from './schemas/user-area-assignment.schema';
-import { User } from './schemas/user.schema';
-import { Area } from '../area/schemas/area.schema';
-import { EmailService } from '../email/email.service';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+  Logger,
+} from "@nestjs/common";
+import { InjectModel } from "@nestjs/mongoose";
+import { Model, Types } from "mongoose";
+import { UserAreaAssignment } from "./schemas/user-area-assignment.schema";
+import { User } from "./schemas/user.schema";
+import { Area } from "../area/schemas/area.schema";
+import { EmailService } from "../email/email.service";
 
 @Injectable()
 export class UserAreaService {
@@ -31,7 +36,7 @@ export class UserAreaService {
     // Verificar que el usuario existe
     const user = await this.userModel.findById(userId);
     if (!user) {
-      throw new NotFoundException('Usuario no encontrado');
+      throw new NotFoundException("Usuario no encontrado");
     }
 
     // Verificar si ya existe la asignación
@@ -42,7 +47,7 @@ export class UserAreaService {
 
     if (existing) {
       if (existing.isActive) {
-        throw new BadRequestException('El usuario ya tiene asignada esta área');
+        throw new BadRequestException("El usuario ya tiene asignada esta área");
       }
       // Reactivar asignación existente
       existing.isActive = true;
@@ -74,12 +79,17 @@ export class UserAreaService {
         await this.emailService.notifyUserAssignedToArea(
           user.email,
           `${user.firstName} ${user.lastName}`,
-          area.name
+          area.name,
+          {
+            tenantId: area.tenantId?.toString?.(),
+          },
         );
         this.logger.log(`Email de asignación de área enviado a ${user.email}`);
       }
     } catch (emailError) {
-      this.logger.warn(`No se pudo enviar email de asignación: ${emailError.message}`);
+      this.logger.warn(
+        `No se pudo enviar email de asignación: ${emailError.message}`,
+      );
     }
 
     return saved;
@@ -96,7 +106,7 @@ export class UserAreaService {
     });
 
     if (!assignment) {
-      throw new NotFoundException('Asignación no encontrada');
+      throw new NotFoundException("Asignación no encontrada");
     }
 
     // Soft delete
@@ -118,8 +128,8 @@ export class UserAreaService {
         userId: new Types.ObjectId(userId),
         isActive: true,
       })
-      .populate('areaId')
-      .populate('assignedBy', 'email firstName lastName')
+      .populate("areaId")
+      .populate("assignedBy", "email firstName lastName")
       .exec();
   }
 
@@ -132,8 +142,8 @@ export class UserAreaService {
         areaId: new Types.ObjectId(areaId),
         isActive: true,
       })
-      .populate('userId', 'email firstName lastName role')
-      .populate('assignedBy', 'email firstName lastName')
+      .populate("userId", "email firstName lastName role")
+      .populate("assignedBy", "email firstName lastName")
       .exec();
   }
 
@@ -153,7 +163,10 @@ export class UserAreaService {
         assignments.push(assignment);
       } catch (error) {
         // Continuar con las demás áreas si una falla
-        console.warn(`Error asignando área ${areaId} a usuario ${userId}:`, error.message);
+        console.warn(
+          `Error asignando área ${areaId} a usuario ${userId}:`,
+          error.message,
+        );
       }
     }
 

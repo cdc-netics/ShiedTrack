@@ -1,49 +1,79 @@
-import { IsString, IsEnum, IsOptional, IsArray, IsNumber, Min, Max, ValidateNested } from 'class-validator';
-import { Type } from 'class-transformer';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import {
+  IsString,
+  IsEnum,
+  IsOptional,
+  IsArray,
+  IsNumber,
+  Min,
+  Max,
+  ValidateNested,
+} from "class-validator";
+import { Type } from "class-transformer";
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 
 /**
  * DTO para crear plantilla de hallazgo
  */
 export class CreateTemplateDto {
-  @ApiProperty({ example: 'SQL Injection en Login', description: 'Título del hallazgo' })
+  @ApiProperty({
+    example: "SQL Injection en Login",
+    description: "Título del hallazgo",
+  })
   @IsString()
   title: string;
 
-  @ApiProperty({ example: 'Se detectó vulnerabilidad de inyección SQL...', description: 'Descripción del hallazgo' })
+  @ApiProperty({
+    example: "Se detectó vulnerabilidad de inyección SQL...",
+    description: "Descripción del hallazgo",
+  })
   @IsString()
   description: string;
 
-  @ApiProperty({ example: 'Implementar prepared statements...', description: 'Recomendación de remediación' })
+  @ApiProperty({
+    example: "Implementar prepared statements...",
+    description: "Recomendación de remediación",
+  })
   @IsString()
   recommendation: string;
 
-  @ApiProperty({ example: 'CRITICAL', description: 'Severidad sugerida' })
-  @IsEnum(['CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'INFO'])
+  @ApiProperty({ example: "CRITICAL", description: "Severidad sugerida" })
+  @IsEnum(["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"])
   severity: string;
 
-  @ApiPropertyOptional({ example: 'CAT-WEB-001', description: 'Código interno de categorización' })
+  @ApiPropertyOptional({
+    example: "CAT-WEB-001",
+    description: "Código interno de categorización",
+  })
   @IsOptional()
   @IsString()
   internal_code?: string;
 
-  @ApiPropertyOptional({ example: 9.8, description: 'CVSS Score sugerido (0-10)' })
+  @ApiPropertyOptional({
+    example: 9.8,
+    description: "CVSS Score sugerido (0-10)",
+  })
   @IsOptional()
   @IsNumber()
   @Min(0)
   @Max(10)
   cvss_score?: number;
 
-  @ApiPropertyOptional({ example: 'CWE-89', description: 'Código CWE asociado' })
+  @ApiPropertyOptional({
+    example: "CWE-89",
+    description: "Código CWE asociado",
+  })
   @IsOptional()
   @IsString()
   cwe_id?: string;
 
-  @ApiPropertyOptional({ 
+  @ApiPropertyOptional({
     example: [
-      { label: 'OWASP Top 10 - A03:2021', url: 'https://owasp.org/Top10/A03_2021-Injection/' }
-    ], 
-    description: 'Referencias estructuradas' 
+      {
+        label: "OWASP Top 10 - A03:2021",
+        url: "https://owasp.org/Top10/A03_2021-Injection/",
+      },
+    ],
+    description: "Referencias estructuradas",
   })
   @IsOptional()
   @IsArray()
@@ -51,17 +81,23 @@ export class CreateTemplateDto {
   @Type(() => ReferenceDto)
   references?: ReferenceDto[];
 
-  @ApiPropertyOptional({ example: ['sql', 'injection', 'database'], description: 'Etiquetas de búsqueda' })
+  @ApiPropertyOptional({
+    example: ["sql", "injection", "database"],
+    description: "Etiquetas de búsqueda",
+  })
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
   tags?: string[];
 
-  @ApiProperty({ example: 'GLOBAL', description: 'Alcance: GLOBAL o TENANT' })
-  @IsEnum(['GLOBAL', 'TENANT'])
+  @ApiProperty({ example: "USER", description: "Alcance: USER, GLOBAL o TENANT" })
+  @IsEnum(["USER", "GLOBAL", "TENANT"])
   scope: string;
 
-  @ApiPropertyOptional({ example: '65f3a2b1c9d8e4f6a7b8c9d0', description: 'ID del cliente (si scope=TENANT)' })
+  @ApiPropertyOptional({
+    example: "65f3a2b1c9d8e4f6a7b8c9d0",
+    description: "ID del cliente (si scope=TENANT)",
+  })
   @IsOptional()
   @IsString()
   tenantId?: string;
@@ -71,11 +107,11 @@ export class CreateTemplateDto {
  * DTO para referencias estructuradas
  */
 export class ReferenceDto {
-  @ApiProperty({ example: 'OWASP Top 10 - A03:2021' })
+  @ApiProperty({ example: "OWASP Top 10 - A03:2021" })
   @IsString()
   label: string;
 
-  @ApiProperty({ example: 'https://owasp.org/Top10/A03_2021-Injection/' })
+  @ApiProperty({ example: "https://owasp.org/Top10/A03_2021-Injection/" })
   @IsString()
   url: string;
 }
@@ -84,12 +120,15 @@ export class ReferenceDto {
  * DTO para búsqueda de plantillas
  */
 export class SearchTemplateDto {
-  @ApiPropertyOptional({ example: 'sql injection', description: 'Búsqueda por texto' })
+  @ApiPropertyOptional({
+    example: "sql injection",
+    description: "Búsqueda por texto",
+  })
   @IsOptional()
   @IsString()
   q?: string;
 
-  @ApiPropertyOptional({ example: 20, description: 'Límite de resultados' })
+  @ApiPropertyOptional({ example: 20, description: "Límite de resultados" })
   @IsOptional()
   @IsNumber()
   @Min(1)

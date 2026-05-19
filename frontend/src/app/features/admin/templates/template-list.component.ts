@@ -14,8 +14,10 @@ import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../environments/environment';
 import { TemplateDialogComponent } from './template-dialog.component';
+import { AuthService } from '../../../core/services/auth.service';
 
 @Component({
+  standalone: true,
     selector: 'app-template-list',
     imports: [
         CommonModule,
@@ -34,10 +36,10 @@ import { TemplateDialogComponent } from './template-dialog.component';
     template: `
     <div class="template-container">
       <div class="header">
-        <h1>� Plantillas de Vulnerabilidades</h1>
+        <h1>🛡️ Plantillas</h1>
         <button mat-raised-button color="primary" (click)="openTemplateDialog()">
           <mat-icon>add</mat-icon>
-          Nueva Plantilla
+          Nueva plantilla personal
         </button>
       </div>
 
@@ -71,9 +73,18 @@ import { TemplateDialogComponent } from './template-dialog.component';
           <ng-container matColumnDef="name">
             <th mat-header-cell *matHeaderCellDef>Nombre</th>
             <td mat-cell *matCellDef="let template">
-              <strong>{{ template.name }}</strong>
-              @if (template.cweId) {
-                <br><small class="cwe-tag">{{ template.cweId }}</small>
+              <strong>{{ template.title }}</strong>
+              <div class="scope-line">
+                @if (template.scope === 'USER') {
+                  <mat-chip class="scope-user">Mi plantilla</mat-chip>
+                } @else if (template.scope === 'TENANT') {
+                  <mat-chip class="scope-tenant">De mi área</mat-chip>
+                } @else {
+                  <mat-chip class="scope-global">General</mat-chip>
+                }
+              </div>
+              @if (template.cwe_id) {
+                <br><small class="cwe-tag">{{ template.cwe_id }}</small>
               }
             </td>
           </ng-container>
@@ -90,8 +101,8 @@ import { TemplateDialogComponent } from './template-dialog.component';
           <ng-container matColumnDef="cvss">
             <th mat-header-cell *matHeaderCellDef>CVSS</th>
             <td mat-cell *matCellDef="let template">
-              @if (template.cvssScore) {
-                <span class="cvss-score">{{ template.cvssScore }}</span>
+              @if (template.cvss_score) {
+                <span class="cvss-score">{{ template.cvss_score }}</span>
               } @else {
                 <span class="text-muted">N/A</span>
               }
@@ -110,7 +121,8 @@ import { TemplateDialogComponent } from './template-dialog.component';
           <ng-container matColumnDef="actions">
             <th mat-header-cell *matHeaderCellDef>Acciones</th>
             <td mat-cell *matCellDef="let template">
-              <button mat-icon-button (click)="openTemplateDialog(template)" 
+              <button mat-icon-button (click)="openTemplateDialog(template)"
+                      [disabled]="!canEdit(template)"
                       matTooltip="Editar plantilla">
                 <mat-icon>edit</mat-icon>
               </button>
@@ -119,6 +131,7 @@ import { TemplateDialogComponent } from './template-dialog.component';
                 <mat-icon>content_copy</mat-icon>
               </button>
               <button mat-icon-button color="warn" (click)="deleteTemplate(template)"
+                      [disabled]="!canEdit(template)"
                       matTooltip="Eliminar">
                 <mat-icon>delete</mat-icon>
               </button>
@@ -219,6 +232,14 @@ import { TemplateDialogComponent } from './template-dialog.component';
       line-height: 1.4;
     }
 
+    .scope-line {
+      margin-top: 6px;
+    }
+
+    .scope-user { background: #e8f5e9; color: #1b5e20; }
+    .scope-tenant { background: #e3f2fd; color: #0d47a1; }
+    .scope-global { background: #f5f5f5; color: #424242; }
+
     .text-muted {
       color: #999;
     }
@@ -235,6 +256,7 @@ export class TemplateListComponent implements OnInit {
   private http = inject(HttpClient);
   private dialog = inject(MatDialog);
   private snackBar = inject(MatSnackBar);
+  private authService = inject(AuthService);
   
   // Estado local y filtros
   templates = signal<any[]>([]);
@@ -252,19 +274,19 @@ export class TemplateListComponent implements OnInit {
   }
 
   loadTemplates(): void {
-    // Intenta cargar desde backend; si falla, usa templates por defecto
+    // Carga plantillas persistidas y mantiene visibles las plantillas base.
     this.loading.set(true);
     this.http.get<any[]>(this.API_URL).subscribe({
       next: (data) => {
-        this.templates.set(data.length > 0 ? data : this.getDefaultTemplates());
-        this.filteredTemplates.set(this.templates());
+        this.templates.set(this.mergeTemplates(data, this.getDefaultTemplates()));
+        this.applyFilters();
         this.loading.set(false);
       },
       error: (err) => {
         console.error('Error al cargar plantillas:', err);
         // Si hay error, usar plantillas por defecto
-        this.templates.set(this.getDefaultTemplates());
-        this.filteredTemplates.set(this.templates());
+        this.templates.set(this.getDefaultTemplates().map((t) => this.normalizeTemplate(t)));
+        this.applyFilters();
         this.loading.set(false);
       }
     });
@@ -349,8 +371,8 @@ export class TemplateListComponent implements OnInit {
     const search = this.searchTerm().toLowerCase();
     if (search) {
       filtered = filtered.filter(t => 
-        t.name.toLowerCase().includes(search) ||
-        t.cweId?.toLowerCase().includes(search)
+        t.title.toLowerCase().includes(search) ||
+        t.cwe_id?.toLowerCase().includes(search)
       );
     }
 
@@ -382,14 +404,14 @@ export class TemplateListComponent implements OnInit {
     const duplicated = { 
       ...template, 
       _id: undefined,
-      name: `${template.name} (Copia)` 
+      title: `${template.title} (Copia)` 
     };
     this.openTemplateDialog(duplicated);
   }
 
   deleteTemplate(template: any): void {
     // Eliminacion con confirmacion
-    const confirmed = confirm(`¿Está seguro de eliminar la plantilla "${template.name}"?`);
+    const confirmed = confirm(`¿Está seguro de eliminar la plantilla "${template.title}"?`);
     if (!confirmed) return;
 
     this.http.delete(`${this.API_URL}/${template._id}`).subscribe({
@@ -414,5 +436,44 @@ export class TemplateListComponent implements OnInit {
       'INFO': 'Info'
     };
     return map[severity] || severity;
+  }
+
+  canEdit(template: any): boolean {
+    const currentUser = this.authService.currentUser();
+    if (!currentUser) return false;
+    if (currentUser.role === 'OWNER' || currentUser.role === 'PLATFORM_ADMIN') return true;
+    const createdById =
+      typeof template?.createdBy === 'object' ? template?.createdBy?._id : template?.createdBy;
+    return String(createdById || '') === String(currentUser._id || '');
+  }
+
+  private normalizeTemplate(template: any): any {
+    return {
+      ...template,
+      title: template.title ?? template.name ?? '',
+      cwe_id: template.cwe_id ?? template.cweId ?? '',
+      cvss_score: template.cvss_score ?? template.cvssScore ?? null,
+      scope: template.scope ?? 'GLOBAL',
+    };
+  }
+
+  private mergeTemplates(persisted: any[], defaults: any[]): any[] {
+    const normalizedPersisted = persisted.map((template) => this.normalizeTemplate(template));
+    const existingKeys = new Set(
+      normalizedPersisted.map((template) => this.templateKey(template))
+    );
+    const missingDefaults = defaults
+      .map((template) => this.normalizeTemplate(template))
+      .filter((template) => !existingKeys.has(this.templateKey(template)));
+
+    return [...normalizedPersisted, ...missingDefaults];
+  }
+
+  private templateKey(template: any): string {
+    return [
+      template.title?.trim().toLowerCase() || '',
+      template.cwe_id?.trim().toLowerCase() || '',
+      template.severity || '',
+    ].join('|');
   }
 }

@@ -2,6 +2,8 @@ import { Injectable, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { tap } from 'rxjs/operators';
 import { Finding, FindingUpdate } from '../../shared/models';
+import { normalizeFinding, normalizeFindingUpdate } from '../../shared/utils/domain-normalizers';
+import { environment } from '../../../environments/environment';
 
 /**
  * Servicio de gestión de Hallazgos con Signals
@@ -11,7 +13,7 @@ import { Finding, FindingUpdate } from '../../shared/models';
   providedIn: 'root'
 })
 export class FindingService {
-  private readonly API_URL = 'http://localhost:3000/api/findings';
+  private readonly API_URL = `${environment.apiUrl}/findings`;
   
   // Signal para la lista de hallazgos
   private findingsSignal = signal<Finding[]>([]);
@@ -37,21 +39,14 @@ export class FindingService {
   /**
    * Cierra múltiples hallazgos masivamente
    */
-  bulkClose(findingIds: string[]) {
-    return this.http.post(`${this.API_URL}/bulk-close`, { findingIds })
+  bulkClose(findingIds: string[], closeReason = 'FIXED') {
+    return this.http.post<number>(`${this.API_URL}/bulk-close`, { ids: findingIds, closeReason })
       .pipe(
         tap(() => {
-          // Recargar hallazgos para reflejar cambios
-          const currentFindings = this.findings() || [];
           // O más simple, recargar todo:
           // this.loadFindings(); 
-          // O actualizar localmente el estado:
-           this.findingsSignal.update(findings => 
-            findings.map(f => 
-              findingIds.includes(f._id) 
-                ? { ...f, status: 'Closed' } 
-                : f
-            )
+          this.findingsSignal.update(findings =>
+            findings.filter(f => !findingIds.includes(f._id))
           );
         })
       );
@@ -79,7 +74,7 @@ export class FindingService {
     return this.http.get<Finding[]>(url).pipe(
       tap(findings => {
         // Cache de resultados y fin de carga
-        this.findingsSignal.set(findings);
+        this.findingsSignal.set(findings.map(finding => normalizeFinding(finding)));
         this.loadingSignal.set(false);
       })
     );
@@ -94,7 +89,7 @@ export class FindingService {
     return this.http.get<Finding>(`${this.API_URL}/${id}`).pipe(
       tap(finding => {
         // Conserva el detalle en memoria para la vista
-        this.selectedFindingSignal.set(finding);
+        this.selectedFindingSignal.set(normalizeFinding(finding));
         this.loadingSignal.set(false);
       })
     );
@@ -106,7 +101,7 @@ export class FindingService {
   loadTimeline(findingId: string) {
     return this.http.get<FindingUpdate[]>(`${this.API_URL}/${findingId}/timeline`).pipe(
       // Mantiene el timeline localmente para render inmediato
-      tap(timeline => this.timelineSignal.set(timeline))
+      tap(timeline => this.timelineSignal.set(timeline.map(update => normalizeFindingUpdate(update))))
     );
   }
 
@@ -117,7 +112,7 @@ export class FindingService {
     return this.http.post<Finding>(this.API_URL, data).pipe(
       tap(finding => {
         // Agregar a la lista local
-        this.findingsSignal.update(findings => [finding, ...findings]);
+        this.findingsSignal.update(findings => [normalizeFinding(finding), ...findings]);
       })
     );
   }
@@ -128,14 +123,16 @@ export class FindingService {
   updateFinding(id: string, data: any) {
     return this.http.put<Finding>(`${this.API_URL}/${id}`, data).pipe(
       tap(updatedFinding => {
+        const normalized = normalizeFinding(updatedFinding);
+
         // Actualizar en la lista local
         this.findingsSignal.update(findings =>
-          findings.map(f => f._id === id ? updatedFinding : f)
+          findings.map(f => f._id === id ? normalized : f)
         );
         
         // Actualizar hallazgo seleccionado si es el mismo
         if (this.selectedFindingSignal()?._id === id) {
-          this.selectedFindingSignal.set(updatedFinding);
+          this.selectedFindingSignal.set(normalized);
         }
       })
     );
@@ -147,14 +144,16 @@ export class FindingService {
   closeFinding(id: string, data: { closeReason: string; comment?: string }) {
     return this.http.post<Finding>(`${this.API_URL}/${id}/close`, data).pipe(
       tap(closedFinding => {
+        const normalized = normalizeFinding(closedFinding);
+
         // Actualizar en la lista local
         this.findingsSignal.update(findings =>
-          findings.map(f => f._id === id ? closedFinding : f)
+          findings.map(f => f._id === id ? normalized : f)
         );
         
         // Si el usuario esta en detalle, reflejar el cierre
         if (this.selectedFindingSignal()?._id === id) {
-          this.selectedFindingSignal.set(closedFinding);
+          this.selectedFindingSignal.set(normalized);
         }
       })
     );
@@ -172,7 +171,7 @@ export class FindingService {
     return this.http.post<FindingUpdate>(`${this.API_URL}/updates`, data).pipe(
       tap(update => {
         // Agregar al timeline local
-        this.timelineSignal.update(timeline => [update, ...timeline]);
+        this.timelineSignal.update(timeline => [normalizeFindingUpdate(update), ...timeline]);
       })
     );
   }

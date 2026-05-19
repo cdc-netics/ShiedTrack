@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { Observable, of } from 'rxjs';
 import { map, catchError } from 'rxjs/operators';
+import { environment } from '../../../environments/environment';
 
 @Pipe({
   name: 'secureImage',
@@ -17,7 +18,7 @@ export class SecureImagePipe implements PipeTransform {
   transform(evidenceId: string): Observable<SafeUrl> {
     // Descarga binaria de evidencia y la expone como URL segura para el DOM
     return this.http
-      .get(`http://localhost:3000/api/evidence/${evidenceId}/download`, {
+      .get(`${environment.apiUrl}/evidence/${evidenceId}/download`, {
         responseType: 'blob'
       })
       .pipe(

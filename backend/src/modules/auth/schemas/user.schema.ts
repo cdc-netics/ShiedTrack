@@ -1,6 +1,6 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document, Types } from 'mongoose';
-import { UserRole } from '../../../common/enums';
+import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
+import { Document, Types } from "mongoose";
+import { UserRole } from "../../../common/enums";
 
 /**
  * Entidad Usuario - Representa a los usuarios del sistema con RBAC
@@ -20,14 +20,21 @@ export class User extends Document {
   @Prop({ required: true })
   lastName: string;
 
+  @Prop()
+  avatarUrl?: string;
+
   @Prop({ required: true, enum: UserRole })
   role: UserRole;
 
-  @Prop({ type: Types.ObjectId, ref: 'Client' })
+  @Prop({ type: Types.ObjectId, ref: "Client" })
   clientId?: Types.ObjectId; // Tenant al que pertenece (opcional para OWNER/PLATFORM_ADMIN)
 
-  @Prop({ type: [Types.ObjectId], ref: 'Area', default: [] })
+  @Prop({ type: [Types.ObjectId], ref: "Area", default: [] })
   areaIds: Types.ObjectId[]; // Áreas asignadas (para AREA_ADMIN)
+
+  // NUEVO: proyectos visibles para control de lectura
+  @Prop({ type: [Types.ObjectId], ref: "Project", default: [] })
+  visibleProjectIds: Types.ObjectId[];
 
   // Campos de MFA
   @Prop({ default: false })
@@ -45,20 +52,20 @@ export class User extends Document {
   @Prop()
   deletedAt?: Date; // Fecha de eliminación lógica
 
-  @Prop({ type: Types.ObjectId, ref: 'User' })
+  @Prop({ type: Types.ObjectId, ref: "User" })
   deletedBy?: Types.ObjectId; // Usuario que realizó la eliminación
 
   @Prop()
   lastLogin?: Date;
 
   // Timestamps automáticos: createdAt, updatedAt
-    // Multi-tenant: lista de tenants permitidos para el usuario
-    @Prop({ type: [Types.ObjectId], ref: 'Tenant', default: [] })
-    tenantIds?: Types.ObjectId[];
+  // Multi-tenant: lista de tenants permitidos para el usuario
+  @Prop({ type: [Types.ObjectId], ref: "Tenant", default: [] })
+  tenantIds?: Types.ObjectId[];
 
-    // Tenant activo (contexto actual)
-    @Prop({ type: Types.ObjectId, ref: 'Tenant' })
-    activeTenantId?: Types.ObjectId;
+  // Tenant activo (contexto actual)
+  @Prop({ type: Types.ObjectId, ref: "Tenant" })
+  activeTenantId?: Types.ObjectId;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

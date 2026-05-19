@@ -1,5 +1,7 @@
 # 🔧 GUÍA RÁPIDA DE TROUBLESHOOTING
 
+> **Flujo recomendado:** despliegue con **Docker Compose** (`npm start` o `docker compose up --build`). Muchos problemas de MongoDB en Windows/Linux **no aplican** cuando la base va en el contenedor `mongodb`. Guía de variables: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+
 ## ⚡ Problemas Comunes y Soluciones
 
 ### 1. "MongoDB no se inicia automáticamente"
@@ -307,9 +309,7 @@ Antes de reportar un problema, verificar:
    npm --version
    ```
 
-3. Revisar documentación completa en:
-   - `MONGODB-ROBUSTNESS-IMPROVEMENTS.md`
-   - `CAMBIOS-IMPLEMENTADOS.md`
+3. Revisar documentación vigente en [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) (MongoDB, Docker), [SETUP.md](SETUP.md) y [docs/architecture.md](docs/architecture.md).
 
 ---
 

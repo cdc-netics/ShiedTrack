@@ -9,13 +9,14 @@ export interface User {
   email: string;
   firstName: string;
   lastName: string;
+  avatarUrl?: string;
   role: UserRole;
   clientId?: string;
   areaIds?: string[];
   mfaEnabled: boolean;
   isActive: boolean;
   isDeleted?: boolean; // Soft delete flag
-  lastLogin?: Date;
+  lastLogin?: Date | string;
 }
 
 export interface Client {
@@ -26,8 +27,8 @@ export interface Client {
   contactEmail?: string;
   contactPhone?: string;
   isActive: boolean;
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt: Date | string;
+  updatedAt: Date | string;
 }
 
 export interface Area {
@@ -36,8 +37,8 @@ export interface Area {
   description?: string;
   clientId: string;
   isActive: boolean;
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt: Date | string;
+  updatedAt: Date | string;
 }
 
 export interface Project {
@@ -45,22 +46,24 @@ export interface Project {
   name: string;
   code?: string;
   description?: string;
+  tenantId?: string | Client;
   clientId: string | Client;
-  areaId: string | Area;
+  areaId?: string | Area;
+  areaIds?: Array<string | Area>;
   serviceArchitecture: string;
   projectStatus: string;
   retestPolicy: {
     enabled: boolean;
-    nextRetestAt?: Date;
+      nextRetestAt?: Date | string;
     notify?: {
       recipients: string[];
       offsetDays: number[];
     };
   };
-  startDate?: Date;
-  endDate?: Date;
-  createdAt: Date;
-  updatedAt: Date;
+  startDate?: Date | string;
+  endDate?: Date | string;
+  createdAt: Date | string;
+  updatedAt: Date | string;
 }
 
 export interface Finding {
@@ -73,7 +76,7 @@ export interface Finding {
   projectId: string | Project;
   retestIncluded: boolean;
   closeReason?: string;
-  closedAt?: Date;
+  closedAt?: Date | string;
   closedBy?: string | User;
   affectedAsset?: string;
   cvssScore?: number;
@@ -81,8 +84,8 @@ export interface Finding {
   tags: string[];
   assignedTo?: string | User;
   createdBy: string | User;
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt: Date | string;
+  updatedAt: Date | string;
 }
 
 export interface FindingUpdate {
@@ -93,20 +96,22 @@ export interface FindingUpdate {
   createdBy: string | User;
   previousStatus?: string;
   newStatus?: string;
-  evidenceIds: string[];
-  createdAt: Date;
+  evidenceIds: Array<string | Evidence>;
+  createdAt: Date | string;
 }
 
 export interface Evidence {
   _id: string;
   filename: string;
+  originalName?: string;
   storedFilename: string;
   filePath: string;
   mimeType: string;
+  mimetype?: string;
   size: number;
   findingId: string;
   updateId?: string;
   uploadedBy: string | User;
   description?: string;
-  createdAt: Date;
+  createdAt: Date | string;
 }
