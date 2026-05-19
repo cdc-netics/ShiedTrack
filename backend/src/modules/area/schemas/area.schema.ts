@@ -18,6 +18,21 @@ export class Area extends Document {
   @Prop()
   description?: string;
 
+  @Prop()
+  displayName?: string;
+
+  @Prop()
+  primaryColor?: string;
+
+  @Prop()
+  secondaryColor?: string;
+
+  @Prop()
+  logoUrl?: string;
+
+  @Prop()
+  faviconUrl?: string;
+
   /**
    * Cliente asociado (LEGACY)
    * Mantenido solo para compatibilidad hacia atrás.

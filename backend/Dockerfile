@@ -14,6 +14,8 @@ WORKDIR /app
 
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
+COPY --from=build /app/package*.json ./
+COPY --from=build /app/scripts ./scripts
 COPY --from=build /app/docker-entrypoint.sh ./docker-entrypoint.sh
 
 RUN sed -i 's/\r$//' docker-entrypoint.sh && chmod +x docker-entrypoint.sh

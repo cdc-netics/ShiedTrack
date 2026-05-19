@@ -90,3 +90,5 @@ INSTRUCCIONES-INICIO.md
 data/
 data/db/
 
+.env
+env

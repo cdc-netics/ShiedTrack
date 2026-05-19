@@ -3,6 +3,7 @@ import { ValidationPipe, Logger } from "@nestjs/common";
 import { SwaggerModule, DocumentBuilder } from "@nestjs/swagger";
 import { ConfigService } from "@nestjs/config";
 import * as mongoose from "mongoose";
+import { json, urlencoded } from "express";
 import type { CorsOptions } from "@nestjs/common/interfaces/external/cors-options.interface";
 import { AppModule } from "./app.module";
 import { HttpExceptionFilter } from "./common/filters/http-exception.filter";
@@ -40,7 +41,11 @@ async function bootstrap() {
   }
 
   // Ahora crear la aplicación principal
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { bodyParser: false });
+
+  // Area branding can include base64 previews for logo/favicon.
+  app.use(json({ limit: "25mb" }));
+  app.use(urlencoded({ limit: "25mb", extended: true }));
 
   // Configuración de prefijo global para la API
   app.setGlobalPrefix("api", {

@@ -2,6 +2,7 @@ import { Injectable, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { tap } from 'rxjs/operators';
 import { Project } from '../../shared/models';
+import { normalizeProject } from '../../shared/utils/domain-normalizers';
 import { environment } from '../../../environments/environment';
 
 /**
@@ -41,7 +42,7 @@ export class ProjectService {
     return this.http.get<Project[]>(url).pipe(
       tap(projects => {
         // Cachea resultados y apaga el indicador de carga
-        this.projectsSignal.set(projects);
+        this.projectsSignal.set(projects.map(project => normalizeProject(project)));
         this.loadingSignal.set(false);
       })
     );
@@ -56,7 +57,7 @@ export class ProjectService {
     return this.http.get<Project>(`${this.API_URL}/${id}`).pipe(
       tap(project => {
         // Guarda la seleccion actual para vistas de detalle
-        this.selectedProjectSignal.set(project);
+        this.selectedProjectSignal.set(normalizeProject(project));
         this.loadingSignal.set(false);
       })
     );
@@ -69,7 +70,7 @@ export class ProjectService {
     return this.http.post<Project>(this.API_URL, data).pipe(
       tap(project => {
         // Inserta el nuevo proyecto al inicio del listado
-        this.projectsSignal.update(projects => [project, ...projects]);
+        this.projectsSignal.update(projects => [normalizeProject(project), ...projects]);
       })
     );
   }
@@ -80,14 +81,16 @@ export class ProjectService {
   updateProject(id: string, data: any) {
     return this.http.put<Project>(`${this.API_URL}/${id}`, data).pipe(
       tap(updated => {
+        const normalized = normalizeProject(updated);
+
         // Actualiza el item en el listado cacheado
         this.projectsSignal.update(projects =>
-          projects.map(p => p._id === id ? updated : p)
+          projects.map(p => p._id === id ? normalized : p)
         );
         
         // Mantiene sincronizada la vista de detalle si aplica
         if (this.selectedProjectSignal()?._id === id) {
-          this.selectedProjectSignal.set(updated);
+          this.selectedProjectSignal.set(normalized);
         }
       })
     );
@@ -99,9 +102,11 @@ export class ProjectService {
   archiveProject(id: string) {
     return this.http.delete<Project>(`${this.API_URL}/${id}`).pipe(
       tap(archived => {
+        const normalized = normalizeProject(archived);
+
         // Marca el proyecto actualizado en cache
         this.projectsSignal.update(projects =>
-          projects.map(p => p._id === id ? archived : p)
+          projects.map(p => p._id === id ? normalized : p)
         );
       })
     );

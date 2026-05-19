@@ -10,7 +10,7 @@
  */
 
 const mongoose = require('mongoose');
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 
 const MONGO_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/shieldtrack';
 
@@ -24,6 +24,31 @@ const colors = {
 };
 
 const log = (msg, color = 'reset') => console.log(`${colors[color]}${msg}${colors.reset}`);
+const oid = (hex) => new mongoose.Types.ObjectId(hex);
+
+// IDs estables para que reiniciar Docker no rompa seguimientos/evidencias
+// asociados a los hallazgos de prueba creados por el seed.
+const IDS = {
+  tenantACME: oid('6a0376fcba97a85a6ae4a3a0'),
+  tenantEvil: oid('6a0376fcba97a85a6ae4a3a1'),
+  clientA: oid('6a0376fcba97a85a6ae4a3a2'),
+  clientB: oid('6a0376fcba97a85a6ae4a3a3'),
+  areaInfra: oid('6a0376fcba97a85a6ae4a3a4'),
+  areaApps: oid('6a0376fcba97a85a6ae4a3a5'),
+  projectA: oid('6a0376fcba97a85a6ae4a3a6'),
+  projectB: oid('6a0376fcba97a85a6ae4a3a7'),
+  userAdmin: oid('6a0376fcba97a85a6ae4a3b9'),
+  userOwner: oid('6a0376fcba97a85a6ae4a3ba'),
+  userPlatformAdmin: oid('6a0376fcba97a85a6ae4a3bb'),
+  userClientAdmin: oid('6a0376fcba97a85a6ae4a3bc'),
+  userAreaAdmin: oid('6a0376fcba97a85a6ae4a3bd'),
+  userAnalyst: oid('6a0376fcba97a85a6ae4a3be'),
+  userViewer: oid('6a0376fcba97a85a6ae4a3bf'),
+  findingSqlInjection: oid('6a0376fcba97a85a6ae4a3c4'),
+  findingXss: oid('6a0376fcba97a85a6ae4a3c5'),
+  findingLogs: oid('6a0376fcba97a85a6ae4a3c6'),
+  findingEvil: oid('6a0376fcba97a85a6ae4a3c7')
+};
 
 async function seedTestData() {
   log('\n🌱 Iniciando seed de datos de prueba P0...', 'blue');
@@ -77,6 +102,7 @@ async function seedTestData() {
     log('\n🏢 Creando tenants de prueba...', 'blue');
 
     const tenantACME = await mongoose.connection.db.collection('tenants').insertOne({
+      _id: IDS.tenantACME,
       name: 'ACME Corporation',
       code: 'TEN-ACME',
       isActive: true,
@@ -84,6 +110,7 @@ async function seedTestData() {
     });
 
     const tenantEvil = await mongoose.connection.db.collection('tenants').insertOne({
+      _id: IDS.tenantEvil,
       name: 'Evil Corp',
       code: 'TEN-EVIL',
       isActive: true,
@@ -97,6 +124,7 @@ async function seedTestData() {
     log('\n👥 Creando clientes de prueba...', 'blue');
 
     const clientA = await mongoose.connection.db.collection('clients').insertOne({
+      _id: IDS.clientA,
       name: 'ACME Corporation',
       code: 'TEST-ACME',
       isActive: true,
@@ -105,6 +133,7 @@ async function seedTestData() {
     });
 
     const clientB = await mongoose.connection.db.collection('clients').insertOne({
+      _id: IDS.clientB,
       name: 'Evil Corp',
       code: 'TEST-EVIL',
       isActive: true,
@@ -117,6 +146,7 @@ async function seedTestData() {
 
     // === ÁREAS ===
     const areaInfra = await mongoose.connection.db.collection('areas').insertOne({
+      _id: IDS.areaInfra,
       name: 'Infraestructura',
       code: 'TEST-INFRA',
       clientId: clientA.insertedId,
@@ -126,6 +156,7 @@ async function seedTestData() {
     });
 
     const areaApps = await mongoose.connection.db.collection('areas').insertOne({
+      _id: IDS.areaApps,
       name: 'Aplicaciones',
       code: 'TEST-APPS',
       clientId: clientA.insertedId,
@@ -142,6 +173,7 @@ async function seedTestData() {
 
     const users = await mongoose.connection.db.collection('users').insertMany([
       {
+        _id: IDS.userAdmin,
         email: 'admin@shieldtrack.com',
         password: hashedDevPassword,
         firstName: 'Dev',
@@ -153,6 +185,7 @@ async function seedTestData() {
         createdAt: new Date()
       },
       {
+        _id: IDS.userOwner,
         email: 'owner@shieldtrack.com',
         password: hashedPassword,
         firstName: 'System',
@@ -165,6 +198,7 @@ async function seedTestData() {
         createdAt: new Date()
       },
       {
+        _id: IDS.userPlatformAdmin,
         email: 'platformadmin@shieldtrack.com',
         password: hashedPassword,
         firstName: 'Platform',
@@ -177,6 +211,7 @@ async function seedTestData() {
         createdAt: new Date()
       },
       {
+        _id: IDS.userClientAdmin,
         email: 'clientadmin@acmecorp.com',
         password: hashedPassword,
         firstName: 'Client',
@@ -190,6 +225,7 @@ async function seedTestData() {
         createdAt: new Date()
       },
       {
+        _id: IDS.userAreaAdmin,
         email: 'areaadmin@acmecorp.com',
         password: hashedPassword,
         firstName: 'Area',
@@ -204,6 +240,7 @@ async function seedTestData() {
         createdAt: new Date()
       },
       {
+        _id: IDS.userAnalyst,
         email: 'analyst@shieldtrack.com',
         password: hashedPassword,
         firstName: 'John',
@@ -217,6 +254,7 @@ async function seedTestData() {
         createdAt: new Date()
       },
       {
+        _id: IDS.userViewer,
         email: 'viewer@shieldtrack.com',
         password: hashedPassword,
         firstName: 'Jane',
@@ -266,6 +304,7 @@ async function seedTestData() {
     log('\n📂 Creando proyectos de prueba...', 'blue');
 
     const projectA = await mongoose.connection.db.collection('projects').insertOne({
+      _id: IDS.projectA,
       name: 'Pentesting ACME Web Portal',
       code: 'TEST-PROJECT-001',
       clientId: clientA.insertedId,
@@ -285,6 +324,7 @@ async function seedTestData() {
     });
 
     const projectB_EvilCorp = await mongoose.connection.db.collection('projects').insertOne({
+      _id: IDS.projectB,
       name: 'Red Team Engagement Evil Corp',
       code: 'TEST-PROJECT-EVIL',
       clientId: clientB.insertedId,
@@ -303,6 +343,7 @@ async function seedTestData() {
 
     const findingsA = await mongoose.connection.db.collection('findings').insertMany([
       {
+        _id: IDS.findingSqlInjection,
         code: 'FND-TEST-001',
         title: 'SQL Injection en login',
         severity: 'CRITICAL',
@@ -314,6 +355,7 @@ async function seedTestData() {
         createdAt: new Date()
       },
       {
+        _id: IDS.findingXss,
         code: 'FND-TEST-002',
         title: 'XSS Reflected en búsqueda',
         severity: 'HIGH',
@@ -325,6 +367,7 @@ async function seedTestData() {
         createdAt: new Date()
       },
       {
+        _id: IDS.findingLogs,
         code: 'FND-TEST-003',
         title: 'Información sensible en logs',
         severity: 'MEDIUM',
@@ -338,6 +381,7 @@ async function seedTestData() {
     ]);
 
     const findingEvilCorp = await mongoose.connection.db.collection('findings').insertOne({
+      _id: IDS.findingEvil,
       code: 'FND-EVIL-001',
       title: 'RCE en API Gateway (Evil Corp - CONFIDENCIAL)',
       severity: 'CRITICAL',

@@ -141,6 +141,10 @@ FindingSchema.index({
   createdAt: 1,
 });
 
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 /**
  * Asignación del correlativo en pre-save (solo documentos nuevos):
  * - Ignora cualquier `code` enviado por el cliente (integridad del lado servidor).
@@ -196,6 +200,23 @@ FindingSchema.pre("save", async function () {
 
   const year = new Date().getFullYear();
   const counterKey = `findings:${tenantId.toString()}:${prefix}:${year}`;
+  const FindingModel = doc.db.model("Finding");
+  const codePattern = new RegExp(`^${escapeRegex(prefix)}-${year}-(\\d{6})$`);
+  const latestFinding = await FindingModel.findOne({ code: codePattern })
+    .sort({ code: -1 })
+    .select("code")
+    .lean<{ code?: string }>()
+    .exec();
+  const latestSequence = latestFinding?.code?.match(/-(\d{6})$/)?.[1];
+  const latestSequenceNumber = latestSequence ? Number(latestSequence) : 0;
+
+  if (latestSequenceNumber > 0) {
+    await CounterModel.findOneAndUpdate(
+      { id: counterKey },
+      { $max: { seq: latestSequenceNumber } },
+      { upsert: true, setDefaultsOnInsert: true },
+    );
+  }
 
   const counter = await CounterModel.findOneAndUpdate(
     { id: counterKey },
