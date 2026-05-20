@@ -10,6 +10,12 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 - **CHANGED (Package Manager):** migracion oficial a **pnpm-only** en raiz, backend y frontend (`packageManager`, `preinstall` de enforcement, lockfiles `pnpm-lock.yaml` y eliminacion de `package-lock.json`).
 - **CHANGED (Docker):** `backend/Dockerfile`, `frontend/Dockerfile` y `backend/docker-entrypoint.sh` ahora usan `pnpm` para install/build/seeds.
 - **CHANGED (Scripts/Docs):** scripts de arranque local (`start-shieldtrack.ps1`, `start-shieldtrack.sh`) y documentacion operativa/contribucion actualizados para usar `pnpm` por defecto.
+- **FIX (Docker — build context):** `docker-compose.yml` usaba `context: ./backend` y `context: ./frontend`; con pnpm el script `scripts/enforce-pnpm.js` queda fuera del contexto y el build fallaba con `MODULE_NOT_FOUND`. El contexto de build de backend y frontend ahora apunta a la raiz del repositorio (`.`) y los Dockerfiles referencian rutas prefijadas (`backend/`, `frontend/`, `scripts/`).
+- **FIX (Docker — .dockerignore):** se creó `.dockerignore` en la raiz para excluir `node_modules`, `dist`, `.git`, `data/` y otros artefactos; el contexto de build bajó de ~253 MB a ~878 KB.
+- **FIX (Docker — enforce-pnpm en contenedor):** `scripts/enforce-pnpm.js` ahora detecta si se ejecuta dentro de un contenedor (presencia de `/.dockerenv`) y omite la validacion, evitando que el hook `preinstall` bloquee `pnpm install --frozen-lockfile` dentro de Docker.
+- **FIX (Docker — Angular build flag):** el comando `pnpm run build -- --configuration production` en `frontend/Dockerfile` pasaba `--` dos veces al Angular CLI, causando `Schema validation failed`. Corregido a `pnpm run build --configuration production`.
+- **FIX (Docker — 502 / pnpm virtual store):** pnpm usa symlinks en `node_modules/.pnpm` que se rompen al copiar entre stages de Docker con `COPY --from=build`, causando `Cannot find module 'express'` en runtime. Solucionado con `pnpm install --shamefully-hoist` en el stage de build para generar un `node_modules` plano y copiable.
+- **FIX (Docker — pnpm not found en runtime):** la imagen runtime del backend no tenía `corepack enable`, por lo que `docker-entrypoint.sh` fallaba con `pnpm: not found` al intentar ejecutar los seeds. Se agrega `RUN corepack enable` al stage runtime.
 
 ## [2.3.0] - 2026-05-19
 
