@@ -21,6 +21,12 @@ import {
   UpdateProfileDto,
 } from "./dto/auth.dto";
 import { UserRole } from "../../common/enums";
+import {
+  canCreateTargetRole,
+  canCreateUsers,
+  minimumPasswordLengthForCreator,
+  roleSatisfies,
+} from "../../common/rbac/rbac-policy";
 import { UserAreaService } from "./user-area.service";
 import { EmailService } from "../email/email.service";
 
@@ -53,24 +59,33 @@ export class AuthService {
       throw new ConflictException("El email ya está registrado");
     }
 
-    // RBAC: CLIENT_ADMIN solo puede crear ANALYST o VIEWER
-    if (currentUser && currentUser.role === UserRole.CLIENT_ADMIN) {
-      const restrictedRoles = [
-        UserRole.OWNER,
-        UserRole.PLATFORM_ADMIN,
-        UserRole.CLIENT_ADMIN,
-        UserRole.AREA_ADMIN,
-      ];
+    if (currentUser) {
+      const creatorRole = currentUser.role as UserRole;
+      if (!canCreateUsers(creatorRole)) {
+        throw new ForbiddenException("Este rol no puede crear usuarios");
+      }
 
-      if (restrictedRoles.includes(dto.role)) {
+      if (!canCreateTargetRole(creatorRole, dto.role)) {
         throw new ForbiddenException(
-          "CLIENT_ADMIN solo puede crear usuarios con rol ANALYST o VIEWER. " +
-            "No tiene permisos para crear otros administradores.",
+          "Este rol no puede crear el rol objetivo solicitado",
         );
       }
 
-      // Forzar mismo clientId que el creador
-      dto.clientId = currentUser.clientId;
+      if (
+        (creatorRole === UserRole.ADMIN_AREA ||
+          creatorRole === UserRole.CLIENT_ADMIN ||
+          creatorRole === UserRole.AREA_ADMIN) &&
+        currentUser.clientId
+      ) {
+        dto.clientId = currentUser.clientId;
+      }
+
+      const minLength = minimumPasswordLengthForCreator(creatorRole);
+      if (dto.password.length < minLength) {
+        throw new BadRequestException(
+          "La contraseña debe tener al menos 6 caracteres",
+        );
+      }
     }
 
     // Hash de la contraseña
@@ -545,7 +560,7 @@ export class AuthService {
     currentUser: any,
   ): Promise<{ accessToken: string; client: any }> {
     // Solo OWNER y PLATFORM_ADMIN pueden cambiar de tenant
-    if (!["OWNER", "PLATFORM_ADMIN"].includes(currentUser.role)) {
+    if (!roleSatisfies(UserRole.OWNER, currentUser.role)) {
       throw new ForbiddenException("No tiene permisos para cambiar de tenant");
     }
 

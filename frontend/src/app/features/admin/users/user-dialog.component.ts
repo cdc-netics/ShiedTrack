@@ -74,12 +74,12 @@ import { AuthService } from '../../../core/services/auth.service';
               <mat-error>La contraseña es obligatoria</mat-error>
             }
             @if (userForm.get('password')?.hasError('minlength')) {
-              <mat-error>Mínimo 8 caracteres</mat-error>
+              <mat-error>{{ passwordErrorMessage() }}</mat-error>
             }
           </mat-form-field>
         }
 
-        <!-- Cliente (solo para OWNER/PLATFORM_ADMIN) -->
+        <!-- Cliente (oculto para PENTESTER/QA) -->
         @if (showClientSelect()) {
           <mat-form-field appearance="outline" class="full-width">
             <mat-label>Cliente</mat-label>
@@ -99,20 +99,19 @@ import { AuthService } from '../../../core/services/auth.service';
         <mat-form-field appearance="outline" class="full-width">
           <mat-label>Rol</mat-label>
           <mat-select formControlName="role" required>
-            <mat-option value="OWNER">Owner</mat-option>
-            <mat-option value="AREA_ADMIN">Area Admin</mat-option>
-            <mat-option value="ANALYST">Analista</mat-option>
-            <mat-option value="VIEWER">Viewer</mat-option>
+            @for (option of roleOptions; track option.value) {
+              <mat-option [value]="option.value">{{ option.label }}</mat-option>
+            }
           </mat-select>
           @if (userForm.get('role')?.hasError('required')) {
             <mat-error>El rol es obligatorio</mat-error>
           }
         </mat-form-field>
 
-        <!-- Tenants (para AREA_ADMIN, ANALYST, VIEWER) -->
+        <!-- Áreas/Alcance -->
         @if (showAreaSelect()) {
           <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Tenants asignados</mat-label>
+            <mat-label>Áreas asignadas</mat-label>
             <mat-select formControlName="areaIds" multiple>
               @if (areas().length === 0) {
                 <mat-option disabled>
@@ -124,6 +123,19 @@ import { AuthService } from '../../../core/services/auth.service';
               }
             </mat-select>
             <mat-hint>Selecciona las áreas a las que tendrá acceso el usuario</mat-hint>
+          </mat-form-field>
+        }
+
+        <!-- Scope dinámico para Auditor -->
+        @if (showAuditorScope()) {
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Visibilidad Auditor</mat-label>
+            <mat-select formControlName="auditorVisibilityScope">
+              <mat-option value="PER_PROJECT">Por Proyecto</mat-option>
+              <mat-option value="PER_CLIENT">Por Cliente</mat-option>
+              <mat-option value="ALL_AREA">Todo el Área</mat-option>
+            </mat-select>
+            <mat-hint>Define el alcance visual del auditor</mat-hint>
           </mat-form-field>
         }
       </form>
@@ -184,6 +196,8 @@ export class UserDialogComponent {
   areas = signal<any[]>([]);
   showClientSelect = signal(false);
   showAreaSelect = signal(false);
+  showAuditorScope = signal(false);
+  roleOptions: Array<{ value: string; label: string }> = [];
 
   userForm: FormGroup;
   private API_URL = `${environment.apiUrl}/auth`;
@@ -194,23 +208,51 @@ export class UserDialogComponent {
     console.log('[UserDialog] Constructor - Datos recibidos:', this.data);
     // Define modo edicion si viene _id y arma el formulario
     this.isEditMode = !!data?._id;
+
+    const currentUser = this.authService.currentUser();
+    console.log('[UserDialog] Constructor - Usuario actual:', currentUser);
+    const currentUserRole = currentUser?.role as string;
     
     this.userForm = this.fb.group({
       firstName: [data?.firstName || '', Validators.required],
       lastName: [data?.lastName || '', Validators.required],
       email: [data?.email || '', [Validators.required, Validators.email]],
-      password: ['', this.isEditMode ? [] : [Validators.required, Validators.minLength(8)]],
-      role: [data?.role || 'VIEWER', Validators.required],
+      password: ['', this.isEditMode ? [] : [Validators.required, Validators.minLength((currentUserRole === 'OWNER' || currentUserRole === 'PLATFORM_ADMIN') ? 1 : 6)]],
+      role: [data?.role || 'NORMAL_USER', Validators.required],
       clientId: [data?.clientId || null],
-      areaIds: [data?.areaIds || []]
+      areaIds: [data?.areaIds || []],
+      auditorVisibilityScope: [data?.auditorVisibilityScope || 'ALL_AREA']
     });
 
     // Determine if we should show client select
-    const currentUser = this.authService.currentUser();
-    console.log('[UserDialog] Constructor - Usuario actual:', currentUser);
-    const canManageClients = ['OWNER', 'PLATFORM_ADMIN'].includes(currentUser?.role as string);
+    const canManageClients = ['OWNER', 'PLATFORM_ADMIN', 'ADMIN_AREA', 'CLIENT_ADMIN', 'AREA_ADMIN'].includes(currentUserRole);
     this.showClientSelect.set(canManageClients);
     console.log(`[UserDialog] Constructor - Puede gestionar clientes: ${canManageClients}`);
+
+    if (currentUserRole === 'OWNER' || currentUserRole === 'PLATFORM_ADMIN') {
+      this.roleOptions = [
+        { value: 'OWNER', label: 'OWNER' },
+        { value: 'ADMIN_AREA', label: 'ADMIN_AREA' },
+        { value: 'PENTESTER', label: 'PENTESTER' },
+        { value: 'QA', label: 'QA' },
+        { value: 'NORMAL_USER', label: 'NORMAL_USER' },
+        { value: 'AUDITOR', label: 'AUDITOR' }
+      ];
+    } else if (['ADMIN_AREA', 'CLIENT_ADMIN', 'AREA_ADMIN'].includes(currentUserRole)) {
+      this.roleOptions = [
+        { value: 'NORMAL_USER', label: 'NORMAL_USER' },
+        { value: 'AUDITOR', label: 'AUDITOR' }
+      ];
+    } else {
+      this.roleOptions = [
+        { value: 'NORMAL_USER', label: 'NORMAL_USER' }
+      ];
+    }
+
+    const legacyRole = this.userForm.get('role')?.value;
+    if (legacyRole && !this.roleOptions.some((option) => option.value === legacyRole)) {
+      this.roleOptions = [{ value: legacyRole, label: legacyRole }, ...this.roleOptions];
+    }
 
     if (canManageClients) {
       this.loadClients();
@@ -233,9 +275,13 @@ export class UserDialogComponent {
     // Mostrar selector de tenants según el rol
     this.userForm.get('role')?.valueChanges.subscribe(role => {
       console.log(`[UserDialog] Rol del formulario cambió a: ${role}`);
-      const needsAreas = ['AREA_ADMIN', 'ANALYST', 'VIEWER'].includes(role);
+      const needsAreas = ['ADMIN_AREA', 'NORMAL_USER'].includes(role);
+      const isAuditor = role === 'AUDITOR';
+      const hideClientForTransversal = ['PENTESTER', 'QA'].includes(role);
       
       this.showAreaSelect.set(needsAreas);
+      this.showAuditorScope.set(isAuditor);
+      this.showClientSelect.set(!hideClientForTransversal && canManageClients);
       
       // Si el rol necesita tenants, cargarlos automáticamente
       if (needsAreas) {
@@ -251,16 +297,17 @@ export class UserDialogComponent {
     });
 
     // Inicializar la visibilidad del selector de áreas
-    const currentRole = this.userForm.get('role')?.value;
-    const needsAreasOnInit = ['AREA_ADMIN', 'ANALYST', 'VIEWER'].includes(currentRole);
+    const selectedRole = this.userForm.get('role')?.value;
+    const needsAreasOnInit = ['ADMIN_AREA', 'NORMAL_USER'].includes(selectedRole);
     this.showAreaSelect.set(needsAreasOnInit);
+    this.showAuditorScope.set(selectedRole === 'AUDITOR');
     
     // Configurar validacion dinamica de Cliente
     this.userForm.get('role')?.valueChanges.subscribe(role => {
-       const isGlobalRole = ['OWNER', 'PLATFORM_ADMIN'].includes(role);
+       const isGlobalRole = ['OWNER'].includes(role);
        const clientControl = this.userForm.get('clientId');
        
-       if (isGlobalRole) {
+       if (isGlobalRole || ['PENTESTER', 'QA', 'AUDITOR', 'NORMAL_USER'].includes(role)) {
          clientControl?.clearValidators();
          clientControl?.updateValueAndValidity();
        } else {
@@ -314,7 +361,15 @@ export class UserDialogComponent {
 
   isClientRequired(): boolean {
     const role = this.userForm.get('role')?.value;
-    return !['OWNER', 'PLATFORM_ADMIN'].includes(role);
+    return ['ADMIN_AREA'].includes(role);
+  }
+
+  passwordErrorMessage(): string {
+    const currentUserRole = this.authService.currentUser()?.role;
+    if (currentUserRole === 'OWNER' || currentUserRole === 'PLATFORM_ADMIN') {
+      return 'Owner puede usar contraseñas cortas';
+    }
+    return 'Mínimo 6 caracteres';
   }
 
   onSave(): void {
@@ -331,7 +386,8 @@ export class UserDialogComponent {
       lastName: this.userForm.value.lastName,
       role: this.userForm.value.role,
       clientId: this.userForm.value.clientId,
-      areaIds: this.userForm.value.areaIds
+      areaIds: this.userForm.value.areaIds,
+      auditorVisibilityScope: this.userForm.value.auditorVisibilityScope
     };
 
     // Email siempre editable por administradores autorizados

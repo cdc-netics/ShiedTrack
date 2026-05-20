@@ -1,4 +1,12 @@
 <!-- markdownlint-disable MD013 MD007 MD030 MD031 MD034 MD036 MD050 MD032 -->
+# Estado del archivo
+
+Este archivo se mantiene solo como referencia historica de analisis y propuestas.
+
+Fuente canonica de backlog activo: [../ISSUES.md](../ISSUES.md)
+
+Si existe conflicto entre ambos, prevalece `../ISSUES.md`.
+
 # Plan de Trabajo: Bitácora SOC
 
 ## Tablas de Control
@@ -19,9 +27,14 @@
 
 | ID | Estado | Seccion | Tarea | Notas |
 | --- | --- | --- | --- | --- |
-
-
-
+| SEC-RBAC-001 | En progreso | Backend / Seguridad | Endurecer CRUD de evidencias (listar/descargar/eliminar) con validacion de acceso por tenant y recurso | Riesgo IDOR y fuga cross-tenant. Implementar control contra Finding asociado + pruebas E2E negativas (403). |
+| SEC-RBAC-002 | En progreso | Backend / Seguridad | Proteger endpoints de asignaciones de usuario (`/auth/users/:userId/areas` y `/assignments`) con regla self/admin | Actualmente solo JWT. Agregar validacion ownership y alcance por tenant para admin de cliente. |
+| SEC-RBAC-003 | En progreso | Backend / Seguridad | Corregir alcance en CRUD de clientes (`findById`/`update`) para evitar acceso cross-tenant | Pasar `currentUser` al servicio y validar scope por rol antes de leer/modificar. |
+| DB-IDX-001 | En progreso | MongoDB / Datos | Corregir conflicto de unicidad en `CustomRole` (`name` global vs índice compuesto `name+clientId`) | Preparar migración de índice segura y mantener unicidad por contexto tenant. |
+| APP-RBAC-002 | En progreso | Backend / Arquitectura | Unificar politica RBAC (evitar mezcla de decorators + strings hardcodeados) | Definir matriz rol-recurso-accion y centralizar helpers de permiso. |
+| APP-RBAC-003 | En progreso | Backend / Permisos granulares | Implementar `hasPermission()` real en CustomRoleService | Hoy retorna `true` siempre; agregar evaluación real y tests unitarios. |
+| DB-MT-002 | En progreso | Backend / Multi-tenant | Homologar estrategia de aislamiento tenant en entidades CRUD fuera de plugin | `multiTenantPlugin` parcial; documentar excepciones y agregar tests de no-fuga. |
+| FE-RBAC-001 | En progreso | Frontend / Permisos UI | Unificar criterio de visibilidad “admin” en menú/componentes | El criterio varía entre servicios/componentes; alinear con permisos backend. |
 
 ### Guardrails para IA (evitar fallas por malas practicas)
 
@@ -68,6 +81,7 @@ Checklist mínimo recomendado para agentes IA antes de marcar un item como `List
 | UI-ENC-001 | Listo  | Frontend / Layout | Corregir caracteres corruptos (`�`) en menú y vistas (`Administración`, `Auditoría`, `Configuración`, `Código`, `Título`) | Se observa mojibake en textos de navegación y tablas. Revisar codificación UTF-8 real en archivos HTML/TS/MD, headers `Content-Type` y `charset` en `index.html`/nginx. Validar que no se estén guardando archivos en ANSI/Windows-1252. |
 | UI-ENC-002 | Listo  | Frontend / Tipografía | Verificar si la fuente actual cubre correctamente tildes y caracteres latinos extendidos | No asumir cambio de fuente como única solución. Primero confirmar encoding. Si la fuente falla en glyphs, proponer fallback robusto (`system-ui`, `Segoe UI`, `Inter`, `Roboto`, `Arial`, `sans-serif`) y pruebas visuales. |
 | UI-BRAND-001 | Listo  | Branding / Header | Reparar logo roto en sidebar y topbar | El logo no está cargando en capturas. Revisar ruta de `theme.currentLogo`, fallback por defecto, existencia de asset en build final, y comportamiento cuando tenant no tiene logo cargado. |
+| APP-ENUM-001 | Listo | Frontend + Backend / Contratos | Alinear `FindingStatus` compartido entre frontend y backend | Estados verificados sin desalineación entre capas; backend y frontend usan la misma taxonomía (`OPEN`, `IN_PROGRESS`, `RETEST_REQUIRED`, `RETEST_PASSED`, `RETEST_FAILED`, `CLOSED`) y los componentes de hallazgos ya consumen esos valores. |
 
 Los items marcados como `Listo` deben quedar reflejados en `CHANGELOG.md` como fuente de historial.
 ---
@@ -178,3 +192,214 @@ Issues  enumerado por su codigo y los pasos a seguir para solucionar, reparar o 
 - Si el logo viene de endpoint protegido y no de asset público, `<img>` no puede enviar Bearer token por header de forma nativa.
 - Rutas relativas (`assets/logo.svg`) pueden romper en rutas anidadas (`/admin/*`); usar siempre ruta absoluta (`/assets/logo.svg`).
 - En Docker build, Angular puede fallar por conectividad externa al intentar inlining de fuentes de Google (`EAI_AGAIN`). Mitigación aplicada: `optimization.fonts=false` en configuración de producción para evitar dependencia de red durante `docker build`.
+
+---
+
+## Hallazgos CRUD/RBAC (Analisis integral para reparacion)
+
+Fuente: revision de controladores, servicios, guards, schemas e indices de backend/frontend.
+
+### Resumen ejecutivo
+
+- El principal riesgo actual no es de performance: es de autorizacion inconsistente en varios endpoints CRUD.
+- Hay desalineacion entre estados/enums frontend-backend que puede romper filtros y flujos.
+- Existen inconsistencias de indices unicos que deben corregirse antes de plantear una reindexacion amplia.
+
+---
+
+## Bloque Critico (P0)
+
+### SEC-RBAC-001 - Evidencias sin validacion de acceso por tenant/ownership
+
+**Severidad:** Critica  
+**Impacto:** Posible exposicion de evidencias entre tenants o usuarios no autorizados (IDOR)
+
+**Problema detectado**
+- En `EvidenceController`, endpoints de lectura/descarga no tienen `@Roles(...)` explicitos.
+- En `EvidenceService`, consultas por `findingId` y `_id` no validan tenant del usuario ni pertenencia al recurso.
+
+**Reparacion propuesta**
+1. Antes de listar/descargar/eliminar evidencia, validar acceso contra el `Finding` asociado.
+2. Restringir por tenant efectivo y por reglas de rol (OWNER/PLATFORM_ADMIN global; resto limitado).
+3. Agregar tests E2E: usuario de tenant A no debe leer evidencia de tenant B.
+
+**Criterio de cierre**
+- Ningun endpoint de evidencia retorna datos fuera del tenant/alcance autorizado.
+- Casos de intento cruzado responden `403`.
+
+---
+
+### SEC-RBAC-002 - Endpoints de asignaciones de usuario con riesgo IDOR
+
+**Severidad:** Critica  
+**Impacto:** Un usuario autenticado podria consultar asignaciones de otro usuario por `userId`.
+
+**Problema detectado**
+- `GET /auth/users/:userId/areas` y `GET /auth/users/:userId/assignments` usan solo `JwtAuthGuard`.
+- No existe validacion "self or admin" en esos endpoints.
+
+**Reparacion propuesta**
+1. Aplicar `RolesGuard` + `@Roles(...)` o check de ownership en servicio.
+2. Regla minima: permitir solo OWNER/PLATFORM_ADMIN/CLIENT_ADMIN (con alcance tenant) o al propio usuario (`userId === currentUser.userId`).
+3. Agregar pruebas de autorizacion negativa y positiva.
+
+**Criterio de cierre**
+- Usuario comun no puede leer asignaciones de terceros.
+- Admin de cliente solo puede operar dentro de su tenant.
+
+---
+
+### SEC-RBAC-003 - CRUD de clientes con validacion de alcance incompleta
+
+**Severidad:** Alta  
+**Impacto:** Lectura/actualizacion de clientes fuera de alcance para roles tenant-scoped.
+
+**Problema detectado**
+- En `ClientController`/`ClientService`, `findById` y `update` no validan siempre alcance del `currentUser` en tenant.
+
+**Reparacion propuesta**
+1. Pasar `currentUser` a `findById` y `update`.
+2. En servicio: validar alcance por rol y tenant antes de devolver/modificar.
+3. Rechazar operaciones cross-tenant con `403`.
+
+**Criterio de cierre**
+- CLIENT_ADMIN no puede consultar/editar clientes fuera de su tenant.
+
+---
+
+## Bloque Importante (P1)
+
+### APP-ENUM-001 - Desalineacion de `FindingStatus` entre backend y frontend
+
+**Severidad:** Alta funcional  
+**Impacto:** Filtros/estados inconsistentes, errores de UI y flujo de negocio.
+
+**Problema detectado**
+- Backend: `RETEST_REQUIRED`, `RETEST_PASSED`, `RETEST_FAILED`.
+- Frontend: `PENDING_RETEST` (no alineado al backend).
+
+**Reparacion propuesta**
+1. Definir fuente unica de verdad para enums compartidos.
+2. Alinear frontend a backend (o viceversa con migracion controlada).
+3. Agregar test de contrato API (respuesta y filtros por status).
+
+**Criterio de cierre**
+- Frontend y backend comparten exactamente los mismos valores de `FindingStatus`.
+
+---
+
+### APP-RBAC-002 - Politica RBAC dispersa entre decoradores y strings hardcodeados
+
+**Severidad:** Media-alta  
+**Impacto:** Mantenimiento costoso, riesgo de regresiones de permisos.
+
+**Problema detectado**
+- Coexisten `@Roles(...)` y validaciones manuales con strings en multiples servicios.
+- `RolesGuard` permite acceso cuando no hay metadata de roles; depende de disciplina endpoint por endpoint.
+
+**Reparacion propuesta**
+1. Crear matriz unica `rol x recurso x accion`.
+2. Extraer helpers centralizados (evitar strings repetidos).
+3. Revisar todos los endpoints sin `@Roles(...)` y decidir explicita su politica.
+
+**Criterio de cierre**
+- Reglas RBAC centralizadas y consistentes en controllers/services.
+
+---
+
+### APP-RBAC-003 - Modulo de roles personalizados incompleto
+
+**Severidad:** Media  
+**Impacto:** Si se habilita permiso granular real, hoy no protege (retorna true).
+
+**Problema detectado**
+- `hasPermission()` en `CustomRoleService` retorna `true` siempre.
+
+**Reparacion propuesta**
+1. Implementar evaluador real de permisos por `resource/action`.
+2. Integrar con guard/decorator de permisos (si aplica).
+3. Agregar tests unitarios de autorizacion granular.
+
+**Criterio de cierre**
+- Permisos personalizados aplican efectivamente y fallan con `403` cuando corresponde.
+
+---
+
+## Bloque Datos/Indices (P1-P2)
+
+### DB-IDX-001 - Inconsistencia de unicidad en CustomRole
+
+**Severidad:** Alta de integridad  
+**Impacto:** Bloqueo de roles por tenant y conflictos de escritura.
+
+**Problema detectado**
+- `name` marcado como `unique: true` (global).
+- Adicionalmente existe indice compuesto unico `{ name, clientId }`.
+
+**Reparacion propuesta**
+1. Eliminar unicidad global de `name` en schema.
+2. Mantener unicidad compuesta por contexto tenant (`name + clientId`).
+3. Preparar migracion segura de indice en MongoDB.
+
+**Criterio de cierre**
+- Se pueden crear roles con mismo nombre en tenants distintos sin colision.
+
+---
+
+### DB-MT-002 - Aislamiento multi-tenant aplicado de forma parcial
+
+**Severidad:** Alta de seguridad/consistencia  
+**Impacto:** Riesgo de consultas sin filtro tenant en entidades no protegidas por plugin.
+
+**Problema detectado**
+- `multiTenantPlugin` aplicado en `Project`, `Area`, `Finding`.
+- No aplicado en otras entidades sensibles (ej. `Evidence`) que dependen de filtros manuales.
+
+**Reparacion propuesta**
+1. Definir estrategia unica por entidad: plugin o guardas de acceso explícitas robustas.
+2. Documentar claramente excepciones donde no se usa plugin y por que.
+3. Añadir tests de no-fuga entre tenants para cada modulo CRUD.
+
+**Criterio de cierre**
+- Cada entidad CRUD tiene mecanismo de aislamiento tenant verificable por prueba.
+
+---
+
+## Bloque Frontend (P2)
+
+### FE-RBAC-001 - Criterio de "admin" desalineado en componentes
+
+**Severidad:** Media UX/autorizacion visual  
+**Impacto:** Menus/acciones visibles inconsistentes segun componente.
+
+**Problema detectado**
+- `AuthService.isAdmin` considera `OWNER|PLATFORM_ADMIN`.
+- Otras vistas consideran tambien `CLIENT_ADMIN` como admin.
+
+**Reparacion propuesta**
+1. Unificar helper de permisos de UI.
+2. Evitar checks duplicados por string en componentes.
+3. Alinear visibilidad de menu con permisos reales backend.
+
+**Criterio de cierre**
+- La UI muestra acciones de forma consistente para cada rol.
+
+---
+
+## Orden recomendado de ejecucion
+
+1. `SEC-RBAC-001` (Evidence)
+2. `SEC-RBAC-002` (Asignaciones auth)
+3. `SEC-RBAC-003` (Client scope)
+4. `APP-ENUM-001` (Estados compartidos)
+5. `DB-IDX-001` (Unicidad CustomRole)
+6. `APP-RBAC-002` y `APP-RBAC-003` (refactor RBAC/permisos)
+7. `DB-MT-002` y `FE-RBAC-001` (endurecimiento y homogeneizacion)
+
+---
+
+## Nota sobre reindexacion
+
+No ejecutar reindexacion masiva primero.  
+Primero cerrar brechas de autorizacion y corregir definiciones de indices conflictivas.  
+Luego aplicar plan de migracion de indices con ventana controlada y respaldo.

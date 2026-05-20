@@ -89,6 +89,3 @@ INSTRUCCIONES-INICIO.md
 # Local MongoDB Data
 data/
 data/db/
-
-.env
-env

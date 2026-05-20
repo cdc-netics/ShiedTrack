@@ -4,8 +4,10 @@
   "description": "ShieldTrack - Sistema de gestión de hallazgos de ciberseguridad",
   "author": "ShieldTrack Team",
   "private": true,
+  "packageManager": "pnpm@10.12.4",
   "license": "UNLICENSED",
   "scripts": {
+    "preinstall": "node ../scripts/enforce-pnpm.js",
     "build": "nest build",
     "start": "node dist/main.js",
     "start:dev": "nest start --watch",

@@ -7,6 +7,26 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 ## [Unreleased]
 
+- **CHANGED (Package Manager):** migracion oficial a **pnpm-only** en raiz, backend y frontend (`packageManager`, `preinstall` de enforcement, lockfiles `pnpm-lock.yaml` y eliminacion de `package-lock.json`).
+- **CHANGED (Docker):** `backend/Dockerfile`, `frontend/Dockerfile` y `backend/docker-entrypoint.sh` ahora usan `pnpm` para install/build/seeds.
+- **CHANGED (Scripts/Docs):** scripts de arranque local (`start-shieldtrack.ps1`, `start-shieldtrack.sh`) y documentacion operativa/contribucion actualizados para usar `pnpm` por defecto.
+
+## [2.3.0] - 2026-05-19
+
+- **RBAC / Seguridad (cerrado):** se repararon y marcaron como `Listo` los issues `SEC-RBAC-001`, `SEC-RBAC-002`, `SEC-RBAC-003` y `APP-ENUM-001`; evidencias, asignaciones y CRUD de clientes ahora validan alcance/ownership, y `FindingStatus` quedó alineado entre backend y frontend.
+- **RBAC / Documentación (simplificada):** la documentación RBAC se compactó a una sola guía breve y entendible en `docs/RBAC-PERMISSIONS-MATRIX.md`; se eliminaron los documentos largos redundantes para evitar duplicación y sobrecarga de lectura.
+- **RBAC / Fase 2 (en progreso):** `APP-RBAC-003` quedó corregido; `hasPermission()` ya no retorna `true` fijo y usa política central + permisos de rol personalizado cuando aplica.
+- **RBAC / Fase 2 (avance):** `APP-RBAC-002` migró validaciones prioritarias de `project` y `finding` para usar helpers centralizados (`roleSatisfies`) en checks de super-admin y listas de roles operativos.
+- **RBAC / Fase 2 (avance):** `APP-RBAC-002` también migró checks de autorización en `export` y `template` para eliminar comparaciones hardcodeadas por string y reutilizar helpers centralizados (`roleSatisfies`/`normalizeRole`).
+- **RBAC / Fase 2 (núcleo central):** se incorporó `backend/src/common/rbac/rbac-policy.ts` como fuente única de reglas (`normalizeRole`, `roleSatisfies`, matriz de permisos y reglas de creación de usuarios) con pruebas unitarias en `backend/src/common/rbac/rbac-policy.spec.ts`.
+- **RBAC / Fase 2 (guard/auth):** `RolesGuard` y validaciones de `AuthService` (`register` y `switchTenant`) pasaron a consumir helpers centrales para equivalencias de rol (legacy + prompt-model) y control de creación de usuarios.
+- **RBAC / Fase 2 (custom roles):** `CustomRoleService.hasPermission()` dejó de ser permissive-by-default; ahora valida usuario activo, permisos de sistema y fallback a permisos de rol personalizado activo.
+- **RBAC / Fase 2 (tenant scope):** validaciones de acceso en `client` y `evidence` se alinearon al helper central para evitar drift entre checks manuales por string y controles de alcance por tenant.
+- **DOCS (Orden y canon):** se agregó `docs/README.md` como índice maestro y fuente de verdad de documentación; ahora define documento canónico por tema y reglas de mantenimiento.
+- **DOCS (Desduplicación):** `docs/ISSUES.md` quedó marcado como historial/referencia y el backlog activo canónico pasa a `ISSUES.md` en la raíz.
+- **DOCS (Actualización):** `TROUBLESHOOTING.md` se reescribió en formato corto y Docker-first, eliminando guías obsoletas no alineadas con el flujo actual.
+- **DOCS (Calidad):** `docs/API.md` se normalizó para eliminar texto corrupto y dejar referencia operativa clara con Swagger como fuente por endpoint.
+
 - **CHANGED (Config - unica fuente de verdad):** se eliminaron duplicaciones en `.env`/`.env.example`; `MONGODB_URI`, `FRONTEND_URL` y `CORS_ORIGINS` se construyen en `docker-compose.yml` desde variables base (`MONGO_INITDB_ROOT_*`, `FRONTEND_PORT`).
 - **CHANGED (Config - credenciales Mongo):** `docker-compose.yml` ya no deja credenciales root hardcodeadas en defaults para Mongo; toma `MONGO_INITDB_ROOT_USERNAME` y `MONGO_INITDB_ROOT_PASSWORD` desde `.env`.
 - **CHANGED (Seeds Docker):** `seed:test` pasa a ser opcional por variable `RUN_TEST_SEEDS` (default `false`); el arranque del backend ejecuta siempre `seed:owner` y solo carga datos de prueba cuando se habilita explicitamente.
@@ -39,8 +59,8 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 - **FIX (Docker — backend / 502):** `nest build` con la config previa podía dejar **solo `.d.ts`** en `dist` (sin `.js`), de modo que el entrypoint fallaba y nginx devolvía **502**. Se añade `nest-cli.json` (`builder: "tsc"`, `tsconfig.build.json`), `tsconfig.build.json` con `include`/`rootDir`/`incremental: false`, y `docker-entrypoint.sh` admite `dist/main.js` o `dist/src/main.js`.
 - **DOCKER (Mongo healthcheck):** El servicio `mongodb` podía quedar `unhealthy` con un volumen antiguo sin usuario root: el check solo autenticaba y Mongo devolvía `UserNotFound`. Ahora el healthcheck hace ping sin credenciales y, si hace falta, prueba con `MONGO_INITDB_ROOT_*`; más `start_period` y reintentos para arranques lentos.
-- **DOCS:** Reescritura y ampliación de [SETUP.md](SETUP.md), [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) y [README.md](README.md): dos `.env` (raíz vs `backend/`), puertos `MONGO_PORT` / `BACKEND_PORT` / `FRONTEND_PORT`, Mongo con credenciales, seeds con `docker compose exec`, URLs dinámicas; corrección de caracteres corruptos en DEPLOYMENT.
-- **CONFIG / Docker + Mongo + DX:** `MONGO_INITDB_ROOT_USERNAME` y `MONGO_INITDB_ROOT_PASSWORD` en `.env` / `.env.example` (valores de ejemplo) y `MONGODB_URI` con `authSource=admin`. `docker-compose.yml` aplica credenciales al servicio `mongodb`, healthcheck con `mongosh` autenticado, `MONGODB_URI` por defecto alineada en el backend. Puertos en `.env`; `NODE_ENV` por defecto `development`. Documentacion: [SETUP.md](SETUP.md), [docs/DEVELOPMENT-CREDENTIALS.md](docs/DEVELOPMENT-CREDENTIALS.md), [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md), `.env.example`; seeds manuales con `docker compose exec backend npm run seed:owner` / `seed:test`.
+- **DOCS:** Reescritura y ampliación de [docs/SETUP.md](docs/SETUP.md), [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) y [README.md](README.md): dos `.env` (raíz vs `backend/`), puertos `MONGO_PORT` / `BACKEND_PORT` / `FRONTEND_PORT`, Mongo con credenciales, seeds con `docker compose exec`, URLs dinámicas; corrección de caracteres corruptos en DEPLOYMENT.
+- **CONFIG / Docker + Mongo + DX:** `MONGO_INITDB_ROOT_USERNAME` y `MONGO_INITDB_ROOT_PASSWORD` en `.env` / `.env.example` (valores de ejemplo) y `MONGODB_URI` con `authSource=admin`. `docker-compose.yml` aplica credenciales al servicio `mongodb`, healthcheck con `mongosh` autenticado, `MONGODB_URI` por defecto alineada en el backend. Puertos en `.env`; `NODE_ENV` por defecto `development`. Documentacion: [docs/SETUP.md](docs/SETUP.md), [docs/DEVELOPMENT-CREDENTIALS.md](docs/DEVELOPMENT-CREDENTIALS.md), [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md), `.env.example`; seeds manuales con `docker compose exec backend npm run seed:owner` / `seed:test`.
 - **FIX (Backend — CORS):** En `main.ts`, las peticiones **sin** cabecera `Origin` (mismo host detrás de nginx o algunos navegadores) ya no quedan bloqueadas cuando `NODE_ENV=production`. Antes el login desde el front en Docker podía fallar de forma silenciosa en el cliente.
 - **FIX (Frontend — Login):** Mensajes de error más explícitos si no hay respuesta del servidor o hay código HTTP.
 - **CONFIG:** `CORS_ORIGINS` por defecto en Compose y `.env.example` incluye `http://localhost:4200` y `127.0.0.1:4200` para `ng serve`. Documentación en [docs/DEVELOPMENT-CREDENTIALS.md](docs/DEVELOPMENT-CREDENTIALS.md).
@@ -112,7 +132,7 @@ Versión que agrupa endurecimiento de API y datos (DTOs, CORS, correlativos ató
 
 ### Documentación
 
-- **Nuevos / actualizados:** [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md), [docs/API.md](docs/API.md), [docs/MULTI-TENANCY.md](docs/MULTI-TENANCY.md), [docs/architecture.md](docs/architecture.md), [README.md](README.md), [SETUP.md](SETUP.md), [docs/TESTING-GUIDE.md](docs/TESTING-GUIDE.md), [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
+- **Nuevos / actualizados:** [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md), [docs/API.md](docs/API.md), [docs/MULTI-TENANCY.md](docs/MULTI-TENANCY.md), [docs/architecture.md](docs/architecture.md), [README.md](README.md), [docs/SETUP.md](docs/SETUP.md), [docs/TESTING-GUIDE.md](docs/TESTING-GUIDE.md), [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md).
 - **Docker Compose / CORS** por defecto para front en `http://localhost` (puerto 80) documentado.
 - **Limpieza** de `docs/archive/` salvo [docs/archive/Promp.txt](docs/archive/Promp.txt); eliminados planes multi-tenant duplicados obsoletos.
 

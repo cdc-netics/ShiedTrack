@@ -2,13 +2,15 @@
   "name": "shieldtrack",
   "version": "2.2.0",
   "description": "ShieldTrack - Cybersecurity Findings Management",
+  "packageManager": "pnpm@10.12.4",
   "scripts": {
+    "preinstall": "node ./scripts/enforce-pnpm.js",
     "start": "docker compose up --build",
     "start:detached": "docker compose up --build -d",
     "stop": "docker compose down",
     "start:local:win": "powershell -ExecutionPolicy Bypass -File ./start-shieldtrack.ps1",
     "start:local:unix": "bash ./start-shieldtrack.sh",
-    "install:all": "cd backend && npm install && cd ../frontend && npm install"
+    "install:all": "pnpm --dir backend install && pnpm --dir frontend install"
   },
   "dependencies": {
     "pdfmake": "^0.3.2"

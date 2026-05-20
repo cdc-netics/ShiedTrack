@@ -48,14 +48,15 @@ fi
 
 echo "📦 Iniciando Backend..."
 cd "$BACKEND_PATH"
-if [ ! -d "node_modules" ]; then npm install; fi
-npm run build
+if [ ! -d "node_modules" ]; then pnpm install; fi
+pnpm run build
 nohup node dist/main.js > "$ROOT_PATH/backend.log" 2>&1 &
 BACKEND_PID=$!
 
 echo "🎨 Iniciando Frontend..."
 cd "$FRONTEND_PATH"
-nohup npm start > "$ROOT_PATH/frontend.log" 2>&1 &
+if [ ! -d "node_modules" ]; then pnpm install; fi
+nohup pnpm start > "$ROOT_PATH/frontend.log" 2>&1 &
 FRONTEND_PID=$!
 
 echo ""

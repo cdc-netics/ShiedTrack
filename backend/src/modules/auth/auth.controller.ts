@@ -8,6 +8,7 @@ import {
   Param,
   Delete,
   Logger,
+  ForbiddenException,
 } from "@nestjs/common";
 import {
   ApiTags,
@@ -46,6 +47,29 @@ export class AuthController {
     private readonly userAreaService: UserAreaService,
     private readonly userAssignmentService: UserAssignmentService,
   ) {}
+
+  /**
+   * SEC-RBAC-002: Valida que el usuario es el mismo o es admin
+   */
+  private validateSelfOrAdmin(
+    requestedUserId: string,
+    currentUser: any,
+  ): void {
+    const isAdmin = [
+      UserRole.OWNER,
+      UserRole.PLATFORM_ADMIN,
+    ].includes(currentUser.role);
+    const isSelf = currentUser.userId === requestedUserId;
+
+    if (!isAdmin && !isSelf) {
+      this.logger.warn(
+        `[SEC-RBAC-002] Intento de acceso cruzado: usuario ${currentUser.userId} intentó acceder a datos de ${requestedUserId}`,
+      );
+      throw new ForbiddenException(
+        "No tienes permiso para acceder a este recurso",
+      );
+    }
+  }
 
   @Post("register")
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -197,9 +221,17 @@ export class AuthController {
   @Get("users/:userId/areas")
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth("JWT-auth")
-  @ApiOperation({ summary: "Obtener áreas asignadas a un usuario" })
+  @ApiOperation({
+    summary: "Obtener áreas asignadas a un usuario",
+    description: "SEC-RBAC-002: Solo el usuario o admins pueden ver sus áreas",
+  })
   @ApiResponse({ status: 200, description: "Lista de áreas" })
-  async getUserAreas(@Param("userId") userId: string) {
+  async getUserAreas(
+    @Param("userId") userId: string,
+    @CurrentUser() currentUser: any,
+  ) {
+    // SEC-RBAC-002: Validar acceso (self or admin)
+    this.validateSelfOrAdmin(userId, currentUser);
     return this.userAreaService.getUserAreas(userId);
   }
 
@@ -273,9 +305,17 @@ export class AuthController {
   @Get("users/:userId/assignments")
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth("JWT-auth")
-  @ApiOperation({ summary: "Obtener asignaciones centralizadas del usuario" })
+  @ApiOperation({
+    summary: "Obtener asignaciones centralizadas del usuario",
+    description: "SEC-RBAC-002: Solo el usuario o admins pueden ver sus asignaciones",
+  })
   @ApiResponse({ status: 200, description: "Asignaciones del usuario" })
-  async getUserAssignments(@Param("userId") userId: string) {
+  async getUserAssignments(
+    @Param("userId") userId: string,
+    @CurrentUser() currentUser: any,
+  ) {
+    // SEC-RBAC-002: Validar acceso (self or admin)
+    this.validateSelfOrAdmin(userId, currentUser);
     return this.userAssignmentService.getAssignments(userId);
   }
 

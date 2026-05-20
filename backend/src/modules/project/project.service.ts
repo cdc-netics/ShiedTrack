@@ -9,7 +9,8 @@ import { Model, Types } from "mongoose";
 import { Project } from "./schemas/project.schema";
 import { Finding } from "../finding/schemas/finding.schema";
 import { CreateProjectDto, UpdateProjectDto } from "./dto/project.dto";
-import { ProjectStatus, FindingStatus } from "../../common/enums";
+import { ProjectStatus, FindingStatus, UserRole } from "../../common/enums";
+import { roleSatisfies } from "../../common/rbac/rbac-policy";
 
 /**
  * Servicio de gestión de Proyectos
@@ -45,11 +46,18 @@ export class ProjectService {
 
   /** Determina si el usuario está restringido por área */
   private isRestrictedByArea(currentUser?: any): boolean {
-    return ["AREA_ADMIN", "ANALYST", "VIEWER"].includes(currentUser?.role);
+    return [
+      UserRole.AREA_ADMIN,
+      UserRole.ANALYST,
+      UserRole.PENTESTER,
+      UserRole.QA,
+      UserRole.VIEWER,
+      UserRole.AUDITOR,
+    ].includes(currentUser?.role);
   }
 
   private isGlobalUser(currentUser?: any): boolean {
-    return ["OWNER", "PLATFORM_ADMIN"].includes(currentUser?.role);
+    return roleSatisfies(UserRole.OWNER, currentUser?.role);
   }
 
   /** Obtiene áreas asignadas al usuario */
@@ -59,7 +67,13 @@ export class ProjectService {
 
   /** Determina si el usuario está restringido por proyectos visibles */
   private isRestrictedByVisibleProjects(currentUser?: any): boolean {
-    return ["VIEWER", "ANALYST"].includes(currentUser?.role);
+    return [
+      UserRole.VIEWER,
+      UserRole.AUDITOR,
+      UserRole.ANALYST,
+      UserRole.PENTESTER,
+      UserRole.QA,
+    ].includes(currentUser?.role);
   }
 
   /** Obtiene proyectos visibles del usuario */

@@ -6,6 +6,7 @@ import {
 } from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
 import { UserRole } from "../../../common/enums";
+import { roleSatisfies } from "../../../common/rbac/rbac-policy";
 
 /**
  * Guard para validar roles de usuario (RBAC)
@@ -34,7 +35,7 @@ export class RolesGuard implements CanActivate {
     }
 
     // Verificar si el usuario tiene alguno de los roles requeridos
-    const hasRole = requiredRoles.some((role) => user.role === role);
+    const hasRole = requiredRoles.some((role) => roleSatisfies(role, user.role));
 
     if (!hasRole) {
       throw new ForbiddenException("No tiene permisos para esta acción");
