@@ -1,6 +1,6 @@
 # Requiere archivo .env en esta carpeta (copiar desde .env.example).
 # Puertos: MONGO_PORT, BACKEND_PORT, FRONTEND_PORT en .env
-# Documentación: docs/DEVELOPMENT-CREDENTIALS.md, docs/DEPLOYMENT.md, SETUP.md
+# Documentación: docs/DEVELOPMENT-CREDENTIALS.md, docs/DEPLOYMENT.md, docs/SETUP.md
 
 services:
   mongodb:

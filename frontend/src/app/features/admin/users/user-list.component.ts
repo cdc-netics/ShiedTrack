@@ -58,11 +58,12 @@ import { AuthService } from '../../../core/services/auth.service';
           <mat-label>Rol</mat-label>
           <mat-select [ngModel]="roleFilter()" (ngModelChange)="roleFilter.set($event)">
             <mat-option value="">Todos</mat-option>
-            <mat-option value="OWNER">Owner</mat-option>
-
-            <mat-option value="AREA_ADMIN">Area Admin</mat-option>
-            <mat-option value="ANALYST">Analista</mat-option>
-            <mat-option value="VIEWER">Visor</mat-option>
+            <mat-option value="OWNER">OWNER</mat-option>
+            <mat-option value="PLATFORM_ADMIN">PLATFORM_ADMIN</mat-option>
+            <mat-option value="CLIENT_ADMIN">CLIENT_ADMIN</mat-option>
+            <mat-option value="AREA_ADMIN">AREA_ADMIN</mat-option>
+            <mat-option value="ANALYST">ANALYST</mat-option>
+            <mat-option value="VIEWER">VIEWER</mat-option>
           </mat-select>
         </mat-form-field>
       </div>
@@ -309,11 +310,12 @@ export class UserListComponent implements OnInit {
   getRoleName(role: string): string {
     // Mapea roles a etiquetas mas amigables
     const roleMap: Record<string, string> = {
-      'OWNER': 'Owner',
-
-      'AREA_ADMIN': 'Area Admin',
-      'ANALYST': 'Analista',
-      'VIEWER': 'Visor'
+      'OWNER': 'OWNER',
+      'PLATFORM_ADMIN': 'PLATFORM_ADMIN',
+      'CLIENT_ADMIN': 'CLIENT_ADMIN',
+      'AREA_ADMIN': 'AREA_ADMIN',
+      'ANALYST': 'ANALYST',
+      'VIEWER': 'VIEWER'
     };
     return roleMap[role] || role;
   }

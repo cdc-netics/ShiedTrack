@@ -73,7 +73,8 @@ $backendScript = @"
 `$Host.UI.RawUI.WindowTitle = '🛡️ ShieldTrack - BACKEND'
 cd '$backendPath'
 Write-Host '--- ShieldTrack Backend ---' -ForegroundColor Cyan
-if (-not (Test-Path 'node_modules')) { npm install }
+if (-not (Test-Path 'node_modules')) { pnpm install }
+pnpm run build
 node dist/main.js
 Read-Host 'Presiona Enter para cerrar'
 "@
@@ -87,7 +88,8 @@ $frontendScript = @"
 `$Host.UI.RawUI.WindowTitle = '🛡️ ShieldTrack - FRONTEND'
 cd '$frontendPath'
 Write-Host '--- ShieldTrack Frontend ---' -ForegroundColor Cyan
-npm start
+if (-not (Test-Path 'node_modules')) { pnpm install }
+pnpm start
 Read-Host 'Presiona Enter para cerrar'
 "@
 Start-Process powershell -ArgumentList "-NoExit", "-Command", $frontendScript

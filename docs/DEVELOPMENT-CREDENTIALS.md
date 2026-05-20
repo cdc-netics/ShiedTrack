@@ -2,14 +2,14 @@
 
 Referencia **solo para desarrollo y pruebas**. No uses estas contrasenas en produccion.
 
-## Seeds: que hacer (Docker vs npm)
+## Seeds: que hacer (Docker vs pnpm)
 
 | Situacion | Accion |
 |-----------|--------|
 | **Solo Docker Compose** (`docker compose up`) | El contenedor **backend** al arrancar ejecuta `seed:owner` y luego `seed:test` ([backend/docker-entrypoint.sh](../backend/docker-entrypoint.sh)). Revisa `docker compose logs backend` si algo falla. |
-| **Repetir seeds en Docker** (sin entrar al contenedor en modo interactivo) | Desde la raiz del repo: `docker compose exec backend npm run seed:owner` y `docker compose exec backend npm run seed:test`. |
-| **Backend con npm en tu PC** (sin Docker del API) | En carpeta `backend/`: `npm run seed:owner` y luego `npm run seed:test`. |
-| **Los dos** | Si Docker ya dejo los seeds OK, **no** repitas npm salvo que borres la volumetria de Mongo y quieras repoblar. |
+| **Repetir seeds en Docker** (sin entrar al contenedor en modo interactivo) | Desde la raiz del repo: `docker compose exec backend pnpm run seed:owner` y `docker compose exec backend pnpm run seed:test`. |
+| **Backend con pnpm en tu PC** (sin Docker del API) | En carpeta `backend/`: `pnpm run seed:owner` y luego `pnpm run seed:test`. |
+| **Los dos** | Si Docker ya dejo los seeds OK, **no** repitas seeds manuales salvo que borres la volumetria de Mongo y quieras repoblar. |
 
 **Los usuarios de prueba no se configuran en `.env`.** Las contrasenas vienen de los scripts (`Admin123!`, `Password123!`) documentadas abajo.
 
@@ -35,8 +35,8 @@ Referencia **solo para desarrollo y pruebas**. No uses estas contrasenas en prod
 
 ## Si el login falla
 
-1. `docker compose ps` — el servicio `backend` debe estar `running`.
-2. `docker compose logs backend` — buscar errores de Mongo, seeds o arranque.
+1. `docker compose ps` ï¿½ el servicio `backend` debe estar `running`.
+2. `docker compose logs backend` ï¿½ buscar errores de Mongo, seeds o arranque.
 3. CORS: ver [README](../README.md) y variable `CORS_ORIGINS` en `.env`.
 4. **`.env` con Docker:** `MONGODB_URI` debe usar el host `mongodb` (nombre del servicio), no `localhost`, dentro de los contenedores. Usuario y contrasena deben coincidir con `MONGO_INITDB_ROOT_*`.
 

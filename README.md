@@ -25,9 +25,12 @@ ShieldTrack centraliza el ciclo completo de gestión de hallazgos: registro, asi
 
 ## 📚 Mapa de Documentación
 
+**Indice maestro:** [docs/README.md](docs/README.md)
+
 | Documento | Contenido |
 | :--- | :--- |
-| 🚀 **[SETUP.md](SETUP.md)** | Instalación: `.env` en la raíz vs `backend/.env`, puertos, Mongo, seeds y troubleshooting. |
+| 🧭 **[docs/README.md](docs/README.md)** | Índice canónico de documentación y reglas de mantenimiento. |
+| 🚀 **[docs/SETUP.md](docs/SETUP.md)** | Instalación: `.env` en la raíz vs `backend/.env`, puertos, Mongo, seeds y troubleshooting. |
 | 🚢 **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)** | Compose, autenticación Mongo (`MONGO_INITDB_*`, `MONGODB_URI`), CORS, seeds con `docker compose exec`, checklist de producción. |
 | 🔐 **[docs/DEVELOPMENT-CREDENTIALS.md](docs/DEVELOPMENT-CREDENTIALS.md)** | Usuarios y contraseñas de prueba (seed / login dev); no usar en producción. |
 | 🌐 **[docs/API.md](docs/API.md)** | Prefijo `/api`, Swagger, JWT, validación y cabeceras. |
@@ -35,7 +38,7 @@ ShieldTrack centraliza el ciclo completo de gestión de hallazgos: registro, asi
 | 🏗️ **[docs/architecture.md](docs/architecture.md)** | Modelo de datos, flujos y decisiones técnicas. |
 | 🧪 **[docs/TESTING-GUIDE.md](docs/TESTING-GUIDE.md)** | Suite P0, Postman/Newman y validación manual. |
 | 📜 **[docs/archive/Promp.txt](docs/archive/Promp.txt)** | Especificación funcional maestra (único archivo en `docs/archive/`). |
-| 🐛 **[ISSUES.md](ISSUES.md)** | Bugs, mejoras y backlog. |
+| 🐛 **[ISSUES.md](ISSUES.md)** | Backlog canónico de bugs, mejoras y pendientes. |
 | 📝 **[CHANGELOG.md](CHANGELOG.md)** | Historial de versiones. |
 
 ---
@@ -49,10 +52,10 @@ ShieldTrack centraliza el ciclo completo de gestión de hallazgos: registro, asi
 3. Arranque:
 
 ```bash
-npm start
+pnpm start
 ```
 
-Otros scripts: `npm run start:detached`, `npm run stop`.
+Otros scripts: `pnpm run start:detached`, `pnpm run stop`.
 
 **URLs** (los puertos salen de su `.env`; por defecto `BACKEND_PORT=3000`, `FRONTEND_PORT=80`):
 
@@ -61,7 +64,7 @@ Otros scripts: `npm run start:detached`, `npm run stop`.
 | App web | `http://localhost` o `http://localhost:<FRONTEND_PORT>` |
 | API / Swagger | `http://localhost:<BACKEND_PORT>/api/docs` |
 
-Usuarios de prueba (tras seeds): [docs/DEVELOPMENT-CREDENTIALS.md](docs/DEVELOPMENT-CREDENTIALS.md). Guía paso a paso y problemas frecuentes: [SETUP.md](SETUP.md). Variables, Compose y producción: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md). Antes de un despliegue real, revise el checklist de **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)** (`JWT_SECRET`, CORS, `NODE_ENV`, Mongo).
+Usuarios de prueba (tras seeds): [docs/DEVELOPMENT-CREDENTIALS.md](docs/DEVELOPMENT-CREDENTIALS.md). Guía paso a paso y problemas frecuentes: [docs/SETUP.md](docs/SETUP.md). Variables, Compose y producción: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md). Antes de un despliegue real, revise el checklist de **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)** (`JWT_SECRET`, CORS, `NODE_ENV`, Mongo).
 
 ### Desarrollo en el host (sin Docker)
 
@@ -69,13 +72,13 @@ Si necesita Node y Mongo instalados localmente:
 
 ```bash
 # Windows (PowerShell)
-npm run start:local:win
+pnpm run start:local:win
 
 # Linux / macOS
-npm run start:local:unix
+pnpm run start:local:unix
 ```
 
-Detalle y variables: [SETUP.md](SETUP.md).
+Detalle y variables: [docs/SETUP.md](docs/SETUP.md).
 
 ---
 
@@ -126,7 +129,7 @@ MONGO_PORT=27017
 
 ## 🐳 4. Levantar los Contenedores
 
-En la raíz del proyecto, ejecute: npm start
+En la raíz del proyecto, ejecute: pnpm start
 
 **Esto iniciará automáticamente:**
 
@@ -139,7 +142,7 @@ MongoDB
 ## 📦 5. Scripts Disponibles
 **Iniciar en segundo plano**
 
-npm run start:detached
+pnpm run start:detached
 
 ## 🌐 6. Acceder al Sistema
 Una vez iniciado correctamente:

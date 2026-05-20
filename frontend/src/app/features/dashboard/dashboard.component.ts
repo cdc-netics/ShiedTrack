@@ -85,7 +85,7 @@ export class DashboardComponent implements OnInit {
         ...s,
         totalFindings: findings.length,
         criticalFindings: findings.filter(f => f.severity === 'CRITICAL').length,
-        pendingRetest: findings.filter(f => f.status === 'PENDING_RETEST').length
+        pendingRetest: findings.filter(f => f.status === 'RETEST_REQUIRED').length  // APP-ENUM-001: Actualizado
       }));
     });
 

@@ -1,10 +1,11 @@
 # Etapa de compilación
 FROM node:20-alpine AS build
 WORKDIR /app
-COPY package*.json ./
-RUN npm ci --no-audit --no-fund --loglevel=error
+RUN corepack enable
+COPY package.json pnpm-lock.yaml* ./
+RUN pnpm install --frozen-lockfile
 COPY . .
-RUN npm run build -- --configuration production
+RUN pnpm run build -- --configuration production
 
 # Etapa de servidor Nginx
 FROM nginx:alpine

@@ -4,7 +4,7 @@
  * Script de inicializacion - Usuario OWNER
  * Crea o normaliza el usuario administrador principal del sistema.
  *
- * Uso: npm run seed:owner
+ * Uso: pnpm run seed:owner
  */
 
 const mongoose = require('mongoose');
