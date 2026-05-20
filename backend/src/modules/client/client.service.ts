@@ -3,6 +3,7 @@ import {
   NotFoundException,
   Logger,
   BadRequestException,
+  ForbiddenException,
 } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
@@ -11,6 +12,10 @@ import { CreateClientDto, UpdateClientDto } from "./dto/client.dto";
 import { ProjectStatus } from "../../common/enums";
 import { AuthService } from "../auth/auth.service";
 import { UserRole } from "../../common/enums";
+import {
+  normalizeRole,
+  roleSatisfies,
+} from "../../common/rbac/rbac-policy";
 
 /**
  * Servicio de gestión de Clientes (Tenants)
@@ -24,6 +29,46 @@ export class ClientService {
     @InjectModel(Client.name) private clientModel: Model<Client>,
     private authService: AuthService,
   ) {}
+
+  /**
+   * SEC-RBAC-003: Valida que el usuario tiene acceso al cliente según su rol
+   */
+  private validateClientAccess(
+    clientId: string,
+    currentUser: any,
+    requiredRole?: UserRole[],
+  ): void {
+    // OWNER y PLATFORM_ADMIN tienen acceso a todo
+    if (roleSatisfies(UserRole.OWNER, currentUser.role)) {
+      return;
+    }
+
+    // Cualquier rol administrativo de tenant solo accede a su propio cliente
+    if (
+      normalizeRole(currentUser.role) === "ADMIN_AREA" &&
+      currentUser.clientId?.toString() !== clientId?.toString()
+    ) {
+      this.logger.warn(
+        `[SEC-RBAC-003] Intento de acceso cruzado: ADMIN_AREA ${currentUser.userId} intentó acceder a cliente ${clientId}`,
+      );
+      throw new ForbiddenException(
+        "No tienes permiso para acceder a este cliente",
+      );
+    }
+
+    // Otros roles no tienen acceso de edición
+    if (
+      requiredRole &&
+      !requiredRole.some((role) => roleSatisfies(role, currentUser.role))
+    ) {
+      this.logger.warn(
+        `[SEC-RBAC-003] Rol ${currentUser.role} no permitido para esta operación`,
+      );
+      throw new ForbiddenException(
+        "Tu rol no tiene permiso para esta operación",
+      );
+    }
+  }
 
   /**
    * Crea un nuevo cliente y opcionalmente crea el primer admin
@@ -78,13 +123,13 @@ export class ClientService {
 
     // SEGURIDAD MULTI-TENANT: Filtrar según rol
     if (currentUser) {
-      const restrictedRoles = [
-        "CLIENT_ADMIN",
-        "AREA_ADMIN",
-        "ANALYST",
-        "VIEWER",
-      ];
-      if (restrictedRoles.includes(currentUser.role) && currentUser.clientId) {
+      if (!roleSatisfies(UserRole.OWNER, currentUser.role) && !currentUser.clientId) {
+        throw new ForbiddenException(
+          "Tu rol no tiene permiso para listar clientes sin contexto de tenant",
+        );
+      }
+
+      if (!roleSatisfies(UserRole.OWNER, currentUser.role) && currentUser.clientId) {
         query._id = currentUser.clientId; // Solo su cliente
       }
     }
@@ -110,20 +155,41 @@ export class ClientService {
   }
 
   /**
-   * Busca cliente por ID
+   * Busca cliente por ID (con validación de acceso)
+   * SEC-RBAC-003: Validar tenant scope del usuario
    */
-  async findById(id: string): Promise<Client> {
+  async findById(id: string, currentUser?: any): Promise<Client> {
     const client = await this.clientModel.findById(id);
     if (!client) {
       throw new NotFoundException(`Cliente con ID ${id} no encontrado`);
     }
+
+    // Validar acceso si se proporciona usuario
+    if (currentUser) {
+      this.validateClientAccess(id, currentUser);
+    }
+
     return client;
   }
 
   /**
-   * Actualiza un cliente
+   * Actualiza un cliente (con validación de acceso)
+   * SEC-RBAC-003: Validar que el usuario puede editar este cliente
    */
-  async update(id: string, dto: UpdateClientDto): Promise<Client> {
+  async update(
+    id: string,
+    dto: UpdateClientDto,
+    currentUser?: any,
+  ): Promise<Client> {
+    // Validar acceso si se proporciona usuario
+    if (currentUser) {
+      this.validateClientAccess(
+        id,
+        currentUser,
+        [UserRole.OWNER, UserRole.PLATFORM_ADMIN, UserRole.CLIENT_ADMIN],
+      );
+    }
+
     const client = await this.clientModel.findByIdAndUpdate(id, dto, {
       new: true,
     });
@@ -137,9 +203,18 @@ export class ClientService {
   }
 
   /**
-   * Soft delete - Desactiva un cliente
+   * Soft delete - Desactiva un cliente (con validación de acceso)
    */
-  async deactivate(id: string): Promise<Client> {
+  async deactivate(id: string, currentUser?: any): Promise<Client> {
+    // Validar acceso si se proporciona usuario
+    if (currentUser) {
+      this.validateClientAccess(
+        id,
+        currentUser,
+        [UserRole.OWNER, UserRole.PLATFORM_ADMIN],
+      );
+    }
+
     const client = await this.clientModel.findByIdAndUpdate(
       id,
       { isActive: false },
@@ -155,9 +230,14 @@ export class ClientService {
   }
 
   /**
-   * Hard delete - Solo OWNER puede ejecutar
+   * Hard delete - Solo OWNER puede ejecutar (con validación de acceso)
    */
-  async hardDelete(id: string): Promise<void> {
+  async hardDelete(id: string, currentUser?: any): Promise<void> {
+    // Validar acceso si se proporciona usuario
+    if (currentUser) {
+      this.validateClientAccess(id, currentUser, [UserRole.OWNER]);
+    }
+
     const result = await this.clientModel.findByIdAndDelete(id);
 
     if (!result) {

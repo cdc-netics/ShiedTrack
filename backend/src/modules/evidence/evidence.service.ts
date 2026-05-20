@@ -4,10 +4,13 @@ import {
   Logger,
   BadRequestException,
   StreamableFile,
+  ForbiddenException,
 } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
 import { Evidence } from "./schemas/evidence.schema";
+import { UserRole } from "../../common/enums";
+import { roleSatisfies } from "../../common/rbac/rbac-policy";
 import * as fs from "fs";
 import * as path from "path";
 import { createReadStream } from "fs";
@@ -125,9 +128,63 @@ export class EvidenceService {
   }
 
   /**
-   * Obtiene evidencias de un hallazgo
+   * Valida que el usuario tiene acceso al finding asociado a una evidencia
+   * SEC-RBAC-001: Prevenir IDOR entre tenants
    */
-  async findByFinding(findingId: string): Promise<Evidence[]> {
+  private async validateAccessToFinding(
+    findingId: string,
+    currentUser: any,
+  ): Promise<void> {
+    // OWNER y PLATFORM_ADMIN ven todo
+    if (roleSatisfies(UserRole.OWNER, currentUser.role)) {
+      return;
+    }
+
+    // Para otros roles, validar que el finding pertenece a su tenant
+    const Finding = this.evidenceModel.db.model("Finding");
+    const finding = await Finding.findById(findingId).select("projectId");
+
+    if (!finding) {
+      throw new NotFoundException(`Hallazgo con ID ${findingId} no encontrado`);
+    }
+
+    // Obtener el cliente del proyecto
+    const Project = this.evidenceModel.db.model("Project");
+    const project = await Project.findById(finding.projectId).select(
+      "clientId",
+    );
+
+    if (!project) {
+      throw new NotFoundException(`Proyecto no encontrado`);
+    }
+
+    // Verificar que el cliente coincide
+    if (
+      currentUser.clientId &&
+      project.clientId?.toString() !== currentUser.clientId?.toString()
+    ) {
+      this.logger.warn(
+        `[SEC-RBAC-001] Intento de acceso cruzado de usuario ${currentUser.userId} al finding ${findingId}`,
+      );
+      throw new ForbiddenException(
+        "No tienes permiso para acceder a este hallazgo",
+      );
+    }
+  }
+
+  /**
+   * Obtiene evidencias de un hallazgo (con validación de acceso)
+   * SEC-RBAC-001: Validar tenant del usuario
+   */
+  async findByFinding(
+    findingId: string,
+    currentUser?: any,
+  ): Promise<Evidence[]> {
+    // Validar acceso si se proporciona usuario
+    if (currentUser) {
+      await this.validateAccessToFinding(findingId, currentUser);
+    }
+
     return this.evidenceModel
       .find({ findingId })
       .populate("uploadedBy", "firstName lastName email")
@@ -146,13 +203,19 @@ export class EvidenceService {
   }
 
   /**
-   * Descarga un archivo de evidencia (con stream seguro)
-   * El controller debe validar JWT antes de llamar este método
+   * Descarga un archivo de evidencia (con validación de acceso por tenant)
+   * SEC-RBAC-001: Validar que el usuario tiene acceso al finding
    */
   async downloadFile(
     id: string,
+    currentUser?: any,
   ): Promise<{ stream: StreamableFile; evidence: Evidence }> {
     const evidence = await this.findById(id);
+
+    // Validar acceso si se proporciona usuario
+    if (currentUser) {
+      await this.validateAccessToFinding(String(evidence.findingId), currentUser);
+    }
 
     // Verificar que el archivo existe en disco
     if (!fs.existsSync(evidence.filePath)) {

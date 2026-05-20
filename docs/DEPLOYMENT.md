@@ -66,7 +66,7 @@ docker compose ps
 Script equivalente desde raiz:
 
 ```bash
-npm run start:detached
+pnpm run start:detached
 ```
 
 URLs:
@@ -79,8 +79,8 @@ URLs:
 El backend ejecuta seeds al iniciar (entrypoint). Para relanzar manualmente:
 
 ```bash
-docker compose exec backend npm run seed:owner
-docker compose exec backend npm run seed:test
+docker compose exec backend pnpm run seed:owner
+docker compose exec backend pnpm run seed:test
 ```
 
 Credenciales: `docs/DEVELOPMENT-CREDENTIALS.md`.
@@ -91,18 +91,18 @@ Backend:
 
 ```bash
 cd backend
-npm ci
+pnpm install --frozen-lockfile
 cp .env.example .env
-npm run build
-npm run start:prod
+pnpm run build
+pnpm run start:prod
 ```
 
 Frontend:
 
 ```bash
 cd frontend
-npm ci
-npm run build
+pnpm install --frozen-lockfile
+pnpm run build
 ```
 
 ## Checklist de produccion

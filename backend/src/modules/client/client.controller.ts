@@ -54,38 +54,63 @@ export class ClientController {
   }
 
   @Get(":id")
-  @ApiOperation({ summary: "Obtener cliente por ID" })
+  @ApiOperation({
+    summary: "Obtener cliente por ID",
+    description: "SEC-RBAC-003: Validar tenant scope",
+  })
   @ApiResponse({ status: 200, description: "Cliente encontrado" })
   @ApiResponse({ status: 404, description: "Cliente no encontrado" })
-  async findById(@Param("id") id: string) {
-    return this.clientService.findById(id);
+  async findById(
+    @Param("id") id: string,
+    @CurrentUser() user?: any,
+  ) {
+    return this.clientService.findById(id, user);
   }
 
   @Put(":id")
   @Roles(UserRole.OWNER, UserRole.PLATFORM_ADMIN, UserRole.CLIENT_ADMIN)
-  @ApiOperation({ summary: "Actualizar cliente" })
+  @ApiOperation({
+    summary: "Actualizar cliente",
+    description: "SEC-RBAC-003: Validar tenant scope",
+  })
   @ApiResponse({ status: 200, description: "Cliente actualizado" })
-  async update(@Param("id") id: string, @Body() dto: UpdateClientDto) {
-    return this.clientService.update(id, dto);
+  async update(
+    @Param("id") id: string,
+    @Body() dto: UpdateClientDto,
+    @CurrentUser() user?: any,
+  ) {
+    return this.clientService.update(id, dto, user);
   }
 
   @Delete(":id")
   @Roles(UserRole.OWNER, UserRole.PLATFORM_ADMIN)
-  @ApiOperation({ summary: "Desactivar cliente (soft delete)" })
+  @ApiOperation({
+    summary: "Desactivar cliente (soft delete)",
+    description: "SEC-RBAC-003: Validar tenant scope",
+  })
   @ApiResponse({ status: 200, description: "Cliente desactivado" })
-  async deactivate(@Param("id") id: string) {
-    return this.clientService.deactivate(id);
+  async deactivate(
+    @Param("id") id: string,
+    @CurrentUser() user?: any,
+  ) {
+    return this.clientService.deactivate(id, user);
   }
 
   @Delete(":id/hard")
   @Roles(UserRole.OWNER)
-  @ApiOperation({ summary: "Eliminar cliente permanentemente (solo OWNER)" })
+  @ApiOperation({
+    summary: "Eliminar cliente permanentemente (solo OWNER)",
+    description: "SEC-RBAC-003: Validar tenant scope",
+  })
   @ApiResponse({
     status: 200,
     description: "Cliente eliminado permanentemente",
   })
-  async hardDelete(@Param("id") id: string) {
-    await this.clientService.hardDelete(id);
+  async hardDelete(
+    @Param("id") id: string,
+    @CurrentUser() user?: any,
+  ) {
+    await this.clientService.hardDelete(id, user);
     return { message: "Cliente eliminado permanentemente" };
   }
 }

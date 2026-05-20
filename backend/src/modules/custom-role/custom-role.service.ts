@@ -12,7 +12,11 @@ import {
   CreateCustomRoleDto,
   UpdateCustomRoleDto,
 } from "./dto/custom-role.dto";
-import { UserRole } from "../../common/enums";
+import { User } from "../auth/schemas/user.schema";
+import {
+  canRolePerform,
+  normalizeRole,
+} from "../../common/rbac/rbac-policy";
 
 /**
  * Servicio de gestión de roles personalizados
@@ -24,7 +28,12 @@ export class CustomRoleService {
 
   constructor(
     @InjectModel(CustomRole.name) private customRoleModel: Model<CustomRole>,
+    @InjectModel(User.name) private userModel: Model<User>,
   ) {}
+
+  private isTenantAdminRole(role?: string): boolean {
+    return normalizeRole(role) === "ADMIN_AREA";
+  }
 
   /**
    * Crea un nuevo rol personalizado
@@ -35,16 +44,14 @@ export class CustomRoleService {
     currentUser: any,
   ): Promise<CustomRole> {
     // Validar permisos
-    if (
-      !["OWNER", "PLATFORM_ADMIN", "CLIENT_ADMIN"].includes(currentUser.role)
-    ) {
+    if (!canRolePerform(currentUser.role, "users", "assign")) {
       throw new ForbiddenException(
         "No tiene permisos para crear roles personalizados",
       );
     }
 
     // CLIENT_ADMIN solo puede crear roles para su tenant
-    if (currentUser.role === UserRole.CLIENT_ADMIN) {
+    if (this.isTenantAdminRole(currentUser.role)) {
       dto.clientId = currentUser.clientId;
     }
 
@@ -81,7 +88,7 @@ export class CustomRoleService {
     const query: any = { isActive: true };
 
     // CLIENT_ADMIN solo ve roles de su tenant + roles globales
-    if (currentUser.role === UserRole.CLIENT_ADMIN) {
+    if (this.isTenantAdminRole(currentUser.role)) {
       query.$or = [
         { clientId: currentUser.clientId },
         { clientId: null }, // Roles globales
@@ -107,7 +114,7 @@ export class CustomRoleService {
     }
 
     // Validar acceso
-    if (currentUser.role === UserRole.CLIENT_ADMIN) {
+    if (this.isTenantAdminRole(currentUser.role)) {
       if (
         role.clientId &&
         role.clientId.toString() !== currentUser.clientId.toString()
@@ -139,7 +146,7 @@ export class CustomRoleService {
     }
 
     // Validar permisos
-    if (currentUser.role === UserRole.CLIENT_ADMIN) {
+    if (this.isTenantAdminRole(currentUser.role)) {
       if (
         role.clientId &&
         role.clientId.toString() !== currentUser.clientId.toString()
@@ -177,7 +184,7 @@ export class CustomRoleService {
     }
 
     // Validar permisos
-    if (currentUser.role === UserRole.CLIENT_ADMIN) {
+    if (this.isTenantAdminRole(currentUser.role)) {
       if (
         role.clientId &&
         role.clientId.toString() !== currentUser.clientId.toString()
@@ -202,8 +209,44 @@ export class CustomRoleService {
     resource: string,
     action: string,
   ): Promise<boolean> {
-    // TODO: Implementar lógica de verificación de permisos
-    // Por ahora retornamos true para mantener compatibilidad
-    return true;
+    const user = await this.userModel.findById(userId).lean();
+
+    if (!user || !(user as any).isActive) {
+      return false;
+    }
+
+    const systemPermission = canRolePerform(
+      (user as any).role,
+      resource as any,
+      action as any,
+    );
+
+    if (systemPermission) {
+      return true;
+    }
+
+    const customRoleId = (user as any).customRoleId;
+    if (!customRoleId) {
+      return false;
+    }
+
+    const customRole = await this.customRoleModel.findById(customRoleId).lean();
+    if (!customRole || !customRole.isActive) {
+      return false;
+    }
+
+    const matchingPermission = customRole.permissions?.find(
+      (permission) =>
+        permission.resource === resource || permission.resource === "*",
+    );
+
+    if (!matchingPermission) {
+      return false;
+    }
+
+    return (
+      matchingPermission.actions.includes("*") ||
+      matchingPermission.actions.includes(action)
+    );
   }
 }

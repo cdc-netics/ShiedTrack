@@ -1,84 +1,60 @@
-# API HTTP — ShieldTrack
+# API HTTP - ShieldTrack
 
-Referencia operativa del backend NestJS. La fuente detallada por endpoint sigue siendo **Swagger** en el propio servidor.
-
----
+Referencia operativa de la API backend (NestJS).
 
 ## Base URL y prefijo
 
-- Todas las rutas REST viven bajo el prefijo global: **`/api`**
+- Todas las rutas usan prefijo global: `/api`
 - Ejemplo local: `http://localhost:3000/api/...`
 
----
-
-## Documentación interactiva (OpenAPI / Swagger)
+## Swagger (fuente por endpoint)
 
 | Entorno | URL |
-|---------|-----|
-| Local | `http://localhost:{PORT}/api/docs` |
-| Producción | `https://{su-dominio-api}/api/docs` |
+| --- | --- |
+| Local | `http://localhost:<BACKEND_PORT>/api/docs` |
+| Despliegue | `https://<dominio-api>/api/docs` |
 
-Autenticación en Swagger: botón **Authorize** ? esquema **JWT-auth** ? pegar el token Bearer sin la palabra `Bearer`.
+Para rutas protegidas, usar `Authorize` con esquema `JWT-auth`.
 
----
+## Autenticacion
 
-## Autenticación
+- Header: `Authorization: Bearer <access_token>`
+- El token se obtiene en endpoints del modulo Auth.
 
-- **Esquema:** JWT en cabecera  
-  `Authorization: Bearer <access_token>`
-- El token se obtiene en los endpoints de autenticación documentados en Swagger (tag **Auth**).
+## Headers frecuentes
 
----
+| Header | Uso |
+| --- | --- |
+| `Authorization` | JWT para rutas protegidas |
+| `Content-Type` | `application/json` en payloads JSON |
+| `X-Tenant-Id` | Contexto tenant cuando el endpoint lo exige |
 
-## Cabeceras habituales
+## Validacion de requests
 
-| Cabecera | Uso |
-|----------|-----|
-| `Authorization` | JWT (obligatorio en rutas protegidas) |
-| `Content-Type` | `application/json` en cuerpos JSON |
-| `X-Tenant-Id` | Contexto de tenant cuando el endpoint o el flujo lo requieren (validación de permisos en backend) |
+El backend usa `ValidationPipe` global con:
 
-Los valores exactos y si son obligatorios dependen de cada ruta; consúltese Swagger.
+- `whitelist: true`
+- `forbidNonWhitelisted: true`
+- `transform: true`
 
----
+Implica que payloads con campos extra generan `400 Bad Request`.
 
-## Validación de entrada
+## Codigos de error comunes
 
-El bootstrap registra un `ValidationPipe` global con:
+| Codigo | Causa tipica |
+| --- | --- |
+| 400 | DTO invalido, tipos incorrectos, campos no permitidos |
+| 401 | Token ausente o invalido |
+| 403 | Sin permisos por rol/alcance |
+| 404 | Recurso inexistente o fuera de alcance |
 
-- `whitelist: true` — elimina propiedades no declaradas en el DTO
-- `forbidNonWhitelisted: true` — rechaza la petición si vienen propiedades extra (**400 Bad Request**)
-- `transform: true` — instancia los DTO y convierte tipos cuando aplica
+## Multi-tenant y RBAC
 
-Por tanto, los clientes deben enviar **solo** los campos definidos en los DTOs publicados (Swagger / código).
+- El alcance de datos usa `tenantId` y compatibilidad con `clientId` legacy.
+- Las reglas de autorizacion se aplican en guards y servicios backend.
 
----
+Referencias:
 
-## CORS (clientes browser)
-
-El navegador envía `Origin`. El servidor permite solo orígenes listados en `CORS_ORIGINS` o `FRONTEND_URL` (ver [DEPLOYMENT.md](DEPLOYMENT.md)). Si el front corre en otro origen, debe añadirse a la lista.
-
----
-
-## Códigos de error habituales
-
-| Código | Situación típica |
-|--------|------------------|
-| 400 | Cuerpo inválido, validación class-validator, propiedades no permitidas |
-| 401 | Sin token o token inválido/expirado |
-| 403 | Autenticado pero sin rol/permiso |
-| 404 | Recurso inexistente o fuera de alcance (p. ej. otro tenant/área) |
-
-Los mensajes concretos siguen el filtro global de excepciones (`HttpExceptionFilter`).
-
----
-
-## Multi-tenant y “áreas”
-
-Conceptualmente el producto prioriza **áreas** como unidad de trabajo visible en UI; a nivel de datos y seguridad coexisten `tenantId` y campos legacy (p. ej. `clientId`). Detalle: [MULTI-TENANCY.md](MULTI-TENANCY.md).
-
----
-
-## Colecciones Postman
-
-En `docs/ShieldTrack-P0-Tests.postman_collection.json` hay una colección de pruebas; flujo descrito en [TESTING-GUIDE.md](TESTING-GUIDE.md).
+- [MULTI-TENANCY.md](MULTI-TENANCY.md)
+- [RBAC-PERMISSIONS-MATRIX.md](RBAC-PERMISSIONS-MATRIX.md)
+- [DEPLOYMENT.md](DEPLOYMENT.md)

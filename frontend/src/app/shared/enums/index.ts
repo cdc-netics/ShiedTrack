@@ -39,7 +39,9 @@ export enum FindingSeverity {
 export enum FindingStatus {
   OPEN = 'OPEN',
   IN_PROGRESS = 'IN_PROGRESS',
-  PENDING_RETEST = 'PENDING_RETEST',
+  RETEST_REQUIRED = 'RETEST_REQUIRED',  // APP-ENUM-001: Alineado con backend
+  RETEST_PASSED = 'RETEST_PASSED',      // APP-ENUM-001: Nuevo
+  RETEST_FAILED = 'RETEST_FAILED',      // APP-ENUM-001: Nuevo
   CLOSED = 'CLOSED',
 }
 

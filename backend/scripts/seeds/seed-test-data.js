@@ -5,7 +5,7 @@
  * Crea datos de prueba alineados con Promp.txt
  *
  * Uso:
- *   npm run seed:test
+ *   pnpm run seed:test
  *   node scripts/seeds/seed-test-data.js
  */
 
