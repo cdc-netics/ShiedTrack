@@ -94,10 +94,36 @@ import { UserDialogComponent } from './user-dialog.component';
             <mat-icon>refresh</mat-icon>
           </button>
 
-          <button mat-raised-button color="primary" (click)="createUser()">
+          <button mat-raised-button color="primary" [matMenuTriggerFor]="createUserMenu">
             <mat-icon>person_add</mat-icon>
-            Nuevo usuario
+            Crear usuario
           </button>
+          <mat-menu #createUserMenu="matMenu">
+            <button mat-menu-item (click)="createUser('OWNER')">
+              <mat-icon>stars</mat-icon>
+              <span>Owner</span>
+            </button>
+            <button mat-menu-item (click)="createUser('PLATFORM_ADMIN')">
+              <mat-icon>admin_panel_settings</mat-icon>
+              <span>Platform Admin</span>
+            </button>
+            <button mat-menu-item (click)="createUser('CLIENT_ADMIN')">
+              <mat-icon>business_center</mat-icon>
+              <span>Client Admin</span>
+            </button>
+            <button mat-menu-item (click)="createUser('AREA_ADMIN')">
+              <mat-icon>folder</mat-icon>
+              <span>Area Admin</span>
+            </button>
+            <button mat-menu-item (click)="createUser('ANALYST')">
+              <mat-icon>analytics</mat-icon>
+              <span>Analista</span>
+            </button>
+            <button mat-menu-item (click)="createUser('VIEWER')">
+              <mat-icon>visibility</mat-icon>
+              <span>Viewer</span>
+            </button>
+          </mat-menu>
         </div>
 
         <!-- Tabla de usuarios -->
@@ -182,6 +208,12 @@ import { UserDialogComponent } from './user-dialog.component';
                   </button>
                 }
 
+                <button mat-icon-button (click)="hardDeleteUser(user)"
+                        matTooltip="Eliminar usuario permanentemente"
+                        color="warn">
+                  <mat-icon>delete</mat-icon>
+                </button>
+
                 <!-- Menú más opciones -->
                 <button mat-icon-button [matMenuTriggerFor]="userMenu">
                   <mat-icon>more_vert</mat-icon>
@@ -191,7 +223,7 @@ import { UserDialogComponent } from './user-dialog.component';
                     <mat-icon>edit</mat-icon>
                     <span>Editar</span>
                   </button>
-                  <button mat-menu-item (click)="changeRole(user)">
+                  <button mat-menu-item [matMenuTriggerFor]="roleMenu" [matMenuTriggerData]="{ user: user }">
                     <mat-icon>admin_panel_settings</mat-icon>
                     <span>Cambiar Rol</span>
                   </button>
@@ -204,6 +236,18 @@ import { UserDialogComponent } from './user-dialog.component';
                     <mat-icon>visibility</mat-icon>
                     <span>Ver Asignaciones</span>
                   </button>
+                </mat-menu>
+                <mat-menu #roleMenu="matMenu">
+                  <ng-template matMenuContent let-user="user">
+                    @for (role of availableRoles; track role.value) {
+                      <button mat-menu-item
+                              (click)="updateUserRole(user, role.value)"
+                              [disabled]="user.role === role.value">
+                        <mat-icon>{{ role.icon }}</mat-icon>
+                        <span>{{ role.label }}</span>
+                      </button>
+                    }
+                  </ng-template>
                 </mat-menu>
               </div>
             </td>
@@ -294,6 +338,14 @@ export class UserListImprovedComponent implements OnInit {
   statusFilter = signal('');
 
   displayedColumns = ['name', 'role', 'mfa', 'status', 'actions'];
+  availableRoles = [
+    { value: 'OWNER', label: 'Owner', icon: 'stars' },
+    { value: 'PLATFORM_ADMIN', label: 'Platform Admin', icon: 'admin_panel_settings' },
+    { value: 'CLIENT_ADMIN', label: 'Client Admin', icon: 'business_center' },
+    { value: 'AREA_ADMIN', label: 'Area Admin', icon: 'folder' },
+    { value: 'ANALYST', label: 'Analyst', icon: 'analytics' },
+    { value: 'VIEWER', label: 'Viewer', icon: 'visibility' },
+  ];
 
   ngOnInit(): void {
     this.loadUsers();
@@ -368,6 +420,29 @@ export class UserListImprovedComponent implements OnInit {
     });
   }
 
+  hardDeleteUser(user: User): void {
+    const userId = this.getUserId(user);
+    if (!userId) return;
+
+    const userLabel = user.email || `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim() || 'este usuario';
+    const confirmed = confirm(
+      `Eliminar permanentemente ${userLabel}?\n\nEsta accion libera el correo para volver a usarlo y no se puede deshacer.`
+    );
+
+    if (!confirmed) return;
+
+    this.http.delete(`${environment.apiUrl}/auth/users/${userId}/hard`).subscribe({
+      next: () => {
+        this.snackBar.open('Usuario eliminado permanentemente', 'Cerrar', { duration: 3000 });
+        this.loadUsers();
+      },
+      error: (err) => {
+        console.error('Error eliminando usuario:', err);
+        this.snackBar.open(err.error?.message || 'Error al eliminar usuario', 'Cerrar', { duration: 4000 });
+      }
+    });
+  }
+
   /**
    * ✅ Obtiene el ID del usuario de forma segura.
    * En algunos modelos viene como `_id`, en otros como `id`.
@@ -412,9 +487,10 @@ export class UserListImprovedComponent implements OnInit {
     });
   }
 
-  createUser(): void {
+  createUser(role = 'VIEWER'): void {
     this.dialog.open(UserDialogComponent, {
-      width: '640px'
+      width: '640px',
+      data: { role }
     }).afterClosed().subscribe((result) => {
       if (result) {
         this.loadUsers();
@@ -422,9 +498,26 @@ export class UserListImprovedComponent implements OnInit {
     });
   }
 
-  changeRole(user: User): void {
-    console.log('Cambiar rol:', user);
-    // TODO: Implementar dialog para cambiar rol
+  updateUserRole(user: User, role: string): void {
+    const userId = this.getUserId(user);
+    if (!userId || user.role === role) return;
+
+    const roleLabel = this.getRoleName(role);
+    const userLabel = user.email || `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim() || 'este usuario';
+    const confirmed = confirm(`Cambiar rol de ${userLabel} a ${roleLabel}?`);
+
+    if (!confirmed) return;
+
+    this.http.patch(`${environment.apiUrl}/auth/users/${userId}`, { role }).subscribe({
+      next: () => {
+        this.snackBar.open('Rol actualizado', 'Cerrar', { duration: 2500 });
+        this.loadUsers();
+      },
+      error: (err) => {
+        console.error('Error cambiando rol:', err);
+        this.snackBar.open(err.error?.message || 'Error al cambiar rol', 'Cerrar', { duration: 4000 });
+      }
+    });
   }
 
   resetPassword(user: User): void {
