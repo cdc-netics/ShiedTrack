@@ -1,6 +1,6 @@
 # Configuración inicial - ShieldTrack
 
-Guía para poner en marcha el proyecto. **El flujo previsto es Docker (Compose)**; correr backend y frontend con `npm` en el equipo es opcional.
+Guía para poner en marcha el proyecto. **El flujo previsto es Docker (Compose)**; correr backend y frontend con `pnpm` en el equipo es opcional.
 
 ## Pre-requisitos
 
@@ -11,9 +11,11 @@ Guía para poner en marcha el proyecto. **El flujo previsto es Docker (Compose)*
 **Sin Docker (opcional)**
 
 - Node.js 24.x o superior.
-- npm 10.x o superior.
+- pnpm 10.x o superior.
 - MongoDB 6.x u 8.x (local o Atlas).
 - Git.
+
+Si no tiene `pnpm` en PATH, use `corepack pnpm <comando>`.
 
 ---
 
@@ -33,10 +35,10 @@ Guía para poner en marcha el proyecto. **El flujo previsto es Docker (Compose)*
 3. **Arranque** desde la raíz del repositorio:
 
 ```bash
-npm start
+pnpm start
 ```
 
-Equivalente: `docker compose up --build`. En segundo plano: `npm run start:detached`. Para parar: `npm run stop`.
+Equivalente: `docker compose up --build`. En segundo plano: `pnpm run start:detached`. Para parar: `pnpm run stop`.
 
 ### URLs (dependen de `BACKEND_PORT` y `FRONTEND_PORT` en `.env`)
 
@@ -51,8 +53,8 @@ Equivalente: `docker compose up --build`. En segundo plano: `npm run start:detac
 
 | Archivo | Cuándo usarlo |
 |---------|----------------|
-| **`.env` en la raíz** | **Docker Compose**: puertos, Mongo, JWT, CORS, `MONGODB_URI` hacia el servicio `mongodb`. Es la fuente principal al usar `npm start` / `docker compose`. |
-| **`backend/.env`** | Solo si ejecuta el backend con **`cd backend && npm start`** (sin contenedor del API). Copie `backend/.env.example` y ponga `MONGODB_URI` acorde (p. ej. `mongodb://localhost:27017/...` con o sin usuario). |
+| **`.env` en la raíz** | **Docker Compose**: puertos, Mongo, JWT, CORS, `MONGODB_URI` hacia el servicio `mongodb`. Es la fuente principal al usar `pnpm start` / `docker compose`. |
+| **`backend/.env`** | Solo si ejecuta el backend con **`cd backend && pnpm start`** (sin contenedor del API). Copie `backend/.env.example` y ponga `MONGODB_URI` acorde (p. ej. `mongodb://localhost:27017/...` con o sin usuario). |
 
 Si todo corre en Docker, no necesita `backend/.env` para que el stack funcione.
 
@@ -63,13 +65,13 @@ Si todo corre en Docker, no necesita `backend/.env` para que el stack funcione.
 ### Windows
 
 ```powershell
-npm run start:local:win
+pnpm run start:local:win
 ```
 
 ### Linux / macOS
 
 ```bash
-npm run start:local:unix
+pnpm run start:local:unix
 ```
 
 ### Manual
@@ -78,18 +80,18 @@ npm run start:local:unix
 
 ```bash
 cd backend
-npm install
+pnpm install
 cp .env.example .env
-npm run build
-npm start
+pnpm run build
+pnpm start
 ```
 
 **Frontend**
 
 ```bash
 cd frontend
-npm install
-npm start
+pnpm install
+pnpm start
 ```
 
 ---
@@ -115,16 +117,16 @@ En Docker, al arrancar el contenedor **backend** se ejecutan `seed:owner` y `see
 Para repetirlos sin reiniciar el stack:
 
 ```bash
-docker compose exec backend npm run seed:owner
-docker compose exec backend npm run seed:test
+docker compose exec backend pnpm run seed:owner
+docker compose exec backend pnpm run seed:test
 ```
 
 Sin Docker:
 
 ```bash
 cd backend
-npm run seed:owner
-npm run seed:test
+pnpm run seed:owner
+pnpm run seed:test
 ```
 
 ---
@@ -133,7 +135,7 @@ npm run seed:test
 
 ### Error: "Cannot find module …"
 
-Ejecute `npm install` de nuevo en la carpeta `backend` (o `frontend` según el error).
+Ejecute `pnpm install` de nuevo en la carpeta `backend` (o `frontend` según el error).
 
 ### Puerto en uso (3000, 80, 4200, 27017)
 

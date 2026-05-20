@@ -6,6 +6,21 @@ export enum UserRole {
   /** Propietario del sistema - Único con permiso de hard delete */
   OWNER = "OWNER",
 
+  /** Alias del prompt: administrador de área con alcance operativo */
+  ADMIN_AREA = "ADMIN_AREA",
+
+  /** Alias del prompt: pentester */
+  PENTESTER = "PENTESTER",
+
+  /** Alias del prompt: QA */
+  QA = "QA",
+
+  /** Alias del prompt: usuario común */
+  NORMAL_USER = "NORMAL_USER",
+
+  /** Alias del prompt: auditor */
+  AUDITOR = "AUDITOR",
+
   /** Administrador de plataforma - Acceso completo excepto hard delete */
   PLATFORM_ADMIN = "PLATFORM_ADMIN",
 

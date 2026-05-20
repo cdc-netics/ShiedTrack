@@ -19,7 +19,9 @@ import {
   FindingStatus,
   FindingUpdateType,
   CloseReason,
+  UserRole,
 } from "../../common/enums";
+import { roleSatisfies } from "../../common/rbac/rbac-policy";
 import { Project } from "../project/schemas/project.schema";
 import { SystemConfig } from "../system-config/schemas/system-config.schema";
 import { Area } from "../area/schemas/area.schema";
@@ -67,7 +69,14 @@ export class FindingService {
   }
 
   private isRestrictedByArea(currentUser?: any): boolean {
-    return ["AREA_ADMIN", "ANALYST", "VIEWER"].includes(currentUser?.role);
+    return [
+      UserRole.AREA_ADMIN,
+      UserRole.ANALYST,
+      UserRole.PENTESTER,
+      UserRole.QA,
+      UserRole.VIEWER,
+      UserRole.AUDITOR,
+    ].includes(currentUser?.role);
   }
 
   private getUserAreaIds(currentUser?: any): string[] {
@@ -288,7 +297,7 @@ export class FindingService {
 
     if (
       currentUser &&
-      !["OWNER", "PLATFORM_ADMIN"].includes(currentUser.role) &&
+      !roleSatisfies(UserRole.OWNER, currentUser.role) &&
       currentTenantId &&
       projectTenantId &&
       currentTenantId !== projectTenantId
@@ -330,7 +339,7 @@ export class FindingService {
 
     if (
       currentUser &&
-      !["OWNER", "PLATFORM_ADMIN"].includes(currentUser.role) &&
+      !roleSatisfies(UserRole.OWNER, currentUser.role) &&
       currentTenantId &&
       findingTenantId &&
       currentTenantId !== findingTenantId

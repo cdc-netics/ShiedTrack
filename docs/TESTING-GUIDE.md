@@ -2,7 +2,7 @@
 
 ## 📋 Prerequisitos
 
-- Node.js 24.x (o la versión indicada en el proyecto) y npm
+- Node.js 24.x (o la versión indicada en el proyecto) y pnpm
 - MongoDB corriendo en `localhost:27017`
 - Backend ShieldTrack compilado
 - Postman instalado (o Newman para CLI)
@@ -15,14 +15,14 @@
 
 ```bash
 cd backend
-npm install
+pnpm install
 ```
 
 ### 2. Crear base de datos de test
 
 ```bash
 # Seed data con usuarios, clientes, proyectos y hallazgos
-npm run seed:test
+pnpm run seed:test
 ```
 
 **Output esperado:**
@@ -71,7 +71,7 @@ Copia los IDs generados para configurar Postman.
 
 ```bash
 # Instalar Newman globalmente
-npm install -g newman
+pnpm add -g newman
 
 # Ejecutar suite completa
 newman run docs/ShieldTrack-P0-Tests.postman_collection.json \
@@ -137,7 +137,7 @@ Después de ejecutar la suite automatizada, validar **manualmente**:
 
 ```bash
 cd backend
-npm install
+pnpm install
 ```
 
 ### Error: "ECONNREFUSED mongodb://localhost:27017"
@@ -151,7 +151,7 @@ docker run -d -p 27017:27017 mongo:8
 
 ### Tests fallan con 401 Unauthorized
 
-- Verificar que backend está corriendo: `npm run start:dev`
+- Verificar que backend está corriendo: `pnpm run start:dev`
 - Verificar que tokens se generan en paso "Login Users"
 - Revisar logs: `backend/logs/app.log`
 
@@ -214,7 +214,7 @@ Para limpiar y volver a ejecutar:
 mongo shieldtrack-test --eval "db.dropDatabase()"
 
 # 2. Re-seed
-npm run seed:test
+pnpm run seed:test
 
 # 3. Re-ejecutar Postman/Newman
 newman run docs/ShieldTrack-P0-Tests.postman_collection.json ...

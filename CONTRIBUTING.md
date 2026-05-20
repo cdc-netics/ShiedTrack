@@ -24,7 +24,7 @@ Al crear un issue incluye:
 - **Pasos para reproducir** el bug
 - **Comportamiento esperado** vs actual
 - **Screenshots** si aplica
-- **Versión** de Node.js, npm, MongoDB
+- **Versión** de Node.js, pnpm, MongoDB
 - **Sistema operativo**
 
 ## ✨ Proponer Funcionalidades
@@ -49,8 +49,8 @@ cd ShieldTrack
 git remote add upstream https://github.com/OWNER_ORIGINAL/ShieldTrack.git
 
 # Instalar dependencias
-cd backend && npm install
-cd ../frontend && npm install
+cd backend && pnpm install
+cd ../frontend && pnpm install
 
 # Crear rama para tu feature
 git checkout -b feature/mi-nueva-funcionalidad
@@ -147,14 +147,14 @@ export class ProjectListComponent {
 ```bash
 # Backend: Verificar que compile
 cd backend
-npm run build
+pnpm run build
 
 # Frontend: Verificar que compile
 cd frontend
-npm run build
+pnpm run build
 
 # Verificar errores de lint (si tienes configurado)
-npm run lint
+pnpm run lint
 ```
 
 ### Testing manual:

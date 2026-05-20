@@ -79,22 +79,45 @@ export class EvidenceController {
   }
 
   @Get("finding/:findingId")
-  @ApiOperation({ summary: "Listar evidencias de un hallazgo" })
-  async findByFinding(@Param("findingId") findingId: string) {
-    return this.evidenceService.findByFinding(findingId);
+  @Roles(
+    UserRole.OWNER,
+    UserRole.PLATFORM_ADMIN,
+    UserRole.CLIENT_ADMIN,
+    UserRole.AREA_ADMIN,
+    UserRole.ANALYST,
+    UserRole.VIEWER,
+  )
+  @ApiOperation({
+    summary: "Listar evidencias de un hallazgo",
+    description: "SEC-RBAC-001: Validar acceso por tenant",
+  })
+  async findByFinding(
+    @Param("findingId") findingId: string,
+    @CurrentUser() user: any,
+  ) {
+    return this.evidenceService.findByFinding(findingId, user);
   }
 
   @Get(":id/download")
+  @Roles(
+    UserRole.OWNER,
+    UserRole.PLATFORM_ADMIN,
+    UserRole.CLIENT_ADMIN,
+    UserRole.AREA_ADMIN,
+    UserRole.ANALYST,
+    UserRole.VIEWER,
+  )
   @Throttle({ default: { limit: 10, ttl: 60000 } }) // SECURITY FIX M2: Rate limiting
   @ApiOperation({
     summary: "Descargar archivo de evidencia",
-    description: "Descarga segura con validación JWT antes del stream",
+    description: "SEC-RBAC-001: Validar acceso por tenant y resource",
   })
   async download(
     @Param("id") id: string,
+    @CurrentUser() user: any,
     @Res({ passthrough: true }) res: Response,
   ): Promise<StreamableFile> {
-    const { stream, evidence } = await this.evidenceService.downloadFile(id);
+    const { stream, evidence } = await this.evidenceService.downloadFile(id, user);
 
     // Configurar headers para descarga
     res.set({

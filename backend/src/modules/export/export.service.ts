@@ -12,7 +12,8 @@ import { Project } from "../project/schemas/project.schema";
 import { Client } from "../client/schemas/client.schema";
 import { Evidence } from "../evidence/schemas/evidence.schema";
 import { PdfService } from "../../common/services/pdf.service";
-import { FindingStatus } from "../../common/enums";
+import { FindingStatus, UserRole } from "../../common/enums";
+import { roleSatisfies } from "../../common/rbac/rbac-policy";
 import { Types } from "mongoose";
 import * as ExcelJS from "exceljs";
 import archiver from "archiver";
@@ -52,6 +53,21 @@ export class ExportService {
     );
   }
 
+  private isGlobalUser(currentUser?: any): boolean {
+    return roleSatisfies(UserRole.OWNER, currentUser?.role);
+  }
+
+  private isAreaRestrictedUser(currentUser?: any): boolean {
+    return [
+      UserRole.AREA_ADMIN,
+      UserRole.ANALYST,
+      UserRole.PENTESTER,
+      UserRole.QA,
+      UserRole.VIEWER,
+      UserRole.AUDITOR,
+    ].includes(currentUser?.role);
+  }
+
   /**
    * Genera reporte PDF de un hallazgo
    */
@@ -77,7 +93,7 @@ export class ExportService {
 
     // 3. Implement RBAC checks
     // Allowed roles bypass strict tenant/client checks, but still need to be authenticated.
-    if (!["OWNER", "PLATFORM_ADMIN"].includes(currentUser.role)) {
+    if (!this.isGlobalUser(currentUser)) {
       // For other roles, check if the user belongs to the same tenant/client as the project.
       const userTenantId = (
         currentUser.activeTenantId || currentUser.clientId
@@ -121,10 +137,7 @@ export class ExportService {
     const currentTenantId = this.getCurrentTenantId(currentUser);
 
     // 1. Aplicar Multi-tenancy
-    if (
-      currentTenantId &&
-      !["OWNER", "PLATFORM_ADMIN"].includes(currentUser.role)
-    ) {
+    if (currentTenantId && !this.isGlobalUser(currentUser)) {
       query.tenantId = this.toObjectId(currentTenantId);
     } else if (filters.tenantId || filters.clientId) {
       // Owner/Platform Admin pueden filtrar por tenant específico
@@ -137,10 +150,7 @@ export class ExportService {
     if (filters.severity) query.severity = filters.severity;
 
     // Si es un rol restringido (AREA_ADMIN, ANALYST), solo ve sus áreas
-    if (
-      ["AREA_ADMIN", "ANALYST", "VIEWER"].includes(currentUser.role) &&
-      currentUser.areaIds?.length > 0
-    ) {
+    if (this.isAreaRestrictedUser(currentUser) && currentUser.areaIds?.length > 0) {
       const allowedAreaIds = currentUser.areaIds
         .map((id: any) => this.toObjectId(id))
         .filter(Boolean);
@@ -255,7 +265,7 @@ export class ExportService {
     }
 
     // RBAC: Validar que el usuario pertenece al cliente/tenant del proyecto
-    if (!["OWNER", "PLATFORM_ADMIN"].includes(currentUser.role)) {
+    if (!this.isGlobalUser(currentUser)) {
       const userTenantId = (
         currentUser.activeTenantId || currentUser.clientId
       )?.toString();
@@ -531,7 +541,7 @@ export class ExportService {
     }
 
     // RBAC
-    if (!["OWNER", "PLATFORM_ADMIN"].includes(currentUser.role)) {
+    if (!this.isGlobalUser(currentUser)) {
       const userTenant = (
         currentUser.activeTenantId || currentUser.clientId
       )?.toString();
@@ -590,7 +600,7 @@ export class ExportService {
     currentUser: any,
   ): Promise<PassThrough> {
     // RBAC: Solo CLIENT_ADMIN del cliente u OWNER
-    if (!["OWNER", "PLATFORM_ADMIN"].includes(currentUser.role)) {
+    if (!this.isGlobalUser(currentUser)) {
       const userTenantId = (
         currentUser.activeTenantId || currentUser.clientId
       )?.toString();
@@ -662,7 +672,7 @@ export class ExportService {
     currentUser: any,
   ): Promise<string> {
     // RBAC: Solo CLIENT_ADMIN del cliente u OWNER
-    if (!["OWNER", "PLATFORM_ADMIN"].includes(currentUser.role)) {
+    if (!this.isGlobalUser(currentUser)) {
       const userTenantId = (
         currentUser.activeTenantId || currentUser.clientId
       )?.toString();

@@ -24,10 +24,10 @@ export class RegisterUserDto {
 
   @ApiProperty({
     example: "SecureP@ssw0rd",
-    description: "Contraseña del usuario (mínimo 8 caracteres)",
+    description: "Contraseña del usuario (mínimo 6 caracteres)",
   })
   @IsString()
-  @MinLength(8, { message: "La contraseña debe tener al menos 8 caracteres" })
+  @MinLength(6, { message: "La contraseña debe tener al menos 6 caracteres" })
   password: string;
 
   @ApiProperty({ example: "Juan", description: "Nombre del usuario" })
@@ -134,11 +134,11 @@ export class UpdateUserDto {
   areaIds?: string[];
 
   @ApiPropertyOptional({
-    description: "Nueva contraseña del usuario (mínimo 8 caracteres)",
+    description: "Nueva contraseña del usuario (mínimo 6 caracteres)",
   })
   @IsOptional()
   @IsString()
-  @MinLength(8, { message: "La contraseña debe tener al menos 8 caracteres" })
+  @MinLength(6, { message: "La contraseña debe tener al menos 6 caracteres" })
   password?: string;
 
   @ApiPropertyOptional({
@@ -181,11 +181,11 @@ export class UpdateProfileDto {
   currentPassword?: string;
 
   @ApiPropertyOptional({
-    description: "Nueva contraseña (mínimo 8 caracteres)",
+    description: "Nueva contraseña (mínimo 6 caracteres)",
   })
   @IsOptional()
   @IsString()
-  @MinLength(8, { message: "La contraseña debe tener al menos 8 caracteres" })
+  @MinLength(6, { message: "La contraseña debe tener al menos 6 caracteres" })
   newPassword?: string;
 }
 

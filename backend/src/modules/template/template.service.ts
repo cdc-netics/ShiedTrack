@@ -8,6 +8,8 @@ import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
 import { FindingTemplate } from "./schemas/finding-template.schema";
 import { CreateTemplateDto, SearchTemplateDto } from "./dto/template.dto";
+import { UserRole } from "../../common/enums";
+import { normalizeRole, roleSatisfies } from "../../common/rbac/rbac-policy";
 
 /**
  * Servicio de Plantillas de Hallazgos
@@ -22,6 +24,14 @@ export class TemplateService {
     private templateModel: Model<FindingTemplate>,
   ) {}
 
+  private isGlobalUser(currentUser?: any): boolean {
+    return roleSatisfies(UserRole.OWNER, currentUser?.role);
+  }
+
+  private isTenantAdmin(currentUser?: any): boolean {
+    return normalizeRole(currentUser?.role) === "ADMIN_AREA";
+  }
+
   /**
    * Crear nueva plantilla
    * GLOBAL: Solo OWNER/PLATFORM_ADMIN
@@ -35,17 +45,16 @@ export class TemplateService {
     if (dto.scope === "USER") {
       dto.tenantId = undefined;
     } else if (dto.scope === "GLOBAL") {
-      if (!["OWNER", "PLATFORM_ADMIN"].includes(currentUser.role)) {
+      if (!this.isGlobalUser(currentUser)) {
         throw new ForbiddenException(
           "Solo OWNER/PLATFORM_ADMIN pueden crear plantillas globales",
         );
       }
     } else if (dto.scope === "TENANT") {
-      if (!["OWNER", "PLATFORM_ADMIN", "CLIENT_ADMIN", "AREA_ADMIN"].includes(currentUser.role)) {
+      if (!this.isGlobalUser(currentUser) && !this.isTenantAdmin(currentUser)) {
         throw new ForbiddenException("Solo admins pueden crear plantillas");
       }
-      // CLIENT_ADMIN solo puede crear plantillas de su cliente
-      if (currentUser.role === "CLIENT_ADMIN") {
+      if (this.isTenantAdmin(currentUser)) {
         // Tenant-scoped: usar tenantId activo del usuario
         dto.tenantId = currentUser.activeTenantId || currentUser.clientId;
       }
@@ -80,7 +89,7 @@ export class TemplateService {
     const filter: any = { isActive: true };
 
     // Multi-tenant: Mostrar plantillas GLOBAL + del cliente del usuario
-    if (currentUser.role !== "OWNER" && currentUser.role !== "PLATFORM_ADMIN") {
+    if (!this.isGlobalUser(currentUser)) {
       filter.$or = [
         { scope: "USER", createdBy: currentUser.userId },
         { scope: "GLOBAL" },
@@ -131,7 +140,7 @@ export class TemplateService {
     // RBAC: Verificar acceso si es TENANT
     if (template.scope === "TENANT") {
       const canAccess =
-        ["OWNER", "PLATFORM_ADMIN"].includes(currentUser.role) ||
+        this.isGlobalUser(currentUser) ||
         template.tenantId?.toString() ===
           (currentUser.activeTenantId || currentUser.clientId)?.toString();
 
@@ -141,7 +150,7 @@ export class TemplateService {
     }
     if (template.scope === "USER") {
       const ownTemplate = template.createdBy?.toString() === currentUser.userId?.toString();
-      const isSuperAdmin = ["OWNER", "PLATFORM_ADMIN"].includes(currentUser.role);
+      const isSuperAdmin = this.isGlobalUser(currentUser);
       if (!ownTemplate && !isSuperAdmin) {
         throw new ForbiddenException("No tiene acceso a esta plantilla personal");
       }
@@ -195,7 +204,7 @@ export class TemplateService {
     }
 
     // Multi-tenant
-    if (currentUser.role !== "OWNER" && currentUser.role !== "PLATFORM_ADMIN") {
+    if (!this.isGlobalUser(currentUser)) {
       filter.$or = [
         { scope: "USER", createdBy: currentUser.userId },
         { scope: "GLOBAL" },
@@ -227,7 +236,7 @@ export class TemplateService {
 
     // RBAC: Solo el creador o admins superiores pueden editar
     const canEdit =
-      ["OWNER", "PLATFORM_ADMIN"].includes(currentUser.role) ||
+      this.isGlobalUser(currentUser) ||
       template.createdBy.toString() === currentUser.userId;
 
     if (!canEdit) {
@@ -253,7 +262,7 @@ export class TemplateService {
 
     // RBAC: Solo el creador o admins superiores pueden desactivar
     const canDelete =
-      ["OWNER", "PLATFORM_ADMIN"].includes(currentUser.role) ||
+      this.isGlobalUser(currentUser) ||
       template.createdBy.toString() === currentUser.userId;
 
     if (!canDelete) {

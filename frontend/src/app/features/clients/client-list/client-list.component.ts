@@ -134,7 +134,7 @@ import { environment } from '../../../../environments/environment'; // Standardi
                         matTooltip="Editar cliente">
                   <mat-icon>edit</mat-icon>
                 </button>
-                <button mat-icon-button [routerLink]="['/findings']" [queryParams]="{ clientId: client._id }" (click)="$event.stopPropagation()"
+                <button mat-icon-button [routerLink]="['/clients', client._id]" (click)="$event.stopPropagation()"
                         matTooltip="Ver detalles">
                   <mat-icon>visibility</mat-icon>
                 </button>
