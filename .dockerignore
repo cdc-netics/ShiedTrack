@@ -1,0 +1,47 @@
+# Build artifacts
+backend/node_modules
+backend/dist
+frontend/node_modules
+frontend/dist
+backend/uploads
+backend/backups
+frontend/.angular
+
+# Development
+node_modules
+dist
+.git
+.gitignore
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Data
+data/db
+data/logs
+.pnpm-store
+
+# Docker
+docker-compose.yml
+docker-compose.*.yml
+.dockerignore
+Dockerfile
