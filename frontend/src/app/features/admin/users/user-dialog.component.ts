@@ -83,15 +83,12 @@ import { AuthService } from '../../../core/services/auth.service';
         @if (showClientSelect()) {
           <mat-form-field appearance="outline" class="full-width">
             <mat-label>Cliente</mat-label>
-            <mat-select formControlName="clientId" [required]="isClientRequired()">
+            <mat-select formControlName="clientId">
               <mat-option [value]="null">-- Sin Asignación (Global) --</mat-option>
               @for (client of clients(); track client._id) {
                 <mat-option [value]="client._id">{{ client.name }}</mat-option>
               }
             </mat-select>
-            @if (userForm.get('clientId')?.hasError('required')) {
-              <mat-error>El cliente es obligatorio para este rol</mat-error>
-            }
           </mat-form-field>
         }
 
@@ -100,6 +97,8 @@ import { AuthService } from '../../../core/services/auth.service';
           <mat-label>Rol</mat-label>
           <mat-select formControlName="role" required>
             <mat-option value="OWNER">Owner</mat-option>
+            <mat-option value="PLATFORM_ADMIN">Platform Admin</mat-option>
+            <mat-option value="CLIENT_ADMIN">Client Admin</mat-option>
             <mat-option value="AREA_ADMIN">Area Admin</mat-option>
             <mat-option value="ANALYST">Analista</mat-option>
             <mat-option value="VIEWER">Viewer</mat-option>
@@ -255,20 +254,6 @@ export class UserDialogComponent {
     const needsAreasOnInit = ['AREA_ADMIN', 'ANALYST', 'VIEWER'].includes(currentRole);
     this.showAreaSelect.set(needsAreasOnInit);
     
-    // Configurar validacion dinamica de Cliente
-    this.userForm.get('role')?.valueChanges.subscribe(role => {
-       const isGlobalRole = ['OWNER', 'PLATFORM_ADMIN'].includes(role);
-       const clientControl = this.userForm.get('clientId');
-       
-       if (isGlobalRole) {
-         clientControl?.clearValidators();
-         clientControl?.updateValueAndValidity();
-       } else {
-         clientControl?.setValidators(Validators.required);
-         clientControl?.updateValueAndValidity();
-       }
-    });
-
     // Cargar áreas si el rol las necesita
     if (needsAreasOnInit) {
       const initialClientId = this.userForm.get('clientId')?.value || currentUser?.clientId;
@@ -312,11 +297,6 @@ export class UserDialogComponent {
     });
   }
 
-  isClientRequired(): boolean {
-    const role = this.userForm.get('role')?.value;
-    return !['OWNER', 'PLATFORM_ADMIN'].includes(role);
-  }
-
   onSave(): void {
     // Prepara payload segun modo (crear/editar) y lo persiste
     if (this.userForm.invalid) {
@@ -330,7 +310,7 @@ export class UserDialogComponent {
       firstName: this.userForm.value.firstName,
       lastName: this.userForm.value.lastName,
       role: this.userForm.value.role,
-      clientId: this.userForm.value.clientId,
+      clientId: this.userForm.value.clientId || undefined,
       areaIds: this.userForm.value.areaIds
     };
 

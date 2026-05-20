@@ -232,6 +232,21 @@ export class AuthController {
     return this.authService.deleteUser(id, currentUser);
   }
 
+  @Delete("users/:id/hard")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.OWNER, UserRole.PLATFORM_ADMIN)
+  @ApiBearerAuth("JWT-auth")
+  @ApiOperation({
+    summary: "Eliminar usuario permanentemente",
+  })
+  @ApiResponse({ status: 200, description: "Usuario eliminado" })
+  async hardDeleteUser(
+    @Param("id") id: string,
+    @CurrentUser() currentUser: any,
+  ) {
+    return this.authService.hardDeleteUser(id, currentUser);
+  }
+
   @Post("users/:id/reactivate")
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.OWNER, UserRole.PLATFORM_ADMIN)

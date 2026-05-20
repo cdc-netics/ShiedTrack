@@ -313,10 +313,16 @@ export class UserAssignmentDialogComponent implements OnInit {
 
     this.http.get<AssignmentResponse>(this.assignmentsUrl()).subscribe({
       next: (res) => {
-        // soporte ambas formas
-        const clients = res?.clients ?? res?.clientIds ?? [];
-        const projects = res?.projects ?? res?.projectIds ?? [];
-        const areas = res?.areas ?? res?.areaIds ?? [];
+        const clientItems = res?.clientIds ?? res?.clients ?? [];
+        const clients = this.cleanIds(this.extractDirectIds(clientItems));
+        const projects = this.cleanIds([
+          ...this.extractDirectIds(res?.projectIds ?? res?.projects ?? []),
+          ...this.extractNestedIds(clientItems, 'projects')
+        ]);
+        const areas = this.cleanIds([
+          ...this.extractDirectIds(res?.areaIds ?? res?.areas ?? []),
+          ...this.extractNestedIds(clientItems, 'areas')
+        ]);
 
         this.selectedClients.set(clients);
         this.selectedProjects.set(projects);
@@ -340,7 +346,7 @@ export class UserAssignmentDialogComponent implements OnInit {
 
   filteredProjects() {
     return this.projects().filter(p => {
-      const matchClient = !this.projectClientFilter || p.clientId === this.projectClientFilter;
+      const matchClient = !this.projectClientFilter || this.getEntityId(p.clientId) === this.projectClientFilter;
       const matchSearch = (p.name || '').toLowerCase().includes(this.projectSearch.toLowerCase());
       return matchClient && matchSearch;
     });
@@ -388,11 +394,12 @@ export class UserAssignmentDialogComponent implements OnInit {
     this.selectedAreas.set(updated);
   }
 
-  getClientName(clientId?: string): string {
-    if (!clientId) {
+  getClientName(clientId?: any): string {
+    const id = this.getEntityId(clientId);
+    if (!id) {
       return 'N/A';
     }
-    return this.clients().find(c => c._id === clientId)?.name || 'N/A';
+    return this.clients().find(c => c._id === id)?.name || 'N/A';
   }
 
   getProjectName(projectId: string): string {
@@ -409,6 +416,38 @@ export class UserAssignmentDialogComponent implements OnInit {
   return asStrings.filter(x => /^[a-fA-F0-9]{24}$/.test(x));
 }
 
+private getEntityId(value: any): string {
+  if (!value) return '';
+  if (typeof value === 'string') return value;
+  return String(value._id ?? value.id ?? '');
+}
+
+private extractDirectIds(items: any[]): string[] {
+  const ids = new Set<string>();
+
+  for (const item of items || []) {
+    const id = this.getEntityId(item);
+    if (id) ids.add(id);
+  }
+
+  return Array.from(ids);
+}
+
+private extractNestedIds(items: any[], key: 'areas' | 'projects'): string[] {
+  const ids = new Set<string>();
+
+  for (const item of items || []) {
+    if (Array.isArray(item?.[key])) {
+      for (const nested of item[key]) {
+        const id = this.getEntityId(nested);
+        if (id) ids.add(id);
+      }
+    }
+  }
+
+  return Array.from(ids);
+}
+
 saveAssignments(): void {
   if (!this.data?.userId) {
     this.snackBar.open('No se recibió el ID del usuario. Cierra y vuelve a abrir el diálogo.', 'Cerrar', { duration: 4000 });
@@ -417,14 +456,10 @@ saveAssignments(): void {
 
   this.loading.set(true);
 
-  const clients = this.cleanIds(this.selectedClients());
-  const projects = this.cleanIds(this.selectedProjects());
-  const areas = this.cleanIds(this.selectedAreas());
-
   const payload = {
-    clients,
-    projects,
-    areas
+    clientIds: this.cleanIds(this.selectedClients()),
+    projectIds: this.cleanIds(this.selectedProjects()),
+    areaIds: this.cleanIds(this.selectedAreas())
   };
 
   this.http.post(this.assignmentsUrl(), payload).subscribe({

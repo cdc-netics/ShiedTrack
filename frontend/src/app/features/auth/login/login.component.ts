@@ -334,7 +334,7 @@ export class LoginComponent implements AfterViewInit {
   particleArray = new Array(30); // 30 partículas
 
   // 🚧 PROPIEDADES DE DESARROLLO - REMOVER EN PRODUCCIÓN
-  showDevCredentials = true;
+  showDevCredentials = false;
   devUsers = DEV_USERS;
   selectedDevUser: any = DEV_USERS[0]; // Default to first user
 

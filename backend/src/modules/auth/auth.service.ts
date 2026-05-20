@@ -517,6 +517,35 @@ export class AuthService {
   }
 
   /**
+   * Eliminar usuario permanentemente.
+   */
+  async hardDeleteUser(
+    userId: string,
+    currentUser: any,
+  ): Promise<{ message: string }> {
+    const user = await this.userModel.findById(userId);
+    if (!user) {
+      throw new BadRequestException("Usuario no encontrado");
+    }
+
+    if (user.role === UserRole.OWNER) {
+      throw new ForbiddenException("No se puede eliminar el usuario OWNER");
+    }
+
+    if (user._id.toString() === currentUser.userId?.toString?.()) {
+      throw new ForbiddenException("No puedes eliminar tu propio usuario");
+    }
+
+    await this.userModel.deleteOne({ _id: user._id });
+
+    this.logger.warn(
+      `Usuario eliminado permanentemente: ${user.email} por ${currentUser.email}`,
+    );
+
+    return { message: "Usuario eliminado permanentemente" };
+  }
+
+  /**
    * Reactivar usuario eliminado
    */
   async reactivateUser(userId: string): Promise<User> {
