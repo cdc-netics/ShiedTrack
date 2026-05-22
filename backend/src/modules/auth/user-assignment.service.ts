@@ -75,12 +75,10 @@ export class UserAssignmentService {
         result.warnings.push("Algunos proyectos no existen");
       }
 
-      // Obtener todas las áreas de los proyectos
-      const areaIdsFromProjects = new Set<string>();
       for (const project of projects) {
         if (project.areaIds && project.areaIds.length > 0) {
           project.areaIds.forEach((areaId) =>
-            areaIdsFromProjects.add(areaId.toString()),
+            finalAreaIds.add(areaId.toString()),
           );
         }
       }
@@ -111,19 +109,21 @@ export class UserAssignmentService {
         .select("_id")
         .exec();
 
-      if (areaIdsFromClients.length > 0) {
-        const clientAreas = await this.replaceUserAreas(
-          userId,
-          areaIdsFromClients.map((a) => a._id.toString()),
-          assignedBy,
-        );
-        result.assigned.clients = clients.map((c) => ({
-          _id: c._id,
-          name: c.name,
-        }));
-        result.assigned.areas = clientAreas;
-      }
+      areaIdsFromClients.forEach((area) =>
+        finalAreaIds.add(area._id.toString()),
+      );
+
+      result.assigned.clients = clients.map((c) => ({
+        _id: c._id,
+        name: c.name,
+      }));
     }
+
+    result.assigned.areas = await this.replaceUserAreas(
+      userId,
+      Array.from(finalAreaIds),
+      assignedBy,
+    );
 
     return result;
   }
@@ -168,12 +168,20 @@ export class UserAssignmentService {
       }
     }
 
-    // Obtener clientes
     const clientIds = Object.keys(areasByClient);
     const clients = await this.clientModel
       .find({ _id: { $in: clientIds.map((id) => new Types.ObjectId(id)) } })
       .select("_id name displayName")
       .exec();
+
+    const directAreaIds = userAreas
+      .map((assignment) => (assignment.areaId as any)?._id?.toString?.())
+      .filter(Boolean);
+    const directProjectIds = Array.from(
+      new Set(
+        Object.values(projectIdsByClient).flatMap((set) => Array.from(set)),
+      ),
+    );
 
     return {
       userId,
@@ -186,18 +194,13 @@ export class UserAssignmentService {
         name: c.name,
         displayName: c.displayName,
         areas: areasByClient[c._id.toString()] || [],
-        projects: Array.from(
-          new Set([
-            ...directProjectIds,
-            ...Array.from(projectIdsByClient[c._id.toString()] || []),
-          ]),
-        ),
+        projects: Array.from(projectIdsByClient[c._id.toString()] || []),
       })),
       totalAreas: userAreas.length,
-      totalProjects: new Set([
-        ...directProjectIds,
-        ...Object.values(projectIdsByClient).flatMap((set) => Array.from(set)),
-      ]).size,
+      totalProjects: Object.values(projectIdsByClient).reduce(
+        (sum, set) => sum + set.size,
+        0,
+      ),
       totalClients: clients.length,
     };
   }
@@ -211,21 +214,21 @@ export class UserAssignmentService {
       { userId: new Types.ObjectId(userId), isActive: true },
       { isActive: false, unassignedAt: new Date() },
     );
-    await this.userModel.findByIdAndUpdate(userId, {
-      areaIds: newAreaIds.map((id) => new Types.ObjectId(id)),
-    });
 
     const uniqueAreaIds = Array.from(
       new Set(newAreaIds.map((areaId) => areaId.toString())),
     );
 
     const assignments = [];
+    const validAreaIds: string[] = [];
     for (const areaId of uniqueAreaIds) {
       const area = await this.areaModel.findById(areaId);
       if (!area) {
         this.logger.warn(`Area ${areaId} no encontrada, ignorando`);
         continue;
       }
+
+      validAreaIds.push(areaId);
 
       const assignment = await this.userAreaModel
         .findOneAndUpdate(
@@ -253,6 +256,10 @@ export class UserAssignmentService {
 
       assignments.push(assignment);
     }
+
+    await this.userModel.findByIdAndUpdate(userId, {
+      areaIds: validAreaIds.map((id) => new Types.ObjectId(id)),
+    });
 
     return assignments.map((a) => ({
       _id: a._id,
