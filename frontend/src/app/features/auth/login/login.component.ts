@@ -6,6 +6,7 @@ import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { AuthService } from '../../../core/services/auth.service';
 import { MatSelectModule } from '@angular/material/select';
@@ -42,6 +43,7 @@ const DEV_ADMIN_PASSWORD = 'Admin123!';
         MatFormFieldModule,
         MatInputModule,
         MatButtonModule,
+        MatIconModule,
         MatProgressSpinnerModule,
         MatSelectModule
     ],
@@ -139,6 +141,56 @@ const DEV_ADMIN_PASSWORD = 'Admin123!';
         </mat-card-content>
       </mat-card>
       </main>
+
+      @if (showPasswordChangeDialog) {
+        <div class="password-change-backdrop" role="dialog" aria-modal="true" aria-labelledby="password-change-title">
+          <section class="password-change-dialog">
+            <h2 id="password-change-title">Cambiar contraseña</h2>
+            <p class="password-guidance">
+              Por seguridad debes definir una nueva contraseña. Se sugiere usar al menos una letra mayúscula,
+              un número y un carácter especial como -, . o *.
+            </p>
+
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Nueva contraseña</mat-label>
+              <input matInput [type]="showNewPassword ? 'text' : 'password'"
+                     [(ngModel)]="newPassword"
+                     name="newPassword"
+                     autocomplete="new-password">
+              <button mat-icon-button matSuffix type="button" (click)="showNewPassword = !showNewPassword"
+                      [attr.aria-label]="showNewPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'">
+                <mat-icon>{{ showNewPassword ? 'visibility_off' : 'visibility' }}</mat-icon>
+              </button>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Confirmar nueva contraseña</mat-label>
+              <input matInput [type]="showConfirmPassword ? 'text' : 'password'"
+                     [(ngModel)]="confirmPassword"
+                     name="confirmPassword"
+                     autocomplete="new-password">
+              <button mat-icon-button matSuffix type="button" (click)="showConfirmPassword = !showConfirmPassword"
+                      [attr.aria-label]="showConfirmPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'">
+                <mat-icon>{{ showConfirmPassword ? 'visibility_off' : 'visibility' }}</mat-icon>
+              </button>
+            </mat-form-field>
+
+            @if (passwordChangeError) {
+              <div class="error-message" role="alert">{{ passwordChangeError }}</div>
+            }
+
+            <button mat-raised-button color="primary" class="full-width login-submit"
+                    (click)="changeRequiredPassword()"
+                    [disabled]="passwordChangeLoading">
+              @if (passwordChangeLoading) {
+                <mat-spinner diameter="20"></mat-spinner>
+              } @else {
+                Guardar
+              }
+            </button>
+          </section>
+        </div>
+      }
     </div>
   `,
     styles: [`
@@ -316,6 +368,38 @@ const DEV_ADMIN_PASSWORD = 'Admin123!';
     .login-submit {
       min-height: 48px;
     }
+
+    .password-change-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: rgba(17, 24, 39, 0.62);
+    }
+
+    .password-change-dialog {
+      width: min(440px, 100%);
+      padding: 24px;
+      border-radius: 8px;
+      background: #fff;
+      box-shadow: 0 24px 70px rgba(0, 0, 0, 0.34);
+    }
+
+    .password-change-dialog h2 {
+      margin: 0 0 8px;
+      font-size: 22px;
+      font-weight: 600;
+    }
+
+    .password-guidance {
+      margin: 0 0 18px;
+      color: #4b5563;
+      line-height: 1.45;
+      font-size: 14px;
+    }
   `]
 })
 export class LoginComponent implements AfterViewInit {
@@ -330,6 +414,13 @@ export class LoginComponent implements AfterViewInit {
   password = '';
   loading = false;
   error = '';
+  showPasswordChangeDialog = false;
+  newPassword = '';
+  confirmPassword = '';
+  showNewPassword = false;
+  showConfirmPassword = false;
+  passwordChangeLoading = false;
+  passwordChangeError = '';
 
   particleArray = new Array(30); // 30 partículas
 
@@ -466,8 +557,14 @@ export class LoginComponent implements AfterViewInit {
 
     this.authService.login(this.email, this.password)
       .subscribe({
-        next: () => {
+        next: (response) => {
           this.loading = false;
+          if (response.user.forcePasswordChange) {
+            this.showPasswordChangeDialog = true;
+            return;
+          }
+
+          this.router.navigate(['/dashboard']);
           // La navegación la maneja el servicio
         },
         error: (err: unknown) => {
@@ -492,6 +589,41 @@ export class LoginComponent implements AfterViewInit {
               : `Error al iniciar sesión (${http.status ?? '?'})`);
         },
       });
+  }
+
+  changeRequiredPassword(): void {
+    this.passwordChangeError = '';
+
+    if (!this.isStrongSuggestedPassword(this.newPassword)) {
+      this.passwordChangeError = 'La contraseña debe tener al menos 6 caracteres, una mayúscula, un número y un carácter especial como -, . o *.';
+      return;
+    }
+
+    if (this.newPassword !== this.confirmPassword) {
+      this.passwordChangeError = 'Las contraseñas no coinciden.';
+      return;
+    }
+
+    this.passwordChangeLoading = true;
+    this.authService.updateProfile({
+      currentPassword: this.password,
+      newPassword: this.newPassword,
+    }).subscribe({
+      next: () => {
+        this.passwordChangeLoading = false;
+        this.showPasswordChangeDialog = false;
+        this.password = this.newPassword;
+        this.router.navigate(['/dashboard']);
+      },
+      error: (err) => {
+        this.passwordChangeLoading = false;
+        this.passwordChangeError = err?.error?.message || 'No se pudo cambiar la contraseña.';
+      }
+    });
+  }
+
+  private isStrongSuggestedPassword(value: string): boolean {
+    return value.length >= 6 && /[A-Z]/.test(value) && /\d/.test(value) && /[-.*]/.test(value);
   }
 }
 

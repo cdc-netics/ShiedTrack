@@ -19,11 +19,16 @@ export class TenantContextInterceptor implements NestInterceptor {
     const req = context.switchToHttp().getRequest();
     const user = req.user; // Establecido por JwtAuthGuard
     const headerTenant = req.headers["x-tenant-id"] as string | undefined;
+    const path = req.originalUrl || req.url || "";
 
     const namespace =
       getNamespace("tenant-context") || createNamespace("tenant-context");
 
     // Si no hay usuario (ruta pública como login/register), no forzamos tenant
+    if (path.includes("/api/auth/profile")) {
+      return next.handle();
+    }
+
     if (!user) {
       return next.handle();
     }

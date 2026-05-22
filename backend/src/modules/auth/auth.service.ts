@@ -10,6 +10,7 @@ import { JwtService } from "@nestjs/jwt";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
 import * as bcrypt from "bcryptjs";
+import * as crypto from "crypto";
 import * as speakeasy from "speakeasy";
 import * as qrcode from "qrcode";
 import { User } from "./schemas/user.schema";
@@ -246,6 +247,7 @@ export class AuthService {
         tenantIds: user.tenantIds,
         activeTenantId: user.activeTenantId || user.clientId,
         mfaEnabled: user.mfaEnabled,
+        forcePasswordChange: user.forcePasswordChange,
       },
     };
   }
@@ -475,6 +477,7 @@ export class AuthService {
       }
 
       updateData.password = await bcrypt.hash(dto.newPassword, 10);
+      updateData.forcePasswordChange = false;
     }
 
     const updated = await this.userModel
@@ -490,10 +493,10 @@ export class AuthService {
 
   /**
    * Lista usuarios (con filtros opcionales)
-   * Solo muestra usuarios activos (no eliminados lógicamente)
+   * Incluye usuarios bloqueados para que administración pueda verlos y reactivarlos.
    */
   async findAll(clientId?: string): Promise<User[]> {
-    const query: any = { isDeleted: { $ne: true } };
+    const query: any = {};
     if (clientId) {
       query.clientId = clientId;
     }
@@ -532,7 +535,7 @@ export class AuthService {
   }
 
   /**
-   * Eliminar usuario permanentemente.
+   * Eliminar usuario definitivamente (hard delete - solo OWNER)
    */
   async hardDeleteUser(
     userId: string,
@@ -543,21 +546,24 @@ export class AuthService {
       throw new BadRequestException("Usuario no encontrado");
     }
 
-    if (user.role === UserRole.OWNER) {
-      throw new ForbiddenException("No se puede eliminar el usuario OWNER");
-    }
-
-    if (user._id.toString() === currentUser.userId?.toString?.()) {
+    if (currentUser?.userId?.toString?.() === userId) {
       throw new ForbiddenException("No puedes eliminar tu propio usuario");
     }
 
+    if (user.role === UserRole.OWNER) {
+      throw new ForbiddenException("No se puede eliminar un usuario OWNER");
+    }
+
+    await this.userModel.db
+      .collection("userareaassignments")
+      .deleteMany({ userId: user._id });
     await this.userModel.deleteOne({ _id: user._id });
 
     this.logger.warn(
-      `Usuario eliminado permanentemente: ${user.email} por ${currentUser.email}`,
+      `Usuario eliminado definitivamente: ${user.email} por ${currentUser.email}`,
     );
 
-    return { message: "Usuario eliminado permanentemente" };
+    return { message: "Usuario eliminado exitosamente" };
   }
 
   /**
@@ -578,6 +584,65 @@ export class AuthService {
     this.logger.log(`Usuario reactivado: ${user.email}`);
 
     return this.userModel.findById(userId).select("-password -mfaSecret");
+  }
+
+  async resetUserPassword(
+    userId: string,
+    currentUser: any,
+  ): Promise<{
+    message: string;
+    temporaryPassword: string;
+    emailSent: boolean;
+  }> {
+    const user = await this.userModel.findById(userId);
+    if (!user) {
+      throw new BadRequestException("Usuario no encontrado");
+    }
+
+    if (user.isDeleted || !user.isActive) {
+      throw new BadRequestException(
+        "No se puede reiniciar la contraseña de un usuario bloqueado",
+      );
+    }
+
+    const temporaryPassword = this.generateTemporaryPassword();
+    user.password = await bcrypt.hash(temporaryPassword, 10);
+    user.forcePasswordChange = true;
+    await user.save();
+
+    const fullName = `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim();
+    const emailSent = await this.emailService.sendEmail({
+      to: user.email,
+      subject: "ShieldTrack - Contraseña temporal",
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #1976d2;">Contraseña reiniciada</h2>
+          <p>Hola <strong>${fullName || "usuario"}</strong>,</p>
+          <p>Un administrador reinició tu contraseña en ShieldTrack.</p>
+          <div style="background: #e3f2fd; padding: 15px; border-left: 4px solid #1976d2; margin: 20px 0;">
+            <p><strong>Email:</strong> ${user.email}</p>
+            <p><strong>Contraseña temporal:</strong> ${temporaryPassword}</p>
+          </div>
+          <p>Por seguridad, cambia esta contraseña después de iniciar sesión.</p>
+        </div>
+      `,
+    });
+
+    this.logger.warn(
+      `Contraseña reiniciada para ${user.email} por ${currentUser.email}`,
+    );
+
+    return {
+      message: emailSent
+        ? "Contraseña reiniciada y enviada por email"
+        : "Contraseña reiniciada. SMTP no configurado; usa la contraseña temporal mostrada.",
+      temporaryPassword,
+      emailSent,
+    };
+  }
+
+  private generateTemporaryPassword(): string {
+    return `Temp-${crypto.randomBytes(4).toString("hex")}`;
   }
 
   /**

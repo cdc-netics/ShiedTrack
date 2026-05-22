@@ -1,6 +1,5 @@
 import {
   Injectable,
-  BadRequestException,
   NotFoundException,
   Logger,
 } from "@nestjs/common";
@@ -12,10 +11,6 @@ import { Area } from "../area/schemas/area.schema";
 import { Project } from "../project/schemas/project.schema";
 import { Client } from "../client/schemas/client.schema";
 
-/**
- * Servicio de asignación centralizada de usuarios
- * Maneja asignaciones de usuarios a clientes, proyectos y áreas
- */
 @Injectable()
 export class UserAssignmentService {
   private readonly logger = new Logger(UserAssignmentService.name);
@@ -33,11 +28,6 @@ export class UserAssignmentService {
     private clientModel: Model<Client>,
   ) {}
 
-  /**
-   * Actualizar asignaciones centralizadas del usuario (clientes, proyectos, áreas)
-   * Para esta primera versión, implementamos solo la asignación de áreas
-   * que es lo que el backend soporta nativamente
-   */
   async updateAssignments(
     userId: string,
     assignmentIds: {
@@ -47,13 +37,11 @@ export class UserAssignmentService {
     },
     assignedBy: string,
   ): Promise<any> {
-    // Verificar que el usuario existe
     const user = await this.userModel.findById(userId);
     if (!user) {
       throw new NotFoundException("Usuario no encontrado");
     }
 
-    // Verificar que el usuario asignador existe
     const assigner = await this.userModel.findById(assignedBy);
     if (!assigner) {
       throw new NotFoundException("Usuario asignador no encontrado");
@@ -70,10 +58,10 @@ export class UserAssignmentService {
       warnings: [] as string[],
     };
 
-    // Procesar asignación de áreas (soportado nativamente)
-    const areaIdsToAssign = new Set<string>(assignmentIds.areaIds || []);
+    const finalAreaIds = new Set<string>(
+      (assignmentIds.areaIds || []).map((id) => id.toString()),
+    );
 
-    // Procesar asignación de proyectos (derivar a áreas)
     if (assignmentIds.projectIds && assignmentIds.projectIds.length > 0) {
       const projects = await this.projectModel
         .find({
@@ -88,10 +76,11 @@ export class UserAssignmentService {
       }
 
       // Obtener todas las áreas de los proyectos
+      const areaIdsFromProjects = new Set<string>();
       for (const project of projects) {
         if (project.areaIds && project.areaIds.length > 0) {
           project.areaIds.forEach((areaId) =>
-            areaIdsToAssign.add(areaId.toString()),
+            areaIdsFromProjects.add(areaId.toString()),
           );
         }
       }
@@ -102,7 +91,6 @@ export class UserAssignmentService {
       }));
     }
 
-    // Procesar asignación de clientes (derivar a sus áreas)
     if (assignmentIds.clientIds && assignmentIds.clientIds.length > 0) {
       const clients = await this.clientModel
         .find({
@@ -116,7 +104,6 @@ export class UserAssignmentService {
         result.warnings.push("Algunos clientes no existen");
       }
 
-      // Obtener todas las áreas del cliente
       const areaIdsFromClients = await this.areaModel
         .find({
           clientId: { $in: clients.map((c) => c._id) },
@@ -125,48 +112,28 @@ export class UserAssignmentService {
         .exec();
 
       if (areaIdsFromClients.length > 0) {
-        areaIdsFromClients.forEach((area) =>
-          areaIdsToAssign.add(area._id.toString()),
+        const clientAreas = await this.replaceUserAreas(
+          userId,
+          areaIdsFromClients.map((a) => a._id.toString()),
+          assignedBy,
         );
         result.assigned.clients = clients.map((c) => ({
           _id: c._id,
           name: c.name,
         }));
+        result.assigned.areas = clientAreas;
       }
     }
-
-    result.assigned.areas = await this.replaceUserAreas(
-      userId,
-      Array.from(areaIdsToAssign),
-      assignedBy,
-    );
-
-    user.tenantIds = (assignmentIds.clientIds || []).map(
-      (id) => new Types.ObjectId(id),
-    );
-    user.visibleProjectIds = (assignmentIds.projectIds || []).map(
-      (id) => new Types.ObjectId(id),
-    );
-    user.areaIds = Array.from(areaIdsToAssign).map(
-      (id) => new Types.ObjectId(id),
-    );
-    user.clientId = user.tenantIds[0];
-    await user.save();
 
     return result;
   }
 
-  /**
-   * Obtener asignaciones actuales del usuario
-   */
   async getAssignments(userId: string): Promise<any> {
-    // Verificar que el usuario existe
     const user = await this.userModel.findById(userId);
     if (!user) {
       throw new NotFoundException("Usuario no encontrado");
     }
 
-    // Obtener áreas asignadas
     const userAreas = await this.userAreaModel
       .find({
         userId: new Types.ObjectId(userId),
@@ -175,7 +142,6 @@ export class UserAssignmentService {
       .populate("areaId")
       .exec();
 
-    // Agrupar por cliente y obtener proyectos
     const areasByClient: { [clientId: string]: any[] } = {};
     const projectIdsByClient: { [clientId: string]: Set<string> } = {};
 
@@ -192,7 +158,6 @@ export class UserAssignmentService {
           name: area.name,
         });
 
-        // Obtener proyectos del área
         const projects = await this.projectModel
           .find({ areaIds: area._id })
           .select("_id name")
@@ -203,28 +168,14 @@ export class UserAssignmentService {
       }
     }
 
-    const directClientIds = Array.from(
-      new Set([
-        ...(user.tenantIds || []).map((id) => id.toString()),
-        ...(user.clientId ? [user.clientId.toString()] : []),
-      ]),
-    );
-    const directProjectIds = (user.visibleProjectIds || []).map((id) =>
-      id.toString(),
-    );
-    const directAreaIds = userAreas
-      .map((assignment) => (assignment.areaId as any)?._id?.toString())
-      .filter(Boolean);
-
-    // Obtener solo clientes asignados directamente. Las areas no deben marcar
-    // automaticamente al cliente como asignado.
-    const clientIds = directClientIds;
+    // Obtener clientes
+    const clientIds = Object.keys(areasByClient);
     const clients = await this.clientModel
       .find({ _id: { $in: clientIds.map((id) => new Types.ObjectId(id)) } })
       .select("_id name displayName")
       .exec();
 
-    const result = {
+    return {
       userId,
       userName: user.email,
       clientIds,
@@ -249,20 +200,13 @@ export class UserAssignmentService {
       ]).size,
       totalClients: clients.length,
     };
-
-    return result;
   }
 
-  /**
-   * Reemplazar todas las áreas de un usuario
-   * (Helper interno reutilizado de UserAreaService)
-   */
   private async replaceUserAreas(
     userId: string,
     newAreaIds: string[],
     assignedBy: string,
   ): Promise<any> {
-    // Desactivar todas las asignaciones existentes
     await this.userAreaModel.updateMany(
       { userId: new Types.ObjectId(userId), isActive: true },
       { isActive: false, unassignedAt: new Date() },
@@ -271,24 +215,43 @@ export class UserAssignmentService {
       areaIds: newAreaIds.map((id) => new Types.ObjectId(id)),
     });
 
-    // Crear nuevas asignaciones
+    const uniqueAreaIds = Array.from(
+      new Set(newAreaIds.map((areaId) => areaId.toString())),
+    );
+
     const assignments = [];
-    for (const areaId of newAreaIds) {
+    for (const areaId of uniqueAreaIds) {
       const area = await this.areaModel.findById(areaId);
       if (!area) {
-        this.logger.warn(`Área ${areaId} no encontrada, ignorando`);
+        this.logger.warn(`Area ${areaId} no encontrada, ignorando`);
         continue;
       }
 
-      const assignment = new this.userAreaModel({
-        userId: new Types.ObjectId(userId),
-        areaId: new Types.ObjectId(areaId),
-        isActive: true,
-        assignedBy: new Types.ObjectId(assignedBy),
-        assignedAt: new Date(),
-      });
+      const assignment = await this.userAreaModel
+        .findOneAndUpdate(
+          {
+            userId: new Types.ObjectId(userId),
+            areaId: new Types.ObjectId(areaId),
+          },
+          {
+            $set: {
+              isActive: true,
+              assignedBy: new Types.ObjectId(assignedBy),
+              assignedAt: new Date(),
+            },
+            $unset: {
+              unassignedAt: "",
+            },
+          },
+          {
+            new: true,
+            upsert: true,
+            setDefaultsOnInsert: true,
+          },
+        )
+        .exec();
 
-      assignments.push(await assignment.save());
+      assignments.push(assignment);
     }
 
     return assignments.map((a) => ({

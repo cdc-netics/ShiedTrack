@@ -36,7 +36,11 @@ interface CatalogItem {
 }
 
 interface AssignmentResponse {
-  clients?: string[];
+  clients?: Array<string | {
+    _id?: string;
+    areas?: Array<string | { _id?: string }>;
+    projects?: string[];
+  }>;
   clientIds?: string[];
   projects?: string[];
   projectIds?: string[];
@@ -313,15 +317,23 @@ export class UserAssignmentDialogComponent implements OnInit {
 
     this.http.get<AssignmentResponse>(this.assignmentsUrl()).subscribe({
       next: (res) => {
-        const clientItems = res?.clientIds ?? res?.clients ?? [];
-        const clients = this.cleanIds(this.extractDirectIds(clientItems));
+        const clients = this.cleanIds([
+          ...(res?.clientIds ?? []),
+          ...((res?.clients ?? []).map((client: any) => typeof client === 'string' ? client : client?._id))
+        ]);
         const projects = this.cleanIds([
-          ...this.extractDirectIds(res?.projectIds ?? res?.projects ?? []),
-          ...this.extractNestedIds(clientItems, 'projects')
+          ...(res?.projectIds ?? []),
+          ...(res?.projects ?? []),
+          ...((res?.clients ?? []).flatMap((client: any) => typeof client === 'string' ? [] : (client?.projects ?? [])))
         ]);
         const areas = this.cleanIds([
-          ...this.extractDirectIds(res?.areaIds ?? res?.areas ?? []),
-          ...this.extractNestedIds(clientItems, 'areas')
+          ...(res?.areaIds ?? []),
+          ...(res?.areas ?? []),
+          ...((res?.clients ?? []).flatMap((client: any) =>
+            typeof client === 'string'
+              ? []
+              : (client?.areas ?? []).map((area: any) => typeof area === 'string' ? area : area?._id)
+          ))
         ]);
 
         this.selectedClients.set(clients);
@@ -457,9 +469,9 @@ saveAssignments(): void {
   this.loading.set(true);
 
   const payload = {
-    clientIds: this.cleanIds(this.selectedClients()),
-    projectIds: this.cleanIds(this.selectedProjects()),
-    areaIds: this.cleanIds(this.selectedAreas())
+    clients,
+    projects,
+    areas
   };
 
   this.http.post(this.assignmentsUrl(), payload).subscribe({
