@@ -36,7 +36,11 @@ interface CatalogItem {
 }
 
 interface AssignmentResponse {
-  clients?: string[];
+  clients?: Array<string | {
+    _id?: string;
+    areas?: Array<string | { _id?: string }>;
+    projects?: string[];
+  }>;
   clientIds?: string[];
   projects?: string[];
   projectIds?: string[];
@@ -313,10 +317,24 @@ export class UserAssignmentDialogComponent implements OnInit {
 
     this.http.get<AssignmentResponse>(this.assignmentsUrl()).subscribe({
       next: (res) => {
-        // soporte ambas formas
-        const clients = res?.clients ?? res?.clientIds ?? [];
-        const projects = res?.projects ?? res?.projectIds ?? [];
-        const areas = res?.areas ?? res?.areaIds ?? [];
+        const clients = this.cleanIds([
+          ...(res?.clientIds ?? []),
+          ...((res?.clients ?? []).map((client: any) => typeof client === 'string' ? client : client?._id))
+        ]);
+        const projects = this.cleanIds([
+          ...(res?.projectIds ?? []),
+          ...(res?.projects ?? []),
+          ...((res?.clients ?? []).flatMap((client: any) => typeof client === 'string' ? [] : (client?.projects ?? [])))
+        ]);
+        const areas = this.cleanIds([
+          ...(res?.areaIds ?? []),
+          ...(res?.areas ?? []),
+          ...((res?.clients ?? []).flatMap((client: any) =>
+            typeof client === 'string'
+              ? []
+              : (client?.areas ?? []).map((area: any) => typeof area === 'string' ? area : area?._id)
+          ))
+        ]);
 
         this.selectedClients.set(clients);
         this.selectedProjects.set(projects);
@@ -422,9 +440,9 @@ saveAssignments(): void {
   const areas = this.cleanIds(this.selectedAreas());
 
   const payload = {
-    clients,
-    projects,
-    areas
+    clientIds: clients,
+    projectIds: projects,
+    areaIds: areas
   };
 
   this.http.post(this.assignmentsUrl(), payload).subscribe({

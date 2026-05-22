@@ -23,6 +23,11 @@ export class TenantContextGuard implements CanActivate {
     const req = context.switchToHttp().getRequest();
     const user = req.user; // Establecido por AuthGuard/JWT
     const headerTenant = req.headers["x-tenant-id"] as string | undefined;
+    const path = req.originalUrl || req.url || "";
+
+    if (path.includes("/api/auth/profile")) {
+      return true;
+    }
 
     // Si no hay usuario (request sin autenticar), permitir (ej: login, registro)
     if (!user) {

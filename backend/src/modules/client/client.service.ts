@@ -4,6 +4,7 @@ import {
   Logger,
   BadRequestException,
   ForbiddenException,
+  ConflictException,
 } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
@@ -74,6 +75,8 @@ export class ClientService {
    * Crea un nuevo cliente y opcionalmente crea el primer admin
    */
   async create(dto: CreateClientDto): Promise<Client> {
+    await this.ensureUniqueClient(dto.name, dto.code);
+
     const client = new this.clientModel({
       name: dto.name,
       displayName: dto.displayName || dto.name, // Si no hay displayName, usar name
@@ -82,7 +85,12 @@ export class ClientService {
       contactEmail: dto.contactEmail,
       contactPhone: dto.contactPhone,
     });
-    await client.save();
+    try {
+      await client.save();
+    } catch (error) {
+      this.handleDuplicateClientError(error);
+      throw error;
+    }
 
     this.logger.log(`Cliente creado: ${client.name} (ID: ${client._id})`);
 
@@ -190,9 +198,19 @@ export class ClientService {
       );
     }
 
-    const client = await this.clientModel.findByIdAndUpdate(id, dto, {
-      new: true,
-    });
+    if (dto.name || dto.code) {
+      await this.ensureUniqueClient(dto.name, dto.code, id);
+    }
+
+    let client: Client | null = null;
+    try {
+      client = await this.clientModel.findByIdAndUpdate(id, dto, {
+        new: true,
+      });
+    } catch (error) {
+      this.handleDuplicateClientError(error);
+      throw error;
+    }
 
     if (!client) {
       throw new NotFoundException(`Cliente con ID ${id} no encontrado`);
@@ -247,5 +265,56 @@ export class ClientService {
     this.logger.warn(
       `Cliente ELIMINADO permanentemente: ${result.name} (ID: ${id})`,
     );
+  }
+
+  private async ensureUniqueClient(
+    name?: string,
+    code?: string,
+    excludeId?: string,
+  ): Promise<void> {
+    const conditions = [];
+
+    if (name?.trim()) {
+      conditions.push({ name: name.trim() });
+    }
+
+    if (code?.trim()) {
+      conditions.push({ code: code.trim() });
+    }
+
+    if (conditions.length === 0) return;
+
+    const query: any = { $or: conditions };
+    if (excludeId) {
+      query._id = { $ne: excludeId };
+    }
+
+    const existing = await this.clientModel.findOne(query).lean();
+    if (!existing) return;
+
+    if (name?.trim() && existing.name === name.trim()) {
+      throw new ConflictException(`Ya existe un cliente con el nombre "${name.trim()}"`);
+    }
+
+    if (code?.trim() && existing.code === code.trim()) {
+      throw new ConflictException(`Ya existe un cliente con el código "${code.trim()}"`);
+    }
+  }
+
+  private handleDuplicateClientError(error: any): void {
+    if (error?.code !== 11000) return;
+
+    const duplicatedField = Object.keys(error.keyPattern || error.keyValue || {})[0];
+    const duplicatedValue = error.keyValue?.[duplicatedField];
+
+    if (duplicatedField === "name") {
+      throw new ConflictException(`Ya existe un cliente con el nombre "${duplicatedValue}"`);
+    }
+
+    if (duplicatedField === "code") {
+      throw new ConflictException(`Ya existe un cliente con el código "${duplicatedValue}"`);
+    }
+
+    throw new ConflictException("Ya existe un cliente con esos datos");
   }
 }

@@ -89,7 +89,6 @@ export class AuthService {
         this.tokenSignal.set(response.accessToken);
         this.currentUserSignal.set(response.user);
         localStorage.setItem('shieldtrack_token', response.accessToken);
-        this.router.navigate(['/dashboard']);
       })
     );
   }

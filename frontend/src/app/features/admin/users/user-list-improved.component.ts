@@ -73,11 +73,11 @@ import { UserDialogComponent } from './user-dialog.component';
             <mat-select [ngModel]="roleFilter()" (ngModelChange)="roleFilter.set($event)">
               <mat-option value="">Todos</mat-option>
               <mat-option value="OWNER">Owner</mat-option>
-              <mat-option value="PLATFORM_ADMIN">Platform Admin</mat-option>
-              <mat-option value="CLIENT_ADMIN">Client Admin</mat-option>
-              <mat-option value="AREA_ADMIN">Area Admin</mat-option>
-              <mat-option value="ANALYST">Analyst</mat-option>
-              <mat-option value="VIEWER">Viewer</mat-option>
+              <mat-option value="ADMIN_AREA">Admin Area</mat-option>
+              <mat-option value="PENTESTER">Pentester</mat-option>
+              <mat-option value="QA">QA</mat-option>
+              <mat-option value="NORMAL_USER">Usuario Normal</mat-option>
+              <mat-option value="AUDITOR">Auditor</mat-option>
             </mat-select>
           </mat-form-field>
 
@@ -141,7 +141,7 @@ import { UserDialogComponent } from './user-dialog.component';
           <ng-container matColumnDef="status">
             <th mat-header-cell *matHeaderCellDef>Estado</th>
             <td mat-cell *matCellDef="let user">
-              @if (user.isDeleted) {
+              @if (isBlocked(user)) {
                 <mat-chip class="status-blocked">
                   <mat-icon>block</mat-icon>
                   Bloqueado
@@ -168,7 +168,7 @@ import { UserDialogComponent } from './user-dialog.component';
                 </button>
 
                 <!-- Botón Quick-Block -->
-                @if (!user.isDeleted) {
+                @if (!isBlocked(user)) {
                   <button mat-icon-button (click)="quickBlock(user)"
                           matTooltip="Bloquear usuario"
                           color="warn">
@@ -178,9 +178,15 @@ import { UserDialogComponent } from './user-dialog.component';
                   <button mat-icon-button (click)="quickUnblock(user)"
                           matTooltip="Desbloquear usuario"
                           color="primary">
-                    <mat-icon>unblock</mat-icon>
+                    <mat-icon>check_circle</mat-icon>
                   </button>
                 }
+
+                <button mat-icon-button (click)="deleteUser(user)"
+                        matTooltip="Eliminar usuario"
+                        color="warn">
+                  <mat-icon>delete</mat-icon>
+                </button>
 
                 <!-- Menú más opciones -->
                 <button mat-icon-button [matMenuTriggerFor]="userMenu">
@@ -191,10 +197,20 @@ import { UserDialogComponent } from './user-dialog.component';
                     <mat-icon>edit</mat-icon>
                     <span>Editar</span>
                   </button>
-                  <button mat-menu-item (click)="changeRole(user)">
+                  <button mat-menu-item [matMenuTriggerFor]="roleMenu">
                     <mat-icon>admin_panel_settings</mat-icon>
                     <span>Cambiar Rol</span>
                   </button>
+                  <mat-menu #roleMenu="matMenu">
+                    @for (role of roleChangeOptions; track role.value) {
+                      <button mat-menu-item
+                              (click)="changeRole(user, role.value)"
+                              [disabled]="user.role === role.value">
+                        <mat-icon>{{ role.icon }}</mat-icon>
+                        <span>{{ role.label }}</span>
+                      </button>
+                    }
+                  </mat-menu>
                   <button mat-menu-item (click)="resetPassword(user)">
                     <mat-icon>vpn_key</mat-icon>
                     <span>Reset Contraseña</span>
@@ -211,7 +227,7 @@ import { UserDialogComponent } from './user-dialog.component';
 
           <!-- Header y filas -->
           <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-          <tr mat-row *matRowDef="let row; columns: displayedColumns;" [class.deleted]="row.isDeleted"></tr>
+          <tr mat-row *matRowDef="let row; columns: displayedColumns;" [class.deleted]="isBlocked(row)"></tr>
         </table>
 
         @if (filteredUsers().length === 0) {
@@ -259,6 +275,11 @@ import { UserDialogComponent } from './user-dialog.component';
     .role-area_admin { background: #388e3c; color: white; }
     .role-analyst { background: #7b1fa2; color: white; }
     .role-viewer { background: #616161; color: white; }
+    .role-admin_area { background: #1976d2; color: white; }
+    .role-pentester { background: #7b1fa2; color: white; }
+    .role-qa { background: #00897b; color: white; }
+    .role-normal_user { background: #455a64; color: white; }
+    .role-auditor { background: #616161; color: white; }
 
     .status-active { background: #e8f5e9; color: #2e7d32; }
     .status-blocked { background: #ffebee; color: #c62828; }
@@ -295,6 +316,15 @@ export class UserListImprovedComponent implements OnInit {
 
   displayedColumns = ['name', 'role', 'mfa', 'status', 'actions'];
 
+  roleChangeOptions = [
+    { value: 'OWNER', label: 'Owner', icon: 'stars' },
+    { value: 'ADMIN_AREA', label: 'Admin Area', icon: 'business_center' },
+    { value: 'PENTESTER', label: 'Pentester', icon: 'bug_report' },
+    { value: 'QA', label: 'QA', icon: 'fact_check' },
+    { value: 'NORMAL_USER', label: 'Usuario Normal', icon: 'person' },
+    { value: 'AUDITOR', label: 'Auditor', icon: 'visibility' },
+  ];
+
   ngOnInit(): void {
     this.loadUsers();
   }
@@ -326,9 +356,9 @@ export class UserListImprovedComponent implements OnInit {
     }
 
     if (this.statusFilter() === 'active') {
-      filtered = filtered.filter(u => !u.isDeleted);
+      filtered = filtered.filter(u => !this.isBlocked(u));
     } else if (this.statusFilter() === 'blocked') {
-      filtered = filtered.filter(u => u.isDeleted);
+      filtered = filtered.filter(u => this.isBlocked(u));
     }
 
     return filtered;
@@ -352,6 +382,10 @@ export class UserListImprovedComponent implements OnInit {
     }
   }
 
+  isBlocked(user: User): boolean {
+    return user.isDeleted === true || user.isActive === false;
+  }
+
   quickUnblock(user: User): void {
     const userId = this.getUserId(user);
     if (!userId) return;
@@ -364,6 +398,28 @@ export class UserListImprovedComponent implements OnInit {
       error: (err) => {
         console.error('Error:', err);
         this.snackBar.open('Error al desbloquear usuario', 'Cerrar', { duration: 3000 });
+      }
+    });
+  }
+
+  deleteUser(user: User): void {
+    const userId = this.getUserId(user);
+    if (!userId) return;
+
+    const confirmed = confirm(
+      `¿Eliminar definitivamente el usuario ${user.email}? Esta acción no se puede deshacer.`,
+    );
+    if (!confirmed) return;
+
+    this.http.delete(`${environment.apiUrl}/auth/users/${userId}`).subscribe({
+      next: () => {
+        this.snackBar.open('Usuario eliminado', 'Cerrar', { duration: 2500 });
+        this.loadUsers();
+      },
+      error: (err) => {
+        console.error('Error:', err);
+        const message = err?.error?.message || 'Error al eliminar usuario';
+        this.snackBar.open(message, 'Cerrar', { duration: 3500 });
       }
     });
   }
@@ -422,9 +478,21 @@ export class UserListImprovedComponent implements OnInit {
     });
   }
 
-  changeRole(user: User): void {
-    console.log('Cambiar rol:', user);
-    // TODO: Implementar dialog para cambiar rol
+  changeRole(user: User, role: string): void {
+    const userId = this.getUserId(user);
+    if (!userId || user.role === role) return;
+
+    this.http.patch<User>(`${environment.apiUrl}/auth/users/${userId}`, { role }).subscribe({
+      next: () => {
+        this.snackBar.open('Rol actualizado', 'Cerrar', { duration: 2500 });
+        this.loadUsers();
+      },
+      error: (err) => {
+        console.error('Error cambiando rol:', err);
+        const message = err?.error?.message || 'Error al cambiar rol';
+        this.snackBar.open(message, 'Cerrar', { duration: 3500 });
+      }
+    });
   }
 
   resetPassword(user: User): void {
@@ -432,13 +500,21 @@ export class UserListImprovedComponent implements OnInit {
     if (!userId) return;
 
     if (confirm(`¿Resetear contraseña de ${user.email}?`)) {
-      this.http.post(`${environment.apiUrl}/auth/users/${userId}/reset-password`, {}).subscribe({
-        next: () => {
-          this.snackBar.open('Contraseña reseteada (se envió por email)', 'Cerrar', { duration: 3000 });
+      this.http.post<{
+        message?: string;
+        temporaryPassword?: string;
+        emailSent?: boolean;
+      }>(`${environment.apiUrl}/auth/users/${userId}/reset-password`, {}).subscribe({
+        next: (response) => {
+          const message = response.emailSent
+            ? 'Contraseña reseteada y enviada por email'
+            : `Contraseña temporal: ${response.temporaryPassword}`;
+          this.snackBar.open(message, 'Cerrar', { duration: 8000 });
         },
         error: (err) => {
           console.error('Error:', err);
-          this.snackBar.open('Error al resetear contraseña', 'Cerrar', { duration: 3000 });
+          const message = err?.error?.message || 'Error al resetear contraseña';
+          this.snackBar.open(message, 'Cerrar', { duration: 3500 });
         }
       });
     }
@@ -455,7 +531,12 @@ export class UserListImprovedComponent implements OnInit {
       'CLIENT_ADMIN': 'Client Admin',
       'AREA_ADMIN': 'Area Admin',
       'ANALYST': 'Analyst',
-      'VIEWER': 'Viewer'
+      'VIEWER': 'Viewer',
+      'ADMIN_AREA': 'Admin Area',
+      'PENTESTER': 'Pentester',
+      'QA': 'QA',
+      'NORMAL_USER': 'Usuario Normal',
+      'AUDITOR': 'Auditor'
     };
     return names[role] || role;
   }
@@ -467,7 +548,12 @@ export class UserListImprovedComponent implements OnInit {
       'CLIENT_ADMIN': 'business_center',
       'AREA_ADMIN': 'folder',
       'ANALYST': 'analytics',
-      'VIEWER': 'visibility'
+      'VIEWER': 'visibility',
+      'ADMIN_AREA': 'business_center',
+      'PENTESTER': 'bug_report',
+      'QA': 'fact_check',
+      'NORMAL_USER': 'person',
+      'AUDITOR': 'visibility'
     };
     return icons[role] || 'person';
   }

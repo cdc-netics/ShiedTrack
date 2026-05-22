@@ -259,9 +259,13 @@ export class ClientDialogComponent {
     
     // Agregar datos del admin inicial si está habilitado
     if (this.adminForm.get('createInitialAdmin')?.value) {
+      const adminName = String(this.adminForm.get('initialAdminName')?.value || '').trim();
+      const [firstName, ...lastNameParts] = adminName.split(/\s+/);
+
       clientData['initialAdmin'] = {
-        email: this.adminForm.get('initialAdminEmail')?.value,
-        name: this.adminForm.get('initialAdminName')?.value,
+        email: String(this.adminForm.get('initialAdminEmail')?.value || '').trim(),
+        firstName,
+        lastName: lastNameParts.join(' ') || firstName,
         password: this.adminForm.get('initialAdminPassword')?.value
       };
     }
