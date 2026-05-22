@@ -428,6 +428,16 @@ export class UserDialogComponent {
     });
   }
 
+  passwordErrorMessage(): string {
+    const passwordControl = this.userForm.get('password');
+
+    if (passwordControl?.hasError('minlength')) {
+      return 'Mínimo 8 caracteres';
+    }
+
+    return 'La contraseña es demasiado corta';
+  }
+
   onCancel(): void {
     // Cierre sin cambios
     this.dialogRef.close();
