@@ -264,6 +264,21 @@ export class AuthController {
     return this.authService.deleteUser(id, currentUser);
   }
 
+  @Delete("users/:id")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.OWNER)
+  @ApiBearerAuth("JWT-auth")
+  @ApiOperation({
+    summary: "Eliminar usuario definitivamente (hard delete - solo OWNER)",
+  })
+  @ApiResponse({ status: 200, description: "Usuario eliminado" })
+  async hardDeleteUser(
+    @Param("id") id: string,
+    @CurrentUser() currentUser: any,
+  ) {
+    return this.authService.hardDeleteUser(id, currentUser);
+  }
+
   @Post("users/:id/reactivate")
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.OWNER, UserRole.PLATFORM_ADMIN)
@@ -272,6 +287,19 @@ export class AuthController {
   @ApiResponse({ status: 200, description: "Usuario reactivado" })
   async reactivateUser(@Param("id") id: string) {
     return this.authService.reactivateUser(id);
+  }
+
+  @Post("users/:id/reset-password")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.OWNER, UserRole.PLATFORM_ADMIN)
+  @ApiBearerAuth("JWT-auth")
+  @ApiOperation({ summary: "Reiniciar contraseña de usuario" })
+  @ApiResponse({ status: 200, description: "Contraseña reiniciada" })
+  async resetUserPassword(
+    @Param("id") id: string,
+    @CurrentUser() currentUser: any,
+  ) {
+    return this.authService.resetUserPassword(id, currentUser);
   }
 
   // ============================================

@@ -14,6 +14,9 @@ export class User extends Document {
   @Prop({ required: true })
   password: string; // Hash bcrypt
 
+  @Prop({ default: false })
+  forcePasswordChange: boolean;
+
   @Prop({ required: true })
   firstName: string;
 

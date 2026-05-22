@@ -14,6 +14,7 @@ export interface User {
   clientId?: string;
   areaIds?: string[];
   mfaEnabled: boolean;
+  forcePasswordChange?: boolean;
   isActive: boolean;
   isDeleted?: boolean; // Soft delete flag
   lastLogin?: Date | string;
