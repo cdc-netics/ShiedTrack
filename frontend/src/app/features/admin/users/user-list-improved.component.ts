@@ -309,21 +309,23 @@ export class UserListImprovedComponent implements OnInit {
   private dialog = inject(MatDialog);
   private snackBar = inject(MatSnackBar);
 
+  availableRoles = [
+    { value: 'OWNER', label: 'Owner', icon: 'stars' },
+    { value: 'PLATFORM_ADMIN', label: 'Platform Admin', icon: 'admin_panel_settings' },
+    { value: 'CLIENT_ADMIN', label: 'Client Admin', icon: 'business_center' },
+    { value: 'AREA_ADMIN', label: 'Area Admin', icon: 'folder' },
+    { value: 'ANALYST', label: 'Analyst', icon: 'analytics' },
+    { value: 'VIEWER', label: 'Viewer', icon: 'visibility' }
+  ];
+
+  roleChangeOptions = this.availableRoles;
+
   users = signal<User[]>([]);
   searchTerm = signal('');
   roleFilter = signal('');
   statusFilter = signal('');
 
   displayedColumns = ['name', 'role', 'mfa', 'status', 'actions'];
-
-  roleChangeOptions = [
-    { value: 'OWNER', label: 'Owner', icon: 'stars' },
-    { value: 'ADMIN_AREA', label: 'Admin Area', icon: 'business_center' },
-    { value: 'PENTESTER', label: 'Pentester', icon: 'bug_report' },
-    { value: 'QA', label: 'QA', icon: 'fact_check' },
-    { value: 'NORMAL_USER', label: 'Usuario Normal', icon: 'person' },
-    { value: 'AUDITOR', label: 'Auditor', icon: 'visibility' },
-  ];
 
   ngOnInit(): void {
     this.loadUsers();
@@ -423,7 +425,21 @@ export class UserListImprovedComponent implements OnInit {
       }
     });
   }
+  updateUserRole(user: User, role: string): void {
+    const userId = this.getUserId(user);
+    if (!userId) return;
 
+    this.http.patch(`${environment.apiUrl}/auth/users/${userId}`, { role }).subscribe({
+      next: () => {
+        this.snackBar.open('Rol actualizado', 'Cerrar', { duration: 2500 });
+        this.loadUsers();
+      },
+      error: (err) => {
+        console.error('Error actualizando rol:', err);
+        this.snackBar.open('Error al actualizar rol', 'Cerrar', { duration: 3000 });
+      }
+    });
+  }
   /**
    * ✅ Obtiene el ID del usuario de forma segura.
    * En algunos modelos viene como `_id`, en otros como `id`.
