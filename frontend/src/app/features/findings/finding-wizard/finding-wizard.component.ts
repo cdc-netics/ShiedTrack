@@ -76,6 +76,8 @@ interface Template {
                            [matAutocomplete]="templateAuto"
                            [(ngModel)]="templateSearch"
                            (ngModelChange)="onTemplateSearch($event)"
+                           (focus)="refreshTemplates()"
+                           (click)="refreshTemplates()"
                            [ngModelOptions]="{standalone: true}"
                            placeholder="Busca: XSS, SQLi, CSRF, etc...">
                     <mat-icon matSuffix>search</mat-icon>
@@ -597,6 +599,7 @@ export class FindingWizardComponent implements OnInit {
   ngOnInit(): void {
     // Inicializa formularios y listas base del wizard
     this.initForms();
+    this.loadTemplates();
     this.loadClients();
     this.projectService.loadProjects({}).subscribe();
     this.setupClientFilter();
@@ -684,6 +687,32 @@ export class FindingWizardComponent implements OnInit {
     return typeof template === 'string' ? template : template.name;
   }
 
+  loadTemplates(searchTerm = ''): void {
+    this.templateLoading.set(true);
+    this.http.get<any[]>(this.templateApi, {
+      params: { _: Date.now().toString() }
+    }).subscribe({
+      next: (templates) => {
+        const apiTemplates = Array.isArray(templates) ? templates : [templates].filter(Boolean);
+        const mapped = apiTemplates.map((template) => this.normalizeTemplate(template));
+        const merged = this.mergeTemplates(mapped, this.templates());
+
+        this.templates.set(merged);
+        this.filteredTemplates.set(this.filterTemplates(merged, searchTerm || this.templateSearch));
+        this.templateLoading.set(false);
+      },
+      error: (err) => {
+        console.error('Error loading templates:', err);
+        this.filteredTemplates.set(this.filterTemplates(this.templates(), searchTerm || this.templateSearch));
+        this.templateLoading.set(false);
+      }
+    });
+  }
+
+  refreshTemplates(): void {
+    this.loadTemplates(this.templateSearch);
+  }
+
   onTemplateSearch(term: string | Template): void {
     if (typeof term !== 'string') {
       this.templateSearch = this.displayTemplate(term);
@@ -697,30 +726,11 @@ export class FindingWizardComponent implements OnInit {
       return;
     }
 
-    this.templateLoading.set(true);
-    this.http.get<any[]>(`${this.templateApi}/search`, { params: { q: term } }).subscribe({
-      next: (templates) => {
-        const mapped: Template[] = templates.map((t: any) => ({
-          id: t._id,
-          name: t.title,
-          description: t.description,
-          severity: t.severity,
-          recommendation: t.recommendation,
-          cvssScore: t.cvss_score,
-          cweId: t.cwe_id,
-          scope: t.scope,
-        }));
+    this.filteredTemplates.set(this.filterTemplates(this.templates(), term));
 
-        const sorted = mapped.sort((a, b) => (a.scope === 'USER' ? -1 : 0) - (b.scope === 'USER' ? -1 : 0));
-        this.templates.set(sorted.length ? sorted : this.templates());
-        this.filteredTemplates.set(sorted.length ? sorted : this.templates());
-        this.templateLoading.set(false);
-      },
-      error: () => {
-        this.templateLoading.set(false);
-        this.filteredTemplates.set(this.templates());
-      }
-    });
+    if (term.trim().length >= 2) {
+      this.loadTemplates(term);
+    }
   }
 
   setupClientFilter(): void {
@@ -792,12 +802,70 @@ export class FindingWizardComponent implements OnInit {
       id: template.id ?? template._id,
       name: this.toDisplayText(template.name ?? template.title),
       description: this.toDisplayText(template.description),
-      severity: this.toDisplayText(template.severity),
+      severity: this.normalizeSeverity(template.severity),
       recommendation: this.toDisplayText(template.recommendation),
       cvssScore: template.cvssScore ?? template.cvss_score,
       cweId: this.toDisplayText(template.cweId ?? template.cwe_id),
       scope: this.toDisplayText(template.scope),
     };
+  }
+
+  private mergeTemplates(primary: Template[], fallback: Template[]): Template[] {
+    const seen = new Set<string>();
+    const merged: Template[] = [];
+
+    for (const template of [...primary, ...fallback]) {
+      const normalized = this.normalizeTemplate(template);
+      const key = String(normalized.id || normalized.name).toLowerCase();
+      if (!key || seen.has(key)) continue;
+
+      seen.add(key);
+      merged.push(normalized);
+    }
+
+    return merged.sort((a, b) => {
+      const aUser = a.scope === 'USER' ? 0 : 1;
+      const bUser = b.scope === 'USER' ? 0 : 1;
+      if (aUser !== bUser) return aUser - bUser;
+      return a.name.localeCompare(b.name);
+    });
+  }
+
+  private filterTemplates(templates: Template[], term: string): Template[] {
+    const search = (term || '').toLowerCase().trim();
+    if (!search || search.length < 2) return templates;
+
+    return templates.filter((template) =>
+      [
+        template.name,
+        template.description,
+        template.recommendation,
+        template.cweId,
+        template.severity,
+        template.scope,
+      ]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(search)),
+    );
+  }
+
+  private normalizeSeverity(value: unknown): string {
+    const severity = this.toDisplayText(value).trim().toUpperCase();
+    const severityMap: Record<string, string> = {
+      CRITICA: 'CRITICAL',
+      CRÍTICA: 'CRITICAL',
+      CRITICAL: 'CRITICAL',
+      ALTA: 'HIGH',
+      HIGH: 'HIGH',
+      MEDIA: 'MEDIUM',
+      MEDIUM: 'MEDIUM',
+      BAJA: 'LOW',
+      LOW: 'LOW',
+      INFORMATIVA: 'INFO',
+      INFO: 'INFO',
+    };
+
+    return severityMap[severity] || severity;
   }
 
   private toDisplayText(value: unknown): string {

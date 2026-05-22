@@ -375,10 +375,19 @@ export class UserDialogComponent {
     const userData: any = {
       firstName: this.userForm.value.firstName,
       lastName: this.userForm.value.lastName,
-      role: this.userForm.value.role,
-      clientId: this.userForm.value.clientId,
-      areaIds: this.userForm.value.areaIds
+      role: this.userForm.value.role
     };
+
+    const clientId = this.userForm.value.clientId;
+    const areaIds = this.userForm.value.areaIds;
+
+    if (clientId) {
+      userData.clientId = clientId;
+    }
+
+    if (Array.isArray(areaIds) && areaIds.length > 0) {
+      userData.areaIds = areaIds;
+    }
 
     // Email siempre editable por administradores autorizados
     userData.email = this.userForm.value.email;
