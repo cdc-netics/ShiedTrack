@@ -469,9 +469,9 @@ saveAssignments(): void {
   this.loading.set(true);
 
   const payload = {
-    clients,
-    projects,
-    areas
+    clientIds: this.selectedClients(),
+    projectIds: this.selectedProjects(),
+    areaIds: this.selectedAreas()
   };
 
   this.http.post(this.assignmentsUrl(), payload).subscribe({
