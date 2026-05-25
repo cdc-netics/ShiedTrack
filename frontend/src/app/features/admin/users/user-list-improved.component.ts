@@ -94,10 +94,36 @@ import { UserDialogComponent } from './user-dialog.component';
             <mat-icon>refresh</mat-icon>
           </button>
 
-          <button mat-raised-button color="primary" (click)="createUser()">
+          <button mat-raised-button color="primary" [matMenuTriggerFor]="createUserMenu">
             <mat-icon>person_add</mat-icon>
-            Nuevo usuario
+            Crear usuario
           </button>
+          <mat-menu #createUserMenu="matMenu">
+            <button mat-menu-item (click)="createUser('OWNER')">
+              <mat-icon>stars</mat-icon>
+              <span>Owner</span>
+            </button>
+            <button mat-menu-item (click)="createUser('PLATFORM_ADMIN')">
+              <mat-icon>admin_panel_settings</mat-icon>
+              <span>Platform Admin</span>
+            </button>
+            <button mat-menu-item (click)="createUser('CLIENT_ADMIN')">
+              <mat-icon>business_center</mat-icon>
+              <span>Client Admin</span>
+            </button>
+            <button mat-menu-item (click)="createUser('AREA_ADMIN')">
+              <mat-icon>folder</mat-icon>
+              <span>Area Admin</span>
+            </button>
+            <button mat-menu-item (click)="createUser('ANALYST')">
+              <mat-icon>analytics</mat-icon>
+              <span>Analista</span>
+            </button>
+            <button mat-menu-item (click)="createUser('VIEWER')">
+              <mat-icon>visibility</mat-icon>
+              <span>Viewer</span>
+            </button>
+          </mat-menu>
         </div>
 
         <!-- Tabla de usuarios -->
@@ -197,7 +223,7 @@ import { UserDialogComponent } from './user-dialog.component';
                     <mat-icon>edit</mat-icon>
                     <span>Editar</span>
                   </button>
-                  <button mat-menu-item [matMenuTriggerFor]="roleMenu">
+                  <button mat-menu-item (click)="changeRole(user)">
                     <mat-icon>admin_panel_settings</mat-icon>
                     <span>Cambiar Rol</span>
                   </button>
@@ -220,6 +246,18 @@ import { UserDialogComponent } from './user-dialog.component';
                     <mat-icon>visibility</mat-icon>
                     <span>Ver Asignaciones</span>
                   </button>
+                </mat-menu>
+                <mat-menu #roleMenu="matMenu">
+                  <ng-template matMenuContent let-user="user">
+                    @for (role of availableRoles; track role.value) {
+                      <button mat-menu-item
+                              (click)="updateUserRole(user, role.value)"
+                              [disabled]="user.role === role.value">
+                        <mat-icon>{{ role.icon }}</mat-icon>
+                        <span>{{ role.label }}</span>
+                      </button>
+                    }
+                  </ng-template>
                 </mat-menu>
               </div>
             </td>
@@ -404,24 +442,23 @@ export class UserListImprovedComponent implements OnInit {
     });
   }
 
+
   deleteUser(user: User): void {
+    this.quickBlock(user);
+  }
+
+  updateUserRole(user: User, role: string): void {
     const userId = this.getUserId(user);
     if (!userId) return;
 
-    const confirmed = confirm(
-      `¿Eliminar definitivamente el usuario ${user.email}? Esta acción no se puede deshacer.`,
-    );
-    if (!confirmed) return;
-
-    this.http.delete(`${environment.apiUrl}/auth/users/${userId}`).subscribe({
+    this.http.patch(`${environment.apiUrl}/auth/users/${userId}`, { role }).subscribe({
       next: () => {
-        this.snackBar.open('Usuario eliminado', 'Cerrar', { duration: 2500 });
+        this.snackBar.open('Rol actualizado', 'Cerrar', { duration: 2500 });
         this.loadUsers();
       },
       error: (err) => {
-        console.error('Error:', err);
-        const message = err?.error?.message || 'Error al eliminar usuario';
-        this.snackBar.open(message, 'Cerrar', { duration: 3500 });
+        console.error('Error actualizando rol:', err);
+        this.snackBar.open('Error al actualizar rol', 'Cerrar', { duration: 3000 });
       }
     });
   }
@@ -484,9 +521,10 @@ export class UserListImprovedComponent implements OnInit {
     });
   }
 
-  createUser(): void {
+  createUser(role = 'VIEWER'): void {
     this.dialog.open(UserDialogComponent, {
-      width: '640px'
+      width: '640px',
+      data: { role }
     }).afterClosed().subscribe((result) => {
       if (result) {
         this.loadUsers();
@@ -494,21 +532,14 @@ export class UserListImprovedComponent implements OnInit {
     });
   }
 
-  changeRole(user: User, role: string): void {
-    const userId = this.getUserId(user);
-    if (!userId || user.role === role) return;
+  changeRole(user: User, role?: string): void {
+    if (role) {
+      this.updateUserRole(user, role);
+      return;
+    }
 
-    this.http.patch<User>(`${environment.apiUrl}/auth/users/${userId}`, { role }).subscribe({
-      next: () => {
-        this.snackBar.open('Rol actualizado', 'Cerrar', { duration: 2500 });
-        this.loadUsers();
-      },
-      error: (err) => {
-        console.error('Error cambiando rol:', err);
-        const message = err?.error?.message || 'Error al cambiar rol';
-        this.snackBar.open(message, 'Cerrar', { duration: 3500 });
-      }
-    });
+    console.log('Cambiar rol:', user);
+    // TODO: Implementar dialog para cambiar rol
   }
 
   resetPassword(user: User): void {

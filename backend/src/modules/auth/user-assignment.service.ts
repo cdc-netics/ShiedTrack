@@ -174,9 +174,21 @@ export class UserAssignmentService {
       .select("_id name displayName")
       .exec();
 
+    const directAreaIds = userAreas
+      .map((assignment) => (assignment.areaId as any)?._id?.toString?.())
+      .filter(Boolean);
+    const directProjectIds = Array.from(
+      new Set(
+        Object.values(projectIdsByClient).flatMap((set) => Array.from(set)),
+      ),
+    );
+
     return {
       userId,
       userName: user.email,
+      clientIds,
+      projectIds: directProjectIds,
+      areaIds: directAreaIds,
       clients: clients.map((c) => ({
         _id: c._id,
         name: c.name,
@@ -208,12 +220,15 @@ export class UserAssignmentService {
     );
 
     const assignments = [];
+    const validAreaIds: string[] = [];
     for (const areaId of uniqueAreaIds) {
       const area = await this.areaModel.findById(areaId);
       if (!area) {
         this.logger.warn(`Area ${areaId} no encontrada, ignorando`);
         continue;
       }
+
+      validAreaIds.push(areaId);
 
       const assignment = await this.userAreaModel
         .findOneAndUpdate(
@@ -241,6 +256,10 @@ export class UserAssignmentService {
 
       assignments.push(assignment);
     }
+
+    await this.userModel.findByIdAndUpdate(userId, {
+      areaIds: validAreaIds.map((id) => new Types.ObjectId(id)),
+    });
 
     return assignments.map((a) => ({
       _id: a._id,
