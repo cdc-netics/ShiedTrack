@@ -462,6 +462,21 @@ export class UserListImprovedComponent implements OnInit {
       }
     });
   }
+  updateUserRole(user: User, role: string): void {
+    const userId = this.getUserId(user);
+    if (!userId) return;
+
+    this.http.patch(`${environment.apiUrl}/auth/users/${userId}`, { role }).subscribe({
+      next: () => {
+        this.snackBar.open('Rol actualizado', 'Cerrar', { duration: 2500 });
+        this.loadUsers();
+      },
+      error: (err) => {
+        console.error('Error actualizando rol:', err);
+        this.snackBar.open('Error al actualizar rol', 'Cerrar', { duration: 3000 });
+      }
+    });
+  }
   /**
    * ✅ Obtiene el ID del usuario de forma segura.
    * En algunos modelos viene como `_id`, en otros como `id`.
