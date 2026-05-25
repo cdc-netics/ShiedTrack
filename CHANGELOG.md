@@ -7,6 +7,47 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 ## [Unreleased]
 
+## [2.4.0] - 2026-05-22
+
+### Gestión de usuarios — nuevas acciones administrativas
+
+- **FEAT (Backend — hard delete):** nuevo endpoint `DELETE /auth/users/:id` (solo `OWNER`) que elimina definitivamente al usuario junto con sus asignaciones de área (`userareaassignments`). Incluye validaciones: no se puede eliminar al propio usuario ni a otro `OWNER`.
+- **FEAT (Backend — reset de contraseña):** nuevo endpoint `POST /auth/users/:id/reset-password` (`OWNER`/`PLATFORM_ADMIN`) que genera una contraseña temporal segura (`Temp-<hex>`), la guarda hasheada y activa `forcePasswordChange`. Si SMTP está configurado se envía por email; de lo contrario la contraseña temporal se devuelve en la respuesta.
+- **FEAT (Backend — forcePasswordChange):** nuevo campo `forcePasswordChange` en el schema `User` (default `false`). Se devuelve en el JWT profile y se limpia automáticamente al actualizar la contraseña.
+- **FEAT (Frontend — forzar cambio de contraseña al login):** tras iniciar sesión, si `forcePasswordChange === true` se muestra un diálogo inline con campos de nueva/confirmar contraseña (con toggle de visibilidad) en lugar de navegar al dashboard. La navegación al dashboard ocurre sólo tras cambiar la contraseña exitosamente.
+- **FEAT (Frontend — eliminar usuario):** botón de eliminar definitivamente en la lista de usuarios con confirmación. Muestra mensaje de error del backend si aplica (ej. rol `OWNER` protegido).
+- **FEAT (Frontend — cambio de rol directo):** el menú "Cambiar Rol" se convirtió en un submenú que lista todos los roles disponibles; el rol actual queda deshabilitado. Llama a `PATCH /auth/users/:id` directamente sin abrir un diálogo extra.
+- **FEAT (Frontend — reset de contraseña mejorado):** el botón "Reset Contraseña" muestra la contraseña temporal en el snackbar (durante 8 s) cuando SMTP no está configurado, o el mensaje de envío exitoso por email.
+
+### Gestión de usuarios — correcciones y mejoras
+
+- **FIX (Frontend — detección de bloqueados):** se reemplazó la comprobación `user.isDeleted` por `isBlocked(user)` (`isDeleted === true || isActive === false`), mostrando correctamente usuarios desactivados sin soft-delete como "Bloqueado".
+- **FIX (Backend — listado de usuarios):** `findAll` ya no filtra `isDeleted: { $ne: true }` para que los administradores puedan ver y reactivar usuarios bloqueados.
+- **FIX (Backend — tenant context para /profile):** `TenantContextGuard` y `TenantContextInterceptor` omiten la validación de tenant para `/api/auth/profile`, evitando errores 403 al obtener el perfil del usuario tras login.
+
+### Asignación de usuarios — refactor
+
+- **REFACTOR (Backend — UserAssignmentService):** se unificó la recolección de IDs de área provenientes de áreas directas, proyectos y clientes en un único `Set<string>` antes de llamar a `replaceUserAreas` una sola vez, eliminando triple llamada secuencial.
+- **FIX (Backend — asignaciones duplicadas):** `replaceUserAreas` usa `findOneAndUpdate` con `upsert: true` en lugar de crear documentos nuevos, evitando duplicados en asignaciones área-usuario.
+- **FIX (Frontend — payload de asignaciones):** el diálogo de asignación ahora envía `clientIds`, `projectIds` y `areaIds` (nombres que espera el backend) en lugar de `clients`, `projects`, `areas`.
+- **FIX (Frontend — carga de asignaciones existentes):** la respuesta del backend se normaliza para extraer IDs de clientes/proyectos/áreas tanto desde campos planos como desde objetos anidados.
+
+### Clientes
+
+- **FIX (Backend — unicidad de clientes):** `ClientService` valida antes de crear o actualizar que no exista otro cliente con el mismo `name` o `code`, lanzando `409 Conflict` con mensaje descriptivo. Se agrega también captura del error MongoDB `E11000` como segunda línea de defensa.
+- **FIX (Frontend — creación de admin inicial):** el diálogo de cliente separa correctamente `firstName` y `lastName` del campo "Nombre" al armar el payload de `initialAdmin`.
+
+### Plantillas de hallazgos
+
+- **FIX (Frontend — carga inicial de plantillas):** el `FindingWizard` carga las plantillas al iniciar (`ngOnInit`) en lugar de esperar a que el usuario empiece a escribir. El campo de búsqueda también recarga al hacer foco/click.
+- **REFACTOR (Frontend — búsqueda local de plantillas):** la búsqueda filtra primero el listado en memoria; solo realiza una petición al backend cuando el término tiene ≥ 2 caracteres. Los resultados se fusionan deduplicando por `id/name` sin perder plantillas locales.
+- **FIX (Frontend — normalización de severidad):** se mapean los valores en español (CRÍTICA, ALTA, MEDIA, BAJA, INFORMATIVA) a sus equivalentes en inglés (CRITICAL, HIGH, MEDIUM, LOW, INFO) para consistencia con el resto del sistema.
+
+### Otros
+
+- **CHANGED (Frontend — credenciales de dev):** el panel de credenciales de desarrollo en el login queda oculto por defecto (`showDevCredentials = false`).
+- **FIX (Frontend — navegación post-login):** la navegación a `/dashboard` la gestiona el componente de login en vez del servicio `AuthService`, permitiendo el flujo de cambio de contraseña forzado.
+
 - **CHANGED (Package Manager):** migracion oficial a **pnpm-only** en raiz, backend y frontend (`packageManager`, `preinstall` de enforcement, lockfiles `pnpm-lock.yaml` y eliminacion de `package-lock.json`).
 - **CHANGED (Docker):** `backend/Dockerfile`, `frontend/Dockerfile` y `backend/docker-entrypoint.sh` ahora usan `pnpm` para install/build/seeds.
 - **CHANGED (Scripts/Docs):** scripts de arranque local (`start-shieldtrack.ps1`, `start-shieldtrack.sh`) y documentacion operativa/contribucion actualizados para usar `pnpm` por defecto.
