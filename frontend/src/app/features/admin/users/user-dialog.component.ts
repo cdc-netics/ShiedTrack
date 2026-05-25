@@ -83,15 +83,12 @@ import { AuthService } from '../../../core/services/auth.service';
         @if (showClientSelect()) {
           <mat-form-field appearance="outline" class="full-width">
             <mat-label>Cliente</mat-label>
-            <mat-select formControlName="clientId" [required]="isClientRequired()">
+            <mat-select formControlName="clientId">
               <mat-option [value]="null">-- Sin Asignación (Global) --</mat-option>
               @for (client of clients(); track client._id) {
                 <mat-option [value]="client._id">{{ client.name }}</mat-option>
               }
             </mat-select>
-            @if (userForm.get('clientId')?.hasError('required')) {
-              <mat-error>El cliente es obligatorio para este rol</mat-error>
-            }
           </mat-form-field>
         }
 
@@ -99,9 +96,12 @@ import { AuthService } from '../../../core/services/auth.service';
         <mat-form-field appearance="outline" class="full-width">
           <mat-label>Rol</mat-label>
           <mat-select formControlName="role" required>
-            @for (option of roleOptions; track option.value) {
-              <mat-option [value]="option.value">{{ option.label }}</mat-option>
-            }
+            <mat-option value="OWNER">Owner</mat-option>
+            <mat-option value="PLATFORM_ADMIN">Platform Admin</mat-option>
+            <mat-option value="CLIENT_ADMIN">Client Admin</mat-option>
+            <mat-option value="AREA_ADMIN">Area Admin</mat-option>
+            <mat-option value="ANALYST">Analista</mat-option>
+            <mat-option value="VIEWER">Viewer</mat-option>
           </mat-select>
           @if (userForm.get('role')?.hasError('required')) {
             <mat-error>El rol es obligatorio</mat-error>
@@ -300,14 +300,13 @@ export class UserDialogComponent {
     const selectedRole = this.userForm.get('role')?.value;
     const needsAreasOnInit = ['ADMIN_AREA', 'NORMAL_USER'].includes(selectedRole);
     this.showAreaSelect.set(needsAreasOnInit);
-    this.showAuditorScope.set(selectedRole === 'AUDITOR');
     
     // Configurar validacion dinamica de Cliente
     this.userForm.get('role')?.valueChanges.subscribe(role => {
-       const isGlobalRole = ['OWNER'].includes(role);
+       const isGlobalRole = ['OWNER', 'PLATFORM_ADMIN'].includes(role);
        const clientControl = this.userForm.get('clientId');
        
-       if (isGlobalRole || ['PENTESTER', 'QA', 'AUDITOR', 'NORMAL_USER'].includes(role)) {
+       if (isGlobalRole) {
          clientControl?.clearValidators();
          clientControl?.updateValueAndValidity();
        } else {
@@ -361,15 +360,7 @@ export class UserDialogComponent {
 
   isClientRequired(): boolean {
     const role = this.userForm.get('role')?.value;
-    return ['ADMIN_AREA'].includes(role);
-  }
-
-  passwordErrorMessage(): string {
-    const currentUserRole = this.authService.currentUser()?.role;
-    if (currentUserRole === 'OWNER' || currentUserRole === 'PLATFORM_ADMIN') {
-      return 'Owner puede usar contraseñas cortas';
-    }
-    return 'Mínimo 6 caracteres';
+    return !['OWNER', 'PLATFORM_ADMIN'].includes(role);
   }
 
   onSave(): void {
@@ -435,6 +426,16 @@ export class UserDialogComponent {
         this.saving.set(false);
       }
     });
+  }
+
+  passwordErrorMessage(): string {
+    const passwordControl = this.userForm.get('password');
+
+    if (passwordControl?.hasError('minlength')) {
+      return 'Mínimo 8 caracteres';
+    }
+
+    return 'La contraseña es demasiado corta';
   }
 
   onCancel(): void {

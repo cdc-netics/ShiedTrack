@@ -358,7 +358,7 @@ export class UserAssignmentDialogComponent implements OnInit {
 
   filteredProjects() {
     return this.projects().filter(p => {
-      const matchClient = !this.projectClientFilter || p.clientId === this.projectClientFilter;
+      const matchClient = !this.projectClientFilter || this.getEntityId(p.clientId) === this.projectClientFilter;
       const matchSearch = (p.name || '').toLowerCase().includes(this.projectSearch.toLowerCase());
       return matchClient && matchSearch;
     });
@@ -406,11 +406,12 @@ export class UserAssignmentDialogComponent implements OnInit {
     this.selectedAreas.set(updated);
   }
 
-  getClientName(clientId?: string): string {
-    if (!clientId) {
+  getClientName(clientId?: any): string {
+    const id = this.getEntityId(clientId);
+    if (!id) {
       return 'N/A';
     }
-    return this.clients().find(c => c._id === clientId)?.name || 'N/A';
+    return this.clients().find(c => c._id === id)?.name || 'N/A';
   }
 
   getProjectName(projectId: string): string {
@@ -427,6 +428,38 @@ export class UserAssignmentDialogComponent implements OnInit {
   return asStrings.filter(x => /^[a-fA-F0-9]{24}$/.test(x));
 }
 
+private getEntityId(value: any): string {
+  if (!value) return '';
+  if (typeof value === 'string') return value;
+  return String(value._id ?? value.id ?? '');
+}
+
+private extractDirectIds(items: any[]): string[] {
+  const ids = new Set<string>();
+
+  for (const item of items || []) {
+    const id = this.getEntityId(item);
+    if (id) ids.add(id);
+  }
+
+  return Array.from(ids);
+}
+
+private extractNestedIds(items: any[], key: 'areas' | 'projects'): string[] {
+  const ids = new Set<string>();
+
+  for (const item of items || []) {
+    if (Array.isArray(item?.[key])) {
+      for (const nested of item[key]) {
+        const id = this.getEntityId(nested);
+        if (id) ids.add(id);
+      }
+    }
+  }
+
+  return Array.from(ids);
+}
+
 saveAssignments(): void {
   if (!this.data?.userId) {
     this.snackBar.open('No se recibió el ID del usuario. Cierra y vuelve a abrir el diálogo.', 'Cerrar', { duration: 4000 });
@@ -435,14 +468,10 @@ saveAssignments(): void {
 
   this.loading.set(true);
 
-  const clients = this.cleanIds(this.selectedClients());
-  const projects = this.cleanIds(this.selectedProjects());
-  const areas = this.cleanIds(this.selectedAreas());
-
   const payload = {
-    clientIds: clients,
-    projectIds: projects,
-    areaIds: areas
+    clientIds: this.selectedClients(),
+    projectIds: this.selectedProjects(),
+    areaIds: this.selectedAreas()
   };
 
   this.http.post(this.assignmentsUrl(), payload).subscribe({
