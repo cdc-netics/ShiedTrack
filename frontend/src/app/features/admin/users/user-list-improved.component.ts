@@ -447,21 +447,10 @@ export class UserListImprovedComponent implements OnInit {
     this.quickBlock(user);
   }
 
-  updateUserRole(user: User, role: string): void {
-    const userId = this.getUserId(user);
-    if (!userId) return;
-
-    this.http.patch(`${environment.apiUrl}/auth/users/${userId}`, { role }).subscribe({
-      next: () => {
-        this.snackBar.open('Rol actualizado', 'Cerrar', { duration: 2500 });
-        this.loadUsers();
-      },
-      error: (err) => {
-        console.error('Error actualizando rol:', err);
-        this.snackBar.open('Error al actualizar rol', 'Cerrar', { duration: 3000 });
-      }
-    });
-  }
+  /**
+   * Actualiza el rol de un usuario mediante una solicitud PATCH al backend.
+   * Modifica el campo de rol del usuario y recarga la lista al recibir confirmación.
+   */
   updateUserRole(user: User, role: string): void {
     const userId = this.getUserId(user);
     if (!userId) return;
