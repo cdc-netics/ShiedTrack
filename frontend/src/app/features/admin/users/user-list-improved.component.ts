@@ -103,25 +103,25 @@ import { UserDialogComponent } from './user-dialog.component';
               <mat-icon>stars</mat-icon>
               <span>Owner</span>
             </button>
-            <button mat-menu-item (click)="createUser('PLATFORM_ADMIN')">
+            <button mat-menu-item (click)="createUser('ADMIN_AREA')">
               <mat-icon>admin_panel_settings</mat-icon>
-              <span>Platform Admin</span>
+              <span>Admin Area</span>
             </button>
-            <button mat-menu-item (click)="createUser('CLIENT_ADMIN')">
-              <mat-icon>business_center</mat-icon>
-              <span>Client Admin</span>
+            <button mat-menu-item (click)="createUser('PENTESTER')">
+              <mat-icon>bug_report</mat-icon>
+              <span>Pentester</span>
             </button>
-            <button mat-menu-item (click)="createUser('AREA_ADMIN')">
-              <mat-icon>folder</mat-icon>
-              <span>Area Admin</span>
+            <button mat-menu-item (click)="createUser('QA')">
+              <mat-icon>fact_check</mat-icon>
+              <span>QA</span>
             </button>
-            <button mat-menu-item (click)="createUser('ANALYST')">
-              <mat-icon>analytics</mat-icon>
-              <span>Analista</span>
+            <button mat-menu-item (click)="createUser('NORMAL_USER')">
+              <mat-icon>person</mat-icon>
+              <span>Usuario Normal</span>
             </button>
-            <button mat-menu-item (click)="createUser('VIEWER')">
+            <button mat-menu-item (click)="createUser('AUDITOR')">
               <mat-icon>visibility</mat-icon>
-              <span>Viewer</span>
+              <span>Auditor</span>
             </button>
           </mat-menu>
         </div>
@@ -223,20 +223,10 @@ import { UserDialogComponent } from './user-dialog.component';
                     <mat-icon>edit</mat-icon>
                     <span>Editar</span>
                   </button>
-                  <button mat-menu-item (click)="changeRole(user)">
+                  <button mat-menu-item [matMenuTriggerFor]="roleMenu" [matMenuTriggerData]="{ user: user }">
                     <mat-icon>admin_panel_settings</mat-icon>
                     <span>Cambiar Rol</span>
                   </button>
-                  <mat-menu #roleMenu="matMenu">
-                    @for (role of roleChangeOptions; track role.value) {
-                      <button mat-menu-item
-                              (click)="changeRole(user, role.value)"
-                              [disabled]="user.role === role.value">
-                        <mat-icon>{{ role.icon }}</mat-icon>
-                        <span>{{ role.label }}</span>
-                      </button>
-                    }
-                  </mat-menu>
                   <button mat-menu-item (click)="resetPassword(user)">
                     <mat-icon>vpn_key</mat-icon>
                     <span>Reset Contraseña</span>

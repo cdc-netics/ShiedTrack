@@ -35,7 +35,7 @@ Documento único y resumido para entender el modelo de permisos, sin duplicar gu
 
 - Si el rol es NORMAL_USER: cliente y proyecto son opcionales.
 - Si el rol es PENTESTER o QA: se ocultan campos de vínculo a cliente.
-- Si el rol es AUDITOR: se muestra bloque de visibilidad dinámica.
+- Si el rol es AUDITOR: se muestra bloque de visibilidad dinámica con selectores múltiples de Proyectos (`visibleProjectIds`) o Clientes (`visibleClientIds`) en tiempo real según el alcance (`PER_PROJECT` o `PER_CLIENT`).
 - Si el rol es OWNER: el formulario no debe forzar restricciones artificiales.
 
 ## Mapa de migración
@@ -53,6 +53,7 @@ Documento único y resumido para entender el modelo de permisos, sin duplicar gu
 - [backend/src/modules/auth/validation/auth.validation.zod.ts](../backend/src/modules/auth/validation/auth.validation.zod.ts)
 - [backend/src/modules/auth/auth-improved.service.ts](../backend/src/modules/auth/auth-improved.service.ts)
 - [frontend/src/app/features/admin/users/user-create-dynamic.component.ts](../frontend/src/app/features/admin/users/user-create-dynamic.component.ts)
+- [frontend/src/app/features/admin/users/user-dialog.component.ts](../frontend/src/app/features/admin/users/user-dialog.component.ts)
 
 ## Criterio de cierre
 

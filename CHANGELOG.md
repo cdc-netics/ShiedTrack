@@ -7,6 +7,13 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 ## [Unreleased]
 
+### Corrección de regresión en Gestión de Usuarios (Roles y Validaciones)
+
+- **FIX (Frontend — menú de creación):** Se actualizaron las opciones del botón "Crear usuario" para remover roles obsoletos (`Platform Admin`, `Analista`, etc.) y desplegar la lista con el nuevo modelo de roles: `Owner`, `Admin Area`, `Pentester`, `QA`, `Usuario Normal` y `Auditor`.
+- **FIX (Frontend — cambiar rol):** Se reparó el botón "Cambiar Rol" dentro del menú contextual de la tabla de usuarios, el cual había quedado inoperante por un merge commit erróneo. Se restablecieron las directivas `[matMenuTriggerFor]` y `[matMenuTriggerData]` y se depuró la definición duplicada de `#roleMenu`.
+- **FIX (Frontend — validación de cliente):** Se corrigió la validación dinámica en `UserDialogComponent`. El campo `clientId` (Cliente) ahora es opcional para `OWNER`, `PENTESTER`, `QA`, `AUDITOR` y `NORMAL_USER`, y obligatorio únicamente para `ADMIN_AREA`, resolviendo el bloqueo de guardado del formulario.
+- **FEAT (Frontend — visibilidad de Auditor):** Se completó la interfaz dinámica en el diálogo para el rol `AUDITOR`. Al seleccionar alcances `Por Proyecto` (`PER_PROJECT`) o `Por Cliente` (`PER_CLIENT`), se despliegan de forma condicional los selectores múltiples correspondientes alimentados desde la API, configurando validaciones `required` dinámicas.
+
 ## [2.4.0] - 2026-05-22
 
 ### Gestión de usuarios — nuevas acciones administrativas
