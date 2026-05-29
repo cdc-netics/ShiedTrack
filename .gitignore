@@ -18,7 +18,7 @@ coverage/
 # Production
 dist/
 build/
-
+Skills/
 # Environment Variables (NUNCA commitear credenciales)
 .env
 .env.local
