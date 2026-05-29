@@ -349,11 +349,11 @@ export class UserListImprovedComponent implements OnInit {
 
   availableRoles = [
     { value: 'OWNER', label: 'Owner', icon: 'stars' },
-    { value: 'PLATFORM_ADMIN', label: 'Platform Admin', icon: 'admin_panel_settings' },
-    { value: 'CLIENT_ADMIN', label: 'Client Admin', icon: 'business_center' },
-    { value: 'AREA_ADMIN', label: 'Area Admin', icon: 'folder' },
-    { value: 'ANALYST', label: 'Analyst', icon: 'analytics' },
-    { value: 'VIEWER', label: 'Viewer', icon: 'visibility' }
+    { value: 'ADMIN_AREA', label: 'Admin Area', icon: 'admin_panel_settings' },
+    { value: 'PENTESTER', label: 'Pentester', icon: 'bug_report' },
+    { value: 'QA', label: 'QA', icon: 'fact_check' },
+    { value: 'NORMAL_USER', label: 'Usuario Normal', icon: 'person' },
+    { value: 'AUDITOR', label: 'Auditor', icon: 'visibility' }
   ];
 
   roleChangeOptions = this.availableRoles;
