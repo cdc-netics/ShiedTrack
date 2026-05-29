@@ -96,12 +96,9 @@ import { AuthService } from '../../../core/services/auth.service';
         <mat-form-field appearance="outline" class="full-width">
           <mat-label>Rol</mat-label>
           <mat-select formControlName="role" required>
-            <mat-option value="OWNER">Owner</mat-option>
-            <mat-option value="PLATFORM_ADMIN">Platform Admin</mat-option>
-            <mat-option value="CLIENT_ADMIN">Client Admin</mat-option>
-            <mat-option value="AREA_ADMIN">Area Admin</mat-option>
-            <mat-option value="ANALYST">Analista</mat-option>
-            <mat-option value="VIEWER">Viewer</mat-option>
+            @for (option of roleOptions; track option.value) {
+              <mat-option [value]="option.value">{{ option.label }}</mat-option>
+            }
           </mat-select>
           @if (userForm.get('role')?.hasError('required')) {
             <mat-error>El rol es obligatorio</mat-error>
@@ -137,6 +134,42 @@ import { AuthService } from '../../../core/services/auth.service';
             </mat-select>
             <mat-hint>Define el alcance visual del auditor</mat-hint>
           </mat-form-field>
+
+          <!-- Selección de Proyectos para Auditor -->
+          @if (userForm.get('auditorVisibilityScope')?.value === 'PER_PROJECT') {
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Proyectos Visibles</mat-label>
+              <mat-select formControlName="visibleProjectIds" multiple required>
+                @if (projects().length === 0) {
+                  <mat-option disabled>No hay proyectos disponibles</mat-option>
+                }
+                @for (project of projects(); track project._id) {
+                  <mat-option [value]="project._id">{{ project.name }}</mat-option>
+                }
+              </mat-select>
+              @if (userForm.get('visibleProjectIds')?.hasError('required')) {
+                <mat-error>Debes seleccionar al menos un proyecto</mat-error>
+              }
+            </mat-form-field>
+          }
+
+          <!-- Selección de Clientes para Auditor -->
+          @if (userForm.get('auditorVisibilityScope')?.value === 'PER_CLIENT') {
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Clientes Visibles</mat-label>
+              <mat-select formControlName="visibleClientIds" multiple required>
+                @if (clients().length === 0) {
+                  <mat-option disabled>No hay clientes disponibles</mat-option>
+                }
+                @for (client of clients(); track client._id) {
+                  <mat-option [value]="client._id">{{ client.name }}</mat-option>
+                }
+              </mat-select>
+              @if (userForm.get('visibleClientIds')?.hasError('required')) {
+                <mat-error>Debes seleccionar al menos un cliente</mat-error>
+              }
+            </mat-form-field>
+          }
         }
       </form>
     </mat-dialog-content>
@@ -194,6 +227,7 @@ export class UserDialogComponent {
   saving = signal(false);
   clients = signal<any[]>([]);
   areas = signal<any[]>([]);
+  projects = signal<any[]>([]);
   showClientSelect = signal(false);
   showAreaSelect = signal(false);
   showAuditorScope = signal(false);
@@ -203,6 +237,7 @@ export class UserDialogComponent {
   private API_URL = `${environment.apiUrl}/auth`;
   private CLIENTS_URL = `${environment.apiUrl}/clients`;
   private AREAS_URL = `${environment.apiUrl}/areas`;
+  private PROJECTS_URL = `${environment.apiUrl}/projects`;
 
   constructor(@Inject(MAT_DIALOG_DATA) public data: any) {
     console.log('[UserDialog] Constructor - Datos recibidos:', this.data);
@@ -221,7 +256,9 @@ export class UserDialogComponent {
       role: [data?.role || 'NORMAL_USER', Validators.required],
       clientId: [data?.clientId || null],
       areaIds: [data?.areaIds || []],
-      auditorVisibilityScope: [data?.auditorVisibilityScope || 'ALL_AREA']
+      auditorVisibilityScope: [data?.auditorVisibilityScope || 'ALL_AREA'],
+      visibleProjectIds: [data?.visibleProjectIds || []],
+      visibleClientIds: [data?.visibleClientIds || []]
     });
 
     // Determine if we should show client select
@@ -302,18 +339,52 @@ export class UserDialogComponent {
     this.showAreaSelect.set(needsAreasOnInit);
     
     // Configurar validacion dinamica de Cliente
+    const updateClientValidator = (role: string) => {
+      const clientControl = this.userForm.get('clientId');
+      const isClientOptional = ['OWNER', 'PLATFORM_ADMIN', 'PENTESTER', 'QA', 'AUDITOR', 'NORMAL_USER'].includes(role);
+      
+      if (isClientOptional) {
+        clientControl?.clearValidators();
+      } else {
+        clientControl?.setValidators(Validators.required);
+      }
+      clientControl?.updateValueAndValidity();
+    };
+
+    // Suscribirse a cambios de rol
     this.userForm.get('role')?.valueChanges.subscribe(role => {
-       const isGlobalRole = ['OWNER', 'PLATFORM_ADMIN'].includes(role);
-       const clientControl = this.userForm.get('clientId');
-       
-       if (isGlobalRole) {
-         clientControl?.clearValidators();
-         clientControl?.updateValueAndValidity();
-       } else {
-         clientControl?.setValidators(Validators.required);
-         clientControl?.updateValueAndValidity();
-       }
+      updateClientValidator(role);
     });
+
+    // Ejecutar validación inicial
+    updateClientValidator(selectedRole);
+
+    // Configurar validación de alcances para el Auditor
+    const updateAuditorValidators = (scope: string) => {
+      const projectsControl = this.userForm.get('visibleProjectIds');
+      const clientsControl = this.userForm.get('visibleClientIds');
+
+      if (scope === 'PER_PROJECT') {
+        projectsControl?.setValidators(Validators.required);
+        clientsControl?.clearValidators();
+      } else if (scope === 'PER_CLIENT') {
+        clientsControl?.setValidators(Validators.required);
+        projectsControl?.clearValidators();
+      } else {
+        projectsControl?.clearValidators();
+        clientsControl?.clearValidators();
+      }
+      
+      projectsControl?.updateValueAndValidity();
+      clientsControl?.updateValueAndValidity();
+    };
+
+    this.userForm.get('auditorVisibilityScope')?.valueChanges.subscribe(scope => {
+      updateAuditorValidators(scope);
+    });
+
+    const initialScope = this.userForm.get('auditorVisibilityScope')?.value || 'ALL_AREA';
+    updateAuditorValidators(initialScope);
 
     // Cargar áreas si el rol las necesita
     if (needsAreasOnInit) {
@@ -323,6 +394,9 @@ export class UserDialogComponent {
         this.loadAreas(initialClientId);
       }
     }
+
+    // Carga inicial de proyectos disponibles
+    this.loadProjects();
   }
 
   loadClients() {
@@ -332,6 +406,17 @@ export class UserDialogComponent {
       },
       error: (err) => {
         console.error('Error al cargar clientes:', err);
+      }
+    });
+  }
+
+  loadProjects() {
+    this.http.get<any[]>(this.PROJECTS_URL).subscribe({
+      next: (projects) => {
+        this.projects.set(projects);
+      },
+      error: (err) => {
+        console.error('Error al cargar proyectos:', err);
       }
     });
   }
@@ -389,6 +474,21 @@ export class UserDialogComponent {
       userData.areaIds = areaIds;
     }
 
+    // Datos específicos de visibilidad de Auditor
+    if (this.userForm.value.role === 'AUDITOR') {
+      userData.auditorVisibilityScope = this.userForm.value.auditorVisibilityScope;
+      if (this.userForm.value.auditorVisibilityScope === 'PER_PROJECT') {
+        userData.visibleProjectIds = this.userForm.value.visibleProjectIds;
+        userData.visibleClientIds = [];
+      } else if (this.userForm.value.auditorVisibilityScope === 'PER_CLIENT') {
+        userData.visibleClientIds = this.userForm.value.visibleClientIds;
+        userData.visibleProjectIds = [];
+      } else {
+        userData.visibleProjectIds = [];
+        userData.visibleClientIds = [];
+      }
+    }
+
     // Email siempre editable por administradores autorizados
     userData.email = this.userForm.value.email;
 
@@ -432,7 +532,8 @@ export class UserDialogComponent {
     const passwordControl = this.userForm.get('password');
 
     if (passwordControl?.hasError('minlength')) {
-      return 'Mínimo 8 caracteres';
+      const requiredLength = passwordControl.getError('minlength')?.requiredLength || 6;
+      return `Mínimo ${requiredLength} caracteres`;
     }
 
     return 'La contraseña es demasiado corta';
