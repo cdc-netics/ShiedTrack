@@ -9,6 +9,8 @@ import { Model, Types } from "mongoose";
 import { Area } from "./schemas/area.schema";
 import { CreateAreaDto, UpdateAreaDto } from "./dto/area.dto";
 import { getNamespace } from "cls-hooked";
+import { normalizeRole, roleSatisfies } from "../../common/rbac/rbac-policy";
+import { UserRole } from "../../common/enums";
 
 /**
  * Servicio de gestión de Áreas
@@ -133,6 +135,7 @@ export class AreaService {
   async findByClient(
     clientId?: string,
     includeInactive = false,
+    currentUser?: any,
   ): Promise<any[]> {
     const query: any = {};
 
@@ -140,12 +143,33 @@ export class AreaService {
       query.isActive = true;
     }
 
-    const areas = await this.areaModel
+    const scopedTenantId =
+      currentUser?.activeTenantId || currentUser?.clientId;
+    const isGlobalUser = roleSatisfies(UserRole.OWNER, currentUser?.role);
+    const isOperationalUser =
+      normalizeRole(currentUser?.role) === "PENTESTER_QA";
+    const skipTenantFilter = isOperationalUser && !scopedTenantId;
+
+    if (clientId) {
+      query.$or = [
+        { tenantId: new Types.ObjectId(clientId) },
+        { clientId: new Types.ObjectId(clientId) },
+      ];
+    } else if (!isGlobalUser && scopedTenantId) {
+      query.tenantId = new Types.ObjectId(scopedTenantId);
+    }
+
+    const areaQuery = this.areaModel
       .find(query)
       .populate("clientId", "name") // LEGACY (si existe)
       .populate("tenantId", "name")
-      .sort({ name: 1 })
-      .lean();
+      .sort({ name: 1 });
+
+    if (skipTenantFilter) {
+      areaQuery.setOptions({ skipTenantFilter: true });
+    }
+
+    const areas = await areaQuery.lean();
 
     // Para cada área, obtener sus administradores desde UserAreaAssignment
     const AreasWithAdmins = await Promise.all(

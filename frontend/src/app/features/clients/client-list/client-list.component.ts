@@ -17,6 +17,8 @@ import { HttpClient } from '@angular/common/http';
 import { tap } from 'rxjs';
 import { ClientDialogComponent } from '../client-dialog/client-dialog.component';
 import { environment } from '../../../../environments/environment'; // Standardize env usage
+import { AuthService } from '../../../core/services/auth.service';
+import { UserRole } from '../../../shared/enums';
 
 /**
  * Componente de Lista de Clientes
@@ -48,10 +50,12 @@ import { environment } from '../../../../environments/environment'; // Standardi
       </header>
 
       <section class="ui-cluster ui-cluster--between" aria-label="Filtros y acciones">
-        <button mat-raised-button color="primary" type="button" (click)="openClientDialog()">
-          <mat-icon aria-hidden="true">add</mat-icon>
-          Nuevo cliente
-        </button>
+        @if (canManageClients()) {
+          <button mat-raised-button color="primary" type="button" (click)="openClientDialog()">
+            <mat-icon aria-hidden="true">add</mat-icon>
+            Nuevo cliente
+          </button>
+        }
         <div class="ui-cluster">
           <mat-form-field appearance="outline" class="filter-field">
             <mat-label>Buscar</mat-label>
@@ -78,11 +82,13 @@ import { environment } from '../../../../environments/environment'; // Standardi
           <div class="ui-empty-state">
             <mat-icon aria-hidden="true">business_center</mat-icon>
             <p class="ui-empty-state__title">No hay clientes</p>
-            <p>Crea tu primer cliente o tenant para comenzar.</p>
-            <button mat-raised-button color="primary" type="button" (click)="openClientDialog()">
-              <mat-icon aria-hidden="true">add</mat-icon>
-              Crear cliente
-            </button>
+            <p>{{ canManageClients() ? 'Crea tu primer cliente o tenant para comenzar.' : 'No hay clientes disponibles para tu usuario.' }}</p>
+            @if (canManageClients()) {
+              <button mat-raised-button color="primary" type="button" (click)="openClientDialog()">
+                <mat-icon aria-hidden="true">add</mat-icon>
+                Crear cliente
+              </button>
+            }
           </div>
         } @else {
           <div class="ui-table-scroll">
@@ -130,31 +136,35 @@ import { environment } from '../../../../environments/environment'; // Standardi
             <ng-container matColumnDef="actions">
               <th mat-header-cell *matHeaderCellDef>Acciones</th>
               <td mat-cell *matCellDef="let client">
-                <button mat-icon-button (click)="openClientDialog(client); $event.stopPropagation()" 
-                        matTooltip="Editar cliente">
-                  <mat-icon>edit</mat-icon>
-                </button>
+                @if (canManageClients()) {
+                  <button mat-icon-button (click)="openClientDialog(client); $event.stopPropagation()" 
+                          matTooltip="Editar cliente">
+                    <mat-icon>edit</mat-icon>
+                  </button>
+                }
                 <button mat-icon-button [routerLink]="['/clients', client._id]" (click)="$event.stopPropagation()"
                         matTooltip="Ver detalles">
                   <mat-icon>visibility</mat-icon>
                 </button>
-                <button mat-icon-button [matMenuTriggerFor]="exportMenu" matTooltip="Exportar datos" (click)="$event.stopPropagation()">
-                  <mat-icon>cloud_download</mat-icon>
-                </button>
-                <mat-menu #exportMenu="matMenu">
-                  <button mat-menu-item (click)="exportClientZip(client._id)">
-                    <mat-icon>folder_zip</mat-icon>
-                    <span>Portfolio Completo (ZIP)</span>
+                @if (canManageClients()) {
+                  <button mat-icon-button [matMenuTriggerFor]="exportMenu" matTooltip="Exportar datos" (click)="$event.stopPropagation()">
+                    <mat-icon>cloud_download</mat-icon>
                   </button>
-                  <button mat-menu-item (click)="exportClientCSV(client._id)">
-                    <mat-icon>grid_on</mat-icon>
-                    <span>Reporte General (CSV)</span>
+                  <mat-menu #exportMenu="matMenu">
+                    <button mat-menu-item (click)="exportClientZip(client._id)">
+                      <mat-icon>folder_zip</mat-icon>
+                      <span>Portfolio Completo (ZIP)</span>
+                    </button>
+                    <button mat-menu-item (click)="exportClientCSV(client._id)">
+                      <mat-icon>grid_on</mat-icon>
+                      <span>Reporte General (CSV)</span>
+                    </button>
+                  </mat-menu>
+                  <button mat-icon-button (click)="deleteClient(client); $event.stopPropagation()" 
+                          matTooltip="Eliminar" color="warn">
+                    <mat-icon>delete</mat-icon>
                   </button>
-                </mat-menu>
-                <button mat-icon-button (click)="deleteClient(client); $event.stopPropagation()" 
-                        matTooltip="Eliminar" color="warn">
-                  <mat-icon>delete</mat-icon>
-                </button>
+                }
               </td>
             </ng-container>
 
@@ -250,6 +260,7 @@ export class ClientListComponent implements OnInit {
   private dialog = inject(MatDialog);
   private snackBar = inject(MatSnackBar);
   private router = inject(Router);
+  private authService = inject(AuthService);
   private readonly API_URL = `${environment.apiUrl}/clients`;
   
   // Columnas visibles en la tabla
@@ -283,6 +294,8 @@ export class ClientListComponent implements OnInit {
   }
 
   openClientDialog(client?: any): void {
+    if (!this.canManageClients()) return;
+
     // Abre dialogo de alta/edicion y recarga al cerrar si hay cambios
     const dialogRef = this.dialog.open(ClientDialogComponent, {
       width: '600px',
@@ -297,6 +310,8 @@ export class ClientListComponent implements OnInit {
   }
 
   deleteClient(client: any): void {
+    if (!this.canManageClients()) return;
+
     // Eliminacion con confirmacion explicita del usuario
     const confirmed = confirm(`¿Está seguro de eliminar el cliente "${client.name}"?`);
     if (!confirmed) return;
@@ -396,5 +411,10 @@ export class ClientListComponent implements OnInit {
   openClientDetails(client: any): void {
     if (!client?._id) return;
     void this.router.navigate(['/clients', client._id]);
+  }
+
+  canManageClients(): boolean {
+    const role = this.authService.currentUser()?.role;
+    return role === UserRole.OWNER || role === UserRole.PLATFORM_ADMIN;
   }
 }
