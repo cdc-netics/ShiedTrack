@@ -21,7 +21,7 @@ import {
   CloseReason,
   UserRole,
 } from "../../common/enums";
-import { roleSatisfies } from "../../common/rbac/rbac-policy";
+import { normalizeRole, roleSatisfies } from "../../common/rbac/rbac-policy";
 import { Project } from "../project/schemas/project.schema";
 import { SystemConfig } from "../system-config/schemas/system-config.schema";
 import { Area } from "../area/schemas/area.schema";
@@ -69,14 +69,20 @@ export class FindingService {
   }
 
   private isRestrictedByArea(currentUser?: any): boolean {
-    return [
-      UserRole.AREA_ADMIN,
-      UserRole.ANALYST,
-      UserRole.PENTESTER,
-      UserRole.QA,
-      UserRole.VIEWER,
-      UserRole.AUDITOR,
-    ].includes(currentUser?.role);
+    if (!currentUser) return false;
+    if ([UserRole.AREA_ADMIN, UserRole.VIEWER, UserRole.AUDITOR].includes(currentUser.role)) {
+      return true;
+    }
+
+    return this.isOperationalUser(currentUser) && this.getUserAreaIds(currentUser).length > 0;
+  }
+
+  private isOperationalUser(currentUser?: any): boolean {
+    return normalizeRole(currentUser?.role) === "PENTESTER_QA";
+  }
+
+  private shouldBypassTenantFilter(currentUser?: any): boolean {
+    return this.isOperationalUser(currentUser) && !this.getCurrentTenantId(currentUser);
   }
 
   private getUserAreaIds(currentUser?: any): string[] {
@@ -282,11 +288,17 @@ export class FindingService {
     projectId: string,
     currentUser?: any,
   ): Promise<Project> {
-    const project = await this.projectModel
+    const projectQuery = this.projectModel
       .findById(projectId)
       .populate("clientId")
-      .populate("areaId")
-      .populate("areaIds");
+      .populate({ path: "areaId", options: { skipTenantFilter: true } })
+      .populate({ path: "areaIds", options: { skipTenantFilter: true } });
+
+    if (this.shouldBypassTenantFilter(currentUser)) {
+      projectQuery.setOptions({ skipTenantFilter: true });
+    }
+
+    const project = await projectQuery;
 
     if (!project) {
       throw new NotFoundException(`Proyecto con ID ${projectId} no encontrado`);
@@ -316,19 +328,26 @@ export class FindingService {
     id: string,
     currentUser?: any,
   ): Promise<Finding> {
-    const finding = await this.findingModel
+    const findingQuery = this.findingModel
       .findById(id)
       .populate({
         path: "projectId",
+        options: { skipTenantFilter: true },
         populate: [
           { path: "clientId" },
-          { path: "areaId" },
-          { path: "areaIds" },
+          { path: "areaId", options: { skipTenantFilter: true } },
+          { path: "areaIds", options: { skipTenantFilter: true } },
         ],
       })
       .populate("assignedTo", "firstName lastName email")
       .populate("createdBy", "firstName lastName email")
       .populate("closedBy", "firstName lastName email");
+
+    if (this.shouldBypassTenantFilter(currentUser)) {
+      findingQuery.setOptions({ skipTenantFilter: true });
+    }
+
+    const finding = await findingQuery;
 
     if (!finding) {
       throw new NotFoundException(`Hallazgo con ID ${id} no encontrado`);
@@ -437,7 +456,8 @@ export class FindingService {
     const restrictedByArea = this.isRestrictedByArea(currentUser);
     const allowedAreas = this.getUserAreaIds(currentUser);
 
-    if (currentTenantId) {
+    const isGlobalUser = roleSatisfies(UserRole.OWNER, currentUser?.role);
+    if (currentTenantId && !isGlobalUser) {
       query.tenantId = this.toObjectId(currentTenantId);
     }
 
@@ -461,7 +481,7 @@ export class FindingService {
         .map((id) => this.toObjectId(id))
         .filter(Boolean);
 
-      const accessibleProjects = await this.projectModel
+      const accessibleProjectsQuery = this.projectModel
         .find({
           ...(currentTenantId
             ? { tenantId: this.toObjectId(currentTenantId) }
@@ -473,6 +493,12 @@ export class FindingService {
         })
         .select("_id");
 
+      if (this.shouldBypassTenantFilter(currentUser)) {
+        accessibleProjectsQuery.setOptions({ skipTenantFilter: true });
+      }
+
+      const accessibleProjects = await accessibleProjectsQuery;
+
       const projectIds = accessibleProjects.map((p: any) => p._id);
 
       if (!projectIds.length) {
@@ -482,12 +508,22 @@ export class FindingService {
       query.projectId = { $in: projectIds };
     }
 
-    return this.findingModel
+    const findingsQuery = this.findingModel
       .find(query)
-      .populate("projectId", "name code clientId tenantId areaId areaIds")
+      .populate({
+        path: "projectId",
+        select: "name code clientId tenantId areaId areaIds",
+        options: { skipTenantFilter: true },
+      })
       .populate("assignedTo", "firstName lastName email")
       .populate("createdBy", "firstName lastName email")
       .sort({ createdAt: -1 });
+
+    if (this.shouldBypassTenantFilter(currentUser)) {
+      findingsQuery.setOptions({ skipTenantFilter: true });
+    }
+
+    return findingsQuery;
   }
 
   /**
@@ -701,11 +737,19 @@ export class FindingService {
     };
 
     const currentTenantId = this.getCurrentTenantId(currentUser);
-    if (currentTenantId) {
+    if (currentTenantId && !roleSatisfies(UserRole.OWNER, currentUser?.role)) {
       query.tenantId = this.toObjectId(currentTenantId);
     }
 
-    return this.findingModel.find(query).select("code title severity status");
+    const retestQuery = this.findingModel
+      .find(query)
+      .select("code title severity status");
+
+    if (this.shouldBypassTenantFilter(currentUser)) {
+      retestQuery.setOptions({ skipTenantFilter: true });
+    }
+
+    return retestQuery;
   }
 
   /**

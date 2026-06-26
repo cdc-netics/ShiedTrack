@@ -123,26 +123,41 @@ export class ClientService {
    * Obtiene todos los clientes activos con conteo de proyectos
    * MULTI-TENANT: Filtra por role del usuario
    * - OWNER/PLATFORM_ADMIN: Ven todos los clientes
-   * - CLIENT_ADMIN: Solo su cliente
-   * - Otros roles: Sin acceso
+   * - CLIENT_ADMIN/AREA_ADMIN: Solo su cliente
+   * - PENTESTER/QA/ANALYST transversales: Clientes activos en modo lectura
    */
   async findAll(includeInactive = false, currentUser?: any): Promise<any[]> {
     const query: any = includeInactive ? {} : { isActive: true };
 
     // SEGURIDAD MULTI-TENANT: Filtrar según rol
+    let skipProjectCounts = false;
+
     if (currentUser) {
-      if (!roleSatisfies(UserRole.OWNER, currentUser.role) && !currentUser.clientId) {
+      const isGlobalUser = roleSatisfies(UserRole.OWNER, currentUser.role);
+      const isOperationalUser =
+        normalizeRole(currentUser.role) === "PENTESTER_QA";
+      const scopedClientId = currentUser.clientId || currentUser.activeTenantId;
+      skipProjectCounts = isOperationalUser && !scopedClientId;
+
+      if (!isGlobalUser && !scopedClientId && !isOperationalUser) {
         throw new ForbiddenException(
           "Tu rol no tiene permiso para listar clientes sin contexto de tenant",
         );
       }
 
-      if (!roleSatisfies(UserRole.OWNER, currentUser.role) && currentUser.clientId) {
-        query._id = currentUser.clientId; // Solo su cliente
+      if (!isGlobalUser && scopedClientId) {
+        query._id = scopedClientId; // Solo su cliente
       }
     }
 
     const clients = await this.clientModel.find(query).sort({ name: 1 }).lean();
+
+    if (skipProjectCounts) {
+      return clients.map((client) => ({
+        ...client,
+        projectsCount: 0,
+      }));
+    }
 
     // Agregar conteo de proyectos para cada cliente
     const Project = this.clientModel.db.model("Project");

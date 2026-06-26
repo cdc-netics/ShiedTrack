@@ -54,6 +54,7 @@ services:
       SKIP_LOCAL_MONGO_DIAGNOSTICS: "true"
     volumes:
       - backups_data:/app/backups
+      - evidence_uploads:/app/uploads/evidence
     depends_on:
       mongodb:
         condition: service_healthy
@@ -76,6 +77,7 @@ services:
 volumes:
   mongodb_data:
   backups_data:
+  evidence_uploads:
 
 networks:
   shieldtrack-network:

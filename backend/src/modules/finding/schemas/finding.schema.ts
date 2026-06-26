@@ -177,9 +177,10 @@ FindingSchema.pre("save", async function () {
   const ProjectModel = doc.db.model("Project");
   const CounterModel = doc.db.model("Counter");
 
-  const project = await ProjectModel.findById(projectId)
-    .populate("areaId")
-    .populate("areaIds")
+  const project = await ProjectModel.findOne({ _id: projectId, tenantId })
+    .setOptions({ skipTenantFilter: true })
+    .populate({ path: "areaId", options: { skipTenantFilter: true } })
+    .populate({ path: "areaIds", options: { skipTenantFilter: true } })
     .exec();
 
   if (!project) {
@@ -199,10 +200,11 @@ FindingSchema.pre("save", async function () {
   }
 
   const year = new Date().getFullYear();
-  const counterKey = `findings:${tenantId.toString()}:${prefix}:${year}`;
+  const counterKey = `findings:${prefix}:${year}`;
   const FindingModel = doc.db.model("Finding");
   const codePattern = new RegExp(`^${escapeRegex(prefix)}-${year}-(\\d{6})$`);
   const latestFinding = await FindingModel.findOne({ code: codePattern })
+    .setOptions({ skipTenantFilter: true })
     .sort({ code: -1 })
     .select("code")
     .lean<{ code?: string }>()

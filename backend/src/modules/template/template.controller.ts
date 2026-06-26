@@ -78,6 +78,8 @@ export class TemplateController {
     UserRole.CLIENT_ADMIN,
     UserRole.AREA_ADMIN,
     UserRole.ANALYST,
+    UserRole.PENTESTER,
+    UserRole.QA,
   )
   @ApiOperation({ summary: "Crear plantilla (admins)" })
   async createTemplate(
@@ -110,7 +112,7 @@ export class TemplateController {
    * Actualizar plantilla
    */
   @Patch(":id")
-  @Roles(UserRole.CLIENT_ADMIN, UserRole.PLATFORM_ADMIN, UserRole.OWNER)
+  @Roles(UserRole.CLIENT_ADMIN, UserRole.PLATFORM_ADMIN, UserRole.OWNER, UserRole.AREA_ADMIN, UserRole.ANALYST, UserRole.PENTESTER, UserRole.QA)
   @ApiOperation({ summary: "Actualizar plantilla" })
   async updateTemplate(
     @Param("id") id: string,
@@ -124,7 +126,7 @@ export class TemplateController {
    * Desactivar plantilla (soft delete)
    */
   @Delete(":id")
-  @Roles(UserRole.CLIENT_ADMIN, UserRole.PLATFORM_ADMIN, UserRole.OWNER)
+  @Roles(UserRole.CLIENT_ADMIN, UserRole.PLATFORM_ADMIN, UserRole.OWNER, UserRole.AREA_ADMIN, UserRole.ANALYST, UserRole.PENTESTER, UserRole.QA)
   @ApiOperation({ summary: "Desactivar plantilla" })
   async deactivateTemplate(@Param("id") id: string, @CurrentUser() user: any) {
     await this.templateService.deactivateTemplate(id, user);

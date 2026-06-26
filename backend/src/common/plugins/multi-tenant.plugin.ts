@@ -58,6 +58,10 @@ export function multiTenantPlugin(schema: Schema) {
 
   // MIDDLEWARE PRE-FIND: Filtrar por tenantId automáticamente
   const applyTenantFilter = function (this: any, next: any) {
+    if (this.getOptions?.().skipTenantFilter === true) {
+      return next();
+    }
+
     if (isOwnerRole()) {
       // Owner puede ver todos los tenants
       return next();
