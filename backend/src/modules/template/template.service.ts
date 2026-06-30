@@ -234,9 +234,11 @@ export class TemplateService {
   ): Promise<FindingTemplate> {
     const template = await this.getTemplateById(id, currentUser);
 
-    // RBAC: Solo el creador o admins superiores pueden editar
+    // RBAC: Creador, admins o roles operativos (PENTESTER/QA/ANALYST) pueden editar
     const canEdit =
       this.isGlobalUser(currentUser) ||
+      this.isTenantAdmin(currentUser) ||
+      normalizeRole(currentUser?.role) === "PENTESTER_QA" ||
       template.createdBy.toString() === currentUser.userId;
 
     if (!canEdit) {
@@ -260,9 +262,11 @@ export class TemplateService {
   async deactivateTemplate(id: string, currentUser: any): Promise<void> {
     const template = await this.getTemplateById(id, currentUser);
 
-    // RBAC: Solo el creador o admins superiores pueden desactivar
+    // RBAC: Creador, admins o roles operativos (PENTESTER/QA/ANALYST) pueden desactivar
     const canDelete =
       this.isGlobalUser(currentUser) ||
+      this.isTenantAdmin(currentUser) ||
+      normalizeRole(currentUser?.role) === "PENTESTER_QA" ||
       template.createdBy.toString() === currentUser.userId;
 
     if (!canDelete) {

@@ -63,6 +63,8 @@ export class ProjectController {
     UserRole.PLATFORM_ADMIN,
     UserRole.CLIENT_ADMIN,
     UserRole.AREA_ADMIN,
+    UserRole.PENTESTER,
+    UserRole.QA,
   )
   @UsePipes(
     new ValidationPipe({
@@ -109,6 +111,8 @@ export class ProjectController {
     UserRole.PLATFORM_ADMIN,
     UserRole.CLIENT_ADMIN,
     UserRole.AREA_ADMIN,
+    UserRole.PENTESTER,
+    UserRole.QA,
   )
   @ApiOperation({
     summary: "Actualizar proyecto",
@@ -132,6 +136,8 @@ export class ProjectController {
     UserRole.PLATFORM_ADMIN,
     UserRole.CLIENT_ADMIN,
     UserRole.AREA_ADMIN,
+    UserRole.PENTESTER,
+    UserRole.QA,
   )
   @ApiOperation({
     summary: "Actualizar parcialmente un proyecto",

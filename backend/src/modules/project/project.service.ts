@@ -10,7 +10,7 @@ import { Project } from "./schemas/project.schema";
 import { Finding } from "../finding/schemas/finding.schema";
 import { CreateProjectDto, UpdateProjectDto } from "./dto/project.dto";
 import { ProjectStatus, FindingStatus, UserRole } from "../../common/enums";
-import { roleSatisfies } from "../../common/rbac/rbac-policy";
+import { normalizeRole, roleSatisfies } from "../../common/rbac/rbac-policy";
 
 /**
  * Servicio de gestión de Proyectos
@@ -46,18 +46,24 @@ export class ProjectService {
 
   /** Determina si el usuario está restringido por área */
   private isRestrictedByArea(currentUser?: any): boolean {
-    return [
-      UserRole.AREA_ADMIN,
-      UserRole.ANALYST,
-      UserRole.PENTESTER,
-      UserRole.QA,
-      UserRole.VIEWER,
-      UserRole.AUDITOR,
-    ].includes(currentUser?.role);
+    if (!currentUser) return false;
+    if ([UserRole.AREA_ADMIN, UserRole.VIEWER, UserRole.AUDITOR].includes(currentUser.role)) {
+      return true;
+    }
+
+    return this.isOperationalUser(currentUser) && this.getUserAreaIds(currentUser).length > 0;
   }
 
   private isGlobalUser(currentUser?: any): boolean {
     return roleSatisfies(UserRole.OWNER, currentUser?.role);
+  }
+
+  private isOperationalUser(currentUser?: any): boolean {
+    return normalizeRole(currentUser?.role) === "PENTESTER_QA";
+  }
+
+  private shouldBypassTenantFilter(currentUser?: any): boolean {
+    return this.isOperationalUser(currentUser) && !this.getCurrentTenantId(currentUser);
   }
 
   /** Obtiene áreas asignadas al usuario */
@@ -67,13 +73,12 @@ export class ProjectService {
 
   /** Determina si el usuario está restringido por proyectos visibles */
   private isRestrictedByVisibleProjects(currentUser?: any): boolean {
-    return [
-      UserRole.VIEWER,
-      UserRole.AUDITOR,
-      UserRole.ANALYST,
-      UserRole.PENTESTER,
-      UserRole.QA,
-    ].includes(currentUser?.role);
+    if (!currentUser) return false;
+    if ([UserRole.VIEWER, UserRole.AUDITOR].includes(currentUser.role)) {
+      return true;
+    }
+
+    return this.isOperationalUser(currentUser) && this.getUserVisibleProjectIds(currentUser).length > 0;
   }
 
   /** Obtiene proyectos visibles del usuario */
@@ -149,11 +154,17 @@ export class ProjectService {
     id: string,
     currentUser?: any,
   ): Promise<Project> {
-    const project = await this.projectModel
+    const projectQuery = this.projectModel
       .findById(id)
       .populate("clientId", "name code")
-      .populate("areaId", "name")
-      .populate("areaIds", "name");
+      .populate({ path: "areaId", select: "name", options: { skipTenantFilter: true } })
+      .populate({ path: "areaIds", select: "name", options: { skipTenantFilter: true } });
+
+    if (this.shouldBypassTenantFilter(currentUser)) {
+      projectQuery.setOptions({ skipTenantFilter: true });
+    }
+
+    const project = await projectQuery;
 
     if (!project) {
       throw new NotFoundException(`Proyecto con ID ${id} no encontrado`);
@@ -185,7 +196,11 @@ export class ProjectService {
   async create(dto: CreateProjectDto, user: any): Promise<Project> {
     if (!dto.code) {
       const year = new Date().getFullYear();
-      const count = await this.projectModel.countDocuments();
+      const countQuery = this.projectModel.countDocuments();
+      if (this.shouldBypassTenantFilter(user)) {
+        countQuery.setOptions({ skipTenantFilter: true });
+      }
+      const count = await countQuery;
       dto.code = `PROJ-${year}-${String(count + 1).padStart(3, "0")}`;
     }
 
@@ -311,18 +326,28 @@ export class ProjectService {
       query.$and = andConditions;
     }
 
-    const projects = await this.projectModel
+    const projectsQuery = this.projectModel
       .find(query)
       .populate("clientId", "name code")
-      .populate("areaId", "name")
-      .populate("areaIds", "name")
+      .populate({ path: "areaId", select: "name", options: { skipTenantFilter: true } })
+      .populate({ path: "areaIds", select: "name", options: { skipTenantFilter: true } })
       .sort({ createdAt: -1 });
+
+    if (this.shouldBypassTenantFilter(currentUser)) {
+      projectsQuery.setOptions({ skipTenantFilter: true });
+    }
+
+    const projects = await projectsQuery;
 
     const projectsWithCount = await Promise.all(
       projects.map(async (project) => {
-        const findingsCount = await this.findingModel.countDocuments({
+        const findingsCountQuery = this.findingModel.countDocuments({
           projectId: project._id,
         });
+        if (this.shouldBypassTenantFilter(currentUser)) {
+          findingsCountQuery.setOptions({ skipTenantFilter: true });
+        }
+        const findingsCount = await findingsCountQuery;
 
         return {
           ...project.toObject(),
@@ -426,11 +451,17 @@ export class ProjectService {
       );
     }
 
-    const populated = await this.projectModel
+    const populatedQuery = this.projectModel
       .findById(project._id)
       .populate("clientId", "name code")
-      .populate("areaId", "name")
-      .populate("areaIds", "name");
+      .populate({ path: "areaId", select: "name", options: { skipTenantFilter: true } })
+      .populate({ path: "areaIds", select: "name", options: { skipTenantFilter: true } });
+
+    if (this.shouldBypassTenantFilter(currentUser)) {
+      populatedQuery.setOptions({ skipTenantFilter: true });
+    }
+
+    const populated = await populatedQuery;
 
     return populated as any;
   }

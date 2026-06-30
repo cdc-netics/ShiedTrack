@@ -34,6 +34,11 @@ export class TenantContextInterceptor implements NestInterceptor {
     }
 
     const isOwner = user.role === "OWNER" || user.role === "PLATFORM_ADMIN";
+    const isOperationalRole =
+      user.role === "PENTESTER" ||
+      user.role === "QA" ||
+      user.role === "ANALYST" ||
+      user.role === "ADMIN_AREA";
     namespace.set("isOwner", isOwner);
     namespace.set("userId", user.userId || user._id);
 
@@ -55,6 +60,10 @@ export class TenantContextInterceptor implements NestInterceptor {
       user.tenantIds.length > 0
     ) {
       tenantId = user.tenantIds[0];
+    }
+
+    if (!tenantId && isOperationalRole) {
+      return next.handle();
     }
 
     if (!tenantId) {

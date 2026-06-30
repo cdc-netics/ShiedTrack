@@ -35,11 +35,17 @@ export class TenantContextMiddleware implements NestMiddleware {
         if (user) {
           const isOwner =
             user.role === "OWNER" || user.role === "PLATFORM_ADMIN";
+          const isOperationalRole =
+            user.role === "PENTESTER" ||
+            user.role === "QA" ||
+            user.role === "ANALYST" ||
+            user.role === "ADMIN_AREA";
           namespace.set("isOwner", isOwner);
           namespace.set("userId", user.userId || user._id);
 
-          if (isOwner) {
-            if (headerTenantId) namespace.set("tenantId", headerTenantId);
+          if (isOwner || isOperationalRole) {
+            // Roles globales y operativos: usar tenant solo si está disponible
+            if (initialTenantId) namespace.set("tenantId", String(initialTenantId));
           } else if (initialTenantId) {
             namespace.set("tenantId", String(initialTenantId));
           }

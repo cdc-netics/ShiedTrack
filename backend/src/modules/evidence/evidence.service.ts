@@ -7,10 +7,10 @@ import {
   ForbiddenException,
 } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
-import { Model } from "mongoose";
+import { Model, Types } from "mongoose";
 import { Evidence } from "./schemas/evidence.schema";
 import { UserRole } from "../../common/enums";
-import { roleSatisfies } from "../../common/rbac/rbac-policy";
+import { normalizeRole, roleSatisfies } from "../../common/rbac/rbac-policy";
 import * as fs from "fs";
 import * as path from "path";
 import { createReadStream } from "fs";
@@ -85,6 +85,27 @@ export class EvidenceService {
     }
   }
 
+  private getCurrentTenantId(currentUser?: any): string | undefined {
+    return (
+      currentUser?.tenantId?.toString?.() ??
+      currentUser?.activeTenantId?.toString?.() ??
+      currentUser?.clientId?.toString?.()
+    );
+  }
+
+  private isOperationalUser(currentUser?: any): boolean {
+    return normalizeRole(currentUser?.role) === "PENTESTER_QA";
+  }
+
+  private shouldBypassTenantFilter(currentUser?: any): boolean {
+    return this.isOperationalUser(currentUser) && !this.getCurrentTenantId(currentUser);
+  }
+
+  private toObjectId(id?: string): Types.ObjectId | undefined {
+    if (!id) return undefined;
+    return new Types.ObjectId(id);
+  }
+
   /**
    * Guarda un archivo de evidencia
    */
@@ -94,7 +115,13 @@ export class EvidenceService {
     uploadedBy: string,
     description?: string,
     updateId?: string,
+    currentUser?: any,
   ): Promise<Evidence> {
+    if (!file) {
+      throw new BadRequestException("Archivo requerido");
+    }
+
+    const access = await this.validateAccessToFinding(findingId, currentUser);
     this.validateFileExtension(file.originalname);
 
     // Generar nombre único para evitar colisiones
@@ -113,10 +140,11 @@ export class EvidenceService {
       filePath,
       mimeType: file.mimetype,
       size: file.size,
-      findingId,
-      updateId,
-      uploadedBy,
+      findingId: this.toObjectId(findingId),
+      updateId: this.toObjectId(updateId),
+      uploadedBy: this.toObjectId(uploadedBy),
       description,
+      tenantId: this.toObjectId(access.tenantId),
     });
 
     await evidence.save();
@@ -134,15 +162,18 @@ export class EvidenceService {
   private async validateAccessToFinding(
     findingId: string,
     currentUser: any,
-  ): Promise<void> {
+  ): Promise<{ tenantId?: string }> {
     // OWNER y PLATFORM_ADMIN ven todo
-    if (roleSatisfies(UserRole.OWNER, currentUser.role)) {
-      return;
+    const Finding = this.evidenceModel.db.model("Finding");
+    const findingQuery = Finding.findById(findingId).select(
+      "projectId tenantId",
+    );
+
+    if (this.shouldBypassTenantFilter(currentUser)) {
+      findingQuery.setOptions({ skipTenantFilter: true });
     }
 
-    // Para otros roles, validar que el finding pertenece a su tenant
-    const Finding = this.evidenceModel.db.model("Finding");
-    const finding = await Finding.findById(findingId).select("projectId");
+    const finding = await findingQuery;
 
     if (!finding) {
       throw new NotFoundException(`Hallazgo con ID ${findingId} no encontrado`);
@@ -150,18 +181,36 @@ export class EvidenceService {
 
     // Obtener el cliente del proyecto
     const Project = this.evidenceModel.db.model("Project");
-    const project = await Project.findById(finding.projectId).select(
-      "clientId",
+    const projectQuery = Project.findById(finding.projectId).select(
+      "clientId tenantId",
     );
+
+    if (this.shouldBypassTenantFilter(currentUser)) {
+      projectQuery.setOptions({ skipTenantFilter: true });
+    }
+
+    const project = await projectQuery;
 
     if (!project) {
       throw new NotFoundException(`Proyecto no encontrado`);
     }
 
-    // Verificar que el cliente coincide
+    const findingTenantId =
+      finding.tenantId?.toString?.() ??
+      project.tenantId?.toString?.() ??
+      project.clientId?.toString?.();
+
+    // OWNER y roles operativos (PENTESTER/QA/ANALYST) tienen acceso irrestricto
+    if (roleSatisfies(UserRole.OWNER, currentUser?.role) || this.isOperationalUser(currentUser)) {
+      return { tenantId: findingTenantId };
+    }
+
+    // Para el resto de roles, verificar que el tenant coincide
+    const currentTenantId = this.getCurrentTenantId(currentUser);
     if (
-      currentUser.clientId &&
-      project.clientId?.toString() !== currentUser.clientId?.toString()
+      currentTenantId &&
+      findingTenantId &&
+      findingTenantId !== currentTenantId
     ) {
       this.logger.warn(
         `[SEC-RBAC-001] Intento de acceso cruzado de usuario ${currentUser.userId} al finding ${findingId}`,
@@ -170,6 +219,14 @@ export class EvidenceService {
         "No tienes permiso para acceder a este hallazgo",
       );
     }
+
+    if (!currentTenantId) {
+      throw new ForbiddenException(
+        "No tienes permiso para acceder a este hallazgo",
+      );
+    }
+
+    return { tenantId: findingTenantId };
   }
 
   /**
@@ -186,16 +243,27 @@ export class EvidenceService {
     }
 
     return this.evidenceModel
-      .find({ findingId })
+      .find({
+        $or: [
+          { findingId },
+          ...(Types.ObjectId.isValid(findingId)
+            ? [{ findingId: new Types.ObjectId(findingId) }]
+            : []),
+        ],
+      })
       .populate("uploadedBy", "firstName lastName email")
       .sort({ createdAt: -1 });
   }
 
   /**
-   * Busca evidencia por ID
+   * Busca evidencia por ID, con bypass de tenant filter para roles operativos
    */
-  async findById(id: string): Promise<Evidence> {
-    const evidence = await this.evidenceModel.findById(id);
+  async findById(id: string, currentUser?: any): Promise<Evidence> {
+    const query = this.evidenceModel.findById(id);
+    if (currentUser && (roleSatisfies(UserRole.OWNER, currentUser?.role) || this.isOperationalUser(currentUser))) {
+      query.setOptions({ skipTenantFilter: true });
+    }
+    const evidence = await query;
     if (!evidence) {
       throw new NotFoundException(`Evidencia con ID ${id} no encontrada`);
     }
@@ -210,7 +278,7 @@ export class EvidenceService {
     id: string,
     currentUser?: any,
   ): Promise<{ stream: StreamableFile; evidence: Evidence }> {
-    const evidence = await this.findById(id);
+    const evidence = await this.findById(id, currentUser);
 
     // Validar acceso si se proporciona usuario
     if (currentUser) {
@@ -232,13 +300,21 @@ export class EvidenceService {
   /**
    * Elimina una evidencia (archivo y registro)
    */
-  async delete(id: string): Promise<void> {
-    const evidence = await this.findById(id);
+  async delete(id: string, currentUser?: any): Promise<void> {
+    const evidence = await this.findById(id, currentUser);
+
+    if (currentUser) {
+      await this.validateAccessToFinding(String(evidence.findingId), currentUser);
+    }
 
     // Eliminar archivo físico
     try {
       if (fs.existsSync(evidence.filePath)) {
         await unlinkAsync(evidence.filePath);
+      } else {
+        this.logger.warn(
+          `Archivo fisico no encontrado al eliminar evidencia: ${evidence.filePath}`,
+        );
       }
     } catch (error) {
       this.logger.error(`Error eliminando archivo: ${error.message}`);
