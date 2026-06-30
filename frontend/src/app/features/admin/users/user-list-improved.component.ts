@@ -9,7 +9,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatCardModule } from '@angular/material/card';
-import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { MatDialog, MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatMenuModule } from '@angular/material/menu';
@@ -20,6 +20,33 @@ import { User } from '../../../shared/models';
 import { environment } from '../../../../environments/environment';
 import { UserAssignmentDialogComponent } from './user-assignment-dialog.component';
 import { UserDialogComponent } from './user-dialog.component';
+
+@Component({
+  standalone: true,
+  selector: 'app-confirm-delete-dialog',
+  imports: [CommonModule, MatButtonModule, MatDialogModule, MatIconModule],
+  template: `
+    <h2 mat-dialog-title>
+      <mat-icon style="color: #d32f2f; vertical-align: middle; margin-right: 8px;">warning</mat-icon>
+      Eliminar usuario
+    </h2>
+    <mat-dialog-content>
+      <p>¿Estás seguro de que deseas eliminar al usuario <strong>{{ data.email }}</strong>?</p>
+      <p style="color: #d32f2f; font-size: 13px;">Esta acción es permanente y no se puede deshacer.</p>
+    </mat-dialog-content>
+    <mat-dialog-actions align="end">
+      <button mat-button mat-dialog-close>Cancelar</button>
+      <button mat-raised-button color="warn" [mat-dialog-close]="true">
+        <mat-icon>delete</mat-icon>
+        Eliminar
+      </button>
+    </mat-dialog-actions>
+  `
+})
+export class ConfirmDeleteDialogComponent {
+  dialog = inject(MatDialogRef<ConfirmDeleteDialogComponent>);
+  data: { email: string } = inject(MAT_DIALOG_DATA);
+}
 
 /**
  * Lista mejorada de usuarios con acciones rápidas
@@ -434,7 +461,26 @@ export class UserListImprovedComponent implements OnInit {
 
 
   deleteUser(user: User): void {
-    this.quickBlock(user);
+    const userId = this.getUserId(user);
+    if (!userId) return;
+
+    this.dialog.open(ConfirmDeleteDialogComponent, {
+      width: '420px',
+      data: { email: user.email }
+    }).afterClosed().subscribe(confirmed => {
+      if (!confirmed) return;
+      this.http.delete(`${environment.apiUrl}/auth/users/${userId}`).subscribe({
+        next: () => {
+          this.snackBar.open('Usuario eliminado correctamente', 'Cerrar', { duration: 3000 });
+          this.loadUsers();
+        },
+        error: (err) => {
+          console.error('Error al eliminar usuario:', err);
+          const msg = err?.error?.message || 'Error al eliminar el usuario';
+          this.snackBar.open(msg, 'Cerrar', { duration: 4000 });
+        }
+      });
+    });
   }
 
   /**

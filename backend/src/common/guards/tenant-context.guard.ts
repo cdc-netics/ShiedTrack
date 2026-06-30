@@ -38,26 +38,23 @@ export class TenantContextGuard implements CanActivate {
     const namespace =
       getNamespace("tenant-context") || createNamespace("tenant-context");
 
-    // OWNER y PLATFORM_ADMIN pueden cruzar tenants
+    // OWNER y PLATFORM_ADMIN pueden cruzar tenants sin tenant obligatorio
     const isOwner = user.role === "OWNER" || user.role === "PLATFORM_ADMIN";
+    // PENTESTER, QA y ANALYST son roles operativos de plataforma que pueden
+    // trabajar sin un tenant fijo asignado (su scope lo controlan los servicios)
+    const isOperationalRole =
+      user.role === "PENTESTER" ||
+      user.role === "QA" ||
+      user.role === "ANALYST" ||
+      user.role === "ADMIN_AREA";
+
     namespace.set("isOwner", isOwner);
     namespace.set("userId", user.userId || user._id);
 
-    if (isOwner) {
-      // Owner puede especificar tenant via header, o ver todos
-      if (headerTenant) {
-        namespace.set("tenantId", headerTenant);
-        setTenant(headerTenant);
-      }
-      // Si no especifica header, puede ver todos (no se setea tenantId)
-      return true;
-    }
+    // Prioridad de tenant: header > activeTenantId > clientId > tenantIds[0]
+    let tenantId: string | undefined =
+      headerTenant || user.activeTenantId || user.clientId;
 
-    // Para roles no OWNER/PLATFORM_ADMIN, se requiere un tenantId en contexto
-    // Prioridad: header > activeTenantId > clientId > first tenantId
-    let tenantId = headerTenant || user.activeTenantId || user.clientId;
-
-    // Si no tiene ninguno, pero tiene tenantIds, usar el primero
     if (
       !tenantId &&
       user.tenantIds &&
@@ -67,14 +64,21 @@ export class TenantContextGuard implements CanActivate {
       tenantId = user.tenantIds[0];
     }
 
+    if (tenantId) {
+      namespace.set("tenantId", String(tenantId));
+      setTenant(String(tenantId));
+    }
+
+    // OWNER y roles operativos pasan aunque no tengan tenant asignado
+    if (isOwner || isOperationalRole) {
+      return true;
+    }
+
     if (!tenantId) {
       throw new BadRequestException(
         "Falta X-TENANT-ID o tenant activo en el usuario",
       );
     }
-
-    namespace.set("tenantId", String(tenantId));
-    setTenant(String(tenantId));
 
     return true;
   }

@@ -196,7 +196,11 @@ import { UserRole } from '../../../shared/enums';
                   </button>
                 }
                 @if (project.projectStatus === 'CLOSED') {
-                  <mat-icon class="closed-icon" matTooltip="Proyecto cerrado">lock</mat-icon>
+                  <button mat-icon-button (click)="reopenProject(project); $event.stopPropagation()"
+                          matTooltip="Proyecto cerrado — clic para reabrir"
+                          class="reopen-btn">
+                    <mat-icon class="closed-icon">lock</mat-icon>
+                  </button>
                 }
                 <button mat-icon-button (click)="exportProject(project._id); $event.stopPropagation()"
                         matTooltip="Exportar">
@@ -206,7 +210,7 @@ import { UserRole } from '../../../shared/enums';
             </ng-container>
 
             <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-            <tr mat-row *matRowDef="let row; columns: displayedColumns;" class="clickable-row" (click)="openProject(row)"></tr>
+            <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
           </table>
           </div>
         }
@@ -226,8 +230,8 @@ import { UserRole } from '../../../shared/enums';
       width: 100%;
     }
 
-    .clickable-row {
-      cursor: pointer;
+    .reopen-btn .closed-icon {
+      color: #f44336;
     }
 
     .project-name {
@@ -422,6 +426,23 @@ export class ProjectListComponent implements OnInit {
       error: (err) => {
         console.error('Error al cerrar proyecto:', err);
         this.snackBar.open('❌ Error al cerrar el proyecto', 'Cerrar', { duration: 3000 });
+      }
+    });
+  }
+
+  reopenProject(project: any): void {
+    if (!confirm(`¿Abrir nuevamente el proyecto "${project.name}"?\n\nSe restaurará a estado Activo.`)) return;
+
+    this.http.patch(`${this.API_URL}/${project._id}`, {
+      projectStatus: 'ACTIVE'
+    }).subscribe({
+      next: () => {
+        this.snackBar.open('Proyecto reactivado exitosamente', 'Cerrar', { duration: 3000 });
+        this.loadProjects();
+      },
+      error: (err) => {
+        console.error('Error al reabrir proyecto:', err);
+        this.snackBar.open(err?.error?.message || 'Error al reabrir el proyecto', 'Cerrar', { duration: 3000 });
       }
     });
   }

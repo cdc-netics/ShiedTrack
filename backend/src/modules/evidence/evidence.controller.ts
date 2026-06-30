@@ -47,6 +47,8 @@ export class EvidenceController {
     UserRole.CLIENT_ADMIN,
     UserRole.AREA_ADMIN,
     UserRole.ANALYST,
+    UserRole.PENTESTER,
+    UserRole.QA,
   )
   @UseInterceptors(FileInterceptor("file"))
   @ApiOperation({ summary: "Subir archivo de evidencia" })
@@ -75,6 +77,7 @@ export class EvidenceController {
       user.userId,
       description,
       updateId,
+      user,
     );
   }
 
@@ -85,6 +88,8 @@ export class EvidenceController {
     UserRole.CLIENT_ADMIN,
     UserRole.AREA_ADMIN,
     UserRole.ANALYST,
+    UserRole.PENTESTER,
+    UserRole.QA,
     UserRole.VIEWER,
   )
   @ApiOperation({
@@ -105,6 +110,8 @@ export class EvidenceController {
     UserRole.CLIENT_ADMIN,
     UserRole.AREA_ADMIN,
     UserRole.ANALYST,
+    UserRole.PENTESTER,
+    UserRole.QA,
     UserRole.VIEWER,
   )
   @Throttle({ default: { limit: 10, ttl: 60000 } }) // SECURITY FIX M2: Rate limiting
@@ -135,10 +142,13 @@ export class EvidenceController {
     UserRole.PLATFORM_ADMIN,
     UserRole.CLIENT_ADMIN,
     UserRole.AREA_ADMIN,
+    UserRole.ANALYST,
+    UserRole.PENTESTER,
+    UserRole.QA,
   )
   @ApiOperation({ summary: "Eliminar evidencia" })
-  async delete(@Param("id") id: string) {
-    await this.evidenceService.delete(id);
+  async delete(@Param("id") id: string, @CurrentUser() user: any) {
+    await this.evidenceService.delete(id, user);
     return { message: "Evidencia eliminada" };
   }
 }
