@@ -19,7 +19,7 @@ Este documento contiene únicamente los problemas, mejoras y funcionalidades que
 | B5b | ⚠️ Parcial | Bugs - Asignaciones | Endpoint `/assignments` no persiste | La UI muestra guardado exitoso pero no persiste en base de datos. Validar DTO y modelo |
 | M5 | ❌ Pendiente | Mejoras | Gestión avanzada de notificaciones por correo | Configurar reglas y plantillas |
 | M6 | ⚠️ Revisar | Mejoras | Métricas/estadísticas exportables para BI | Integración con Metabase/PowerBI |
-| M8 | ❌ Pendiente | Mejoras | Carga masiva de hallazgos mediante CSV | Importación masiva con validación y RBAC |
+| M8 | ✅ Completado | Mejoras | Carga masiva de hallazgos mediante CSV | Implementado en `feature/importar-csv`. Parser nativo (UTF-8/CP-1252), auto-creación de cliente/proyecto/área, diálogo drag-and-drop en frontend |
 
 ---
 
@@ -63,8 +63,14 @@ Este documento contiene únicamente los problemas, mejoras y funcionalidades que
   - **Índices recomendados**: `{ tenantId, projectId, severity, status, createdAt }`.
 
 ### **M8 — Carga masiva de hallazgos mediante CSV**
-- **Estado:** ❌ Pendiente
-- **Descripción:** Implementar la carga masiva de hallazgos desde un archivo CSV. La funcionalidad debe validar la estructura del archivo, resolver las relaciones de cliente/proyecto de forma segura respetando el aislamiento multi-tenant, mapear los campos del hallazgo a MongoDB y restringir la acción exclusivamente a los roles autorizados.
+- **Estado:** ✅ Completado — implementado en rama `feature/importar-csv` (2026-06-30)
+- **Descripción:** Importación masiva de hallazgos desde archivos CSV (separador `;`, codificación UTF-8 o Windows-1252) y Excel `.xlsx`. El cliente/tenant, proyecto y área se resuelven o crean automáticamente. Los hallazgos se insertan uno a uno con `.save()` para disparar el hook de generación de códigos `VULN-YYYY-NNNNNN`.
+- **Lo implementado:**
+  - **Backend:** `POST /api/findings/bulk-import` en `FindingController`; `bulkImport()` en `FindingService` con parser CSV nativo (detecta UTF-8 BOM, UTF-8 válido, y CP-1252 vía `iconv-lite`). Auto-creación de `Client`, `Project` y `Area IMP-DEFAULT` por tenant. Caché N+1 por nombre de cliente. Respuesta `{ creados, fallidos, errores[] }`.
+  - **Frontend:** `BulkImportDialogComponent` con zona drag-and-drop, campo opcional de nombre de proyecto, descarga de plantilla CSV, barra de progreso y resumen de resultados. Botón "Importar CSV" en `FindingListComponent` mediante `canImport = computed(...)`.
+  - **RBAC:** `OWNER`, `PLATFORM_ADMIN`, `PENTESTER`, `QA`, `ANALYST`.
+  - **Bug resuelto:** archivos CSV exportados por Excel en Windows usan CP-1252; los bytes inválidos en UTF-8 corrompían los headers con tildes → 0 hallazgos importados. Solucionado con detección automática de encoding.
+- **Spec original (referencia histórica):**
 - **Roles Autorizados (RBAC):** Solo `OWNER`, `PLATFORM_ADMIN`, `PENTESTER` y `QA` (o `ANALYST`) tienen permitido realizar la importación masiva.
 - **Sugerencias de Diseño Técnico:**
   - **Mapeo de Columnas (CSV -> MongoDB FindingSchema):**
