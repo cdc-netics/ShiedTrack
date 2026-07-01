@@ -7,6 +7,21 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 ## [Unreleased]
 
+### M8 — Importación masiva de hallazgos desde CSV / Excel
+
+- **FEAT (Backend — endpoint):** nuevo `POST /api/findings/bulk-import` con `FileInterceptor` (multer memory storage). Roles autorizados: `OWNER`, `PLATFORM_ADMIN`, `PENTESTER`, `QA`, `ANALYST`.
+- **FEAT (Backend — resolución automática de cliente/tenant):** la columna `Cliente` del CSV se usa para buscar o crear el `Client` correspondiente (regex case-insensitive). Si no existe, se crea automáticamente con `isActive: true`. El `_id` del cliente se usa como `tenantId` para todos los hallazgos de esa fila.
+- **FEAT (Backend — resolución automática de proyecto y área):** el parámetro opcional `projectName` (query string) define el nombre del engagement; si se omite se usa `"Importación CSV"`. Se crea el proyecto si no existe (`serviceArchitecture: HYBRID`). Se crea el área `IMP-DEFAULT` por tenant y se vincula al proyecto via `$addToSet: { areaIds }`, lo que habilita la generación atómica de códigos `VULN-YYYY-NNNNNN` por el hook `pre-save`.
+- **FEAT (Backend — caché N+1):** `Map<clientName, {projectId, tenantId}>` por operación para resolver cada cliente único solo una vez.
+- **FEAT (Backend — parser CSV nativo):** se implementó un parser RFC 4180 puro en TypeScript (sin ExcelJS) que detecta automáticamente la codificación del archivo: UTF-8 con BOM, UTF-8 sin BOM, y Windows-1252/CP-1252 (exportación estándar de Excel en Windows) usando `iconv-lite`. Esto resuelve el bug crítico donde headers con tildes (`Título`, `Descripción`) no coincidían por conversión de bytes inválidos.
+- **FEAT (Backend — mapeo de columnas):** cubre todos los campos definidos en el spec M8 de ISSUES.md: `Cliente`, `Título`, `Descripción`, `CAT-COD-interno`, `Criticidad` (normalización ES→EN), `Dominio asociado`/`Subdominio` → `affectedAssets[]`, `Categoria` → `tags[]`, `CVE/EUVD` → `cve_id`, `cvss_score`, `Impacto`, `Recomendación`, `referencias(...)`, `Observaciones`, `Revisar en profundidad` → tag `REQUIRES_DEEP_REVIEW`, `fecha_hallazgo` → `createdAt` histórico.
+- **FEAT (Backend — respuesta detallada):** `{ creados: N, fallidos: M, errores: [{ fila, detalle }] }`.
+- **FEAT (Frontend — botón en FindingListComponent):** botón "Importar CSV" visible según `canImport = computed(...)` contra `AuthService`. Roles habilitados: `OWNER`, `PLATFORM_ADMIN`, `PENTESTER`, `QA`, `ANALYST`.
+- **FEAT (Frontend — BulkImportDialogComponent):** diálogo standalone con drag-and-drop (acepta `.csv`, `.xlsx`, `.xls`), campo opcional de nombre de proyecto/engagement, descarga de plantilla CSV de ejemplo, barra de progreso durante importación, y resumen visual de resultados (creados / fallidos con detalle por fila).
+- **FIX (Backend — bug parserOptions ExcelJS):** ExcelJS 4.4.0 usa `fast-csv` internamente y requiere que el delimitador se pase en `options.parserOptions`, no en el nivel raíz. Con el delimitador incorrecto (`,` por defecto) toda fila quedaba en una sola celda → `Título` nunca se encontraba → 0 creados. Solucionado por reemplazo completo del parser.
+- **FIX (Backend — encoding Windows-1252):** archivos CSV generados por Excel en Windows usan CP-1252; el byte `0xED` para `í` es UTF-8 inválido y se convertía en `�`, haciendo que el header `Título` no matcheara en la búsqueda case-insensitive. Resuelto con detección automática de encoding.
+- **FIX (Frontend — tamaño de fuente en wizard):** el editor `contenteditable` de "Recomendación de Remediación" en `FindingWizardComponent` no tenía `font-size` explícito y heredaba un tamaño menor al de los `<textarea matInput>` de "Impacto" e "Implicancias". Corregido con `font-size: 16px; font-family: inherit; line-height: 1.5` en la clase `.editor`.
+
 ### Corrección de regresión en Gestión de Usuarios (Roles y Validaciones)
 
 - **FIX (Frontend — menú de creación):** Se actualizaron las opciones del botón "Crear usuario" para remover roles obsoletos (`Platform Admin`, `Analista`, etc.) y desplegar la lista con el nuevo modelo de roles: `Owner`, `Admin Area`, `Pentester`, `QA`, `Usuario Normal` y `Auditor`.
