@@ -465,7 +465,7 @@ interface Template {
     .rich-section { margin-bottom: 16px; }
     .rich-section label { display: block; font-size: 14px; font-weight: 500; margin-bottom: 8px; }
     .toolbar { display: flex; gap: 4px; background: #f5f5f5; padding: 4px; border: 1px solid #ddd; border-bottom: none; }
-    .editor { min-height: 120px; padding: 12px; border: 1px solid #ddd; background: white; }
+    .editor { min-height: 120px; padding: 12px; border: 1px solid #ddd; background: white; font-size: 16px; font-family: inherit; line-height: 1.5; }
     .editor:focus { outline: 2px solid #3f51b5; }
     .upload-zone { border: 2px dashed #ccc; padding: 32px; text-align: center; cursor: pointer; margin: 16px 0; }
     .upload-zone:hover { border-color: #2196f3; background: #f5f5f5; }
