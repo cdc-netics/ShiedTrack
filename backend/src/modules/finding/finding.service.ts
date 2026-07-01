@@ -7,8 +7,10 @@ import {
 } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model, Types } from "mongoose";
+import * as ExcelJS from "exceljs";
 import { Finding } from "./schemas/finding.schema";
 import { FindingUpdate } from "./schemas/finding-update.schema";
+import { Client } from "../client/schemas/client.schema";
 import {
   CreateFindingDto,
   UpdateFindingDto,
@@ -17,9 +19,11 @@ import {
 import { CreateFindingUpdateDto } from "./dto/finding-update.dto";
 import {
   FindingStatus,
+  FindingSeverity,
   FindingUpdateType,
   CloseReason,
   UserRole,
+  ServiceArchitecture,
 } from "../../common/enums";
 import { normalizeRole, roleSatisfies } from "../../common/rbac/rbac-policy";
 import { Project } from "../project/schemas/project.schema";
@@ -44,6 +48,7 @@ export class FindingService {
     private systemConfigModel: Model<SystemConfig>,
     @InjectModel(Area.name) private areaModel: Model<Area>,
     @InjectModel(User.name) private userModel: Model<User>,
+    @InjectModel(Client.name) private clientModel: Model<Client>,
     private emailService: EmailService,
   ) {}
 
@@ -843,5 +848,429 @@ export class FindingService {
     this.logger.warn(
       `Hallazgo ELIMINADO permanentemente: ${result.code} (ID: ${id})`,
     );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // BULK IMPORT — M8
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Importa hallazgos masivamente desde un archivo CSV (;) o XLSX.
+   * Resuelve cliente y proyecto desde las columnas del archivo.
+   * Crea cliente y proyecto automáticamente si no existen.
+   * Inserta uno por uno con .save() para que el hook pre-save genere el código.
+   */
+  async bulkImport(
+    file: Express.Multer.File,
+    projectName: string,
+    currentUser: any,
+  ): Promise<{ creados: number; fallidos: number; errores: { fila: number; detalle: string }[] }> {
+    const resolvedProjectName = (projectName || "").trim() || "Importación CSV";
+
+    // 1. Parsear el archivo
+    const ext = (file.originalname || "").split(".").pop()?.toLowerCase();
+    let rows: Record<string, string>[];
+
+    try {
+      rows = ext === "xlsx" || ext === "xls"
+        ? await this.parseExcel(file.buffer)
+        : this.parseCsv(file.buffer);
+    } catch (e) {
+      throw new BadRequestException(`Error al leer el archivo: ${e.message}`);
+    }
+
+    // 2. Procesar fila por fila
+    const errores: { fila: number; detalle: string }[] = [];
+    let creados = 0;
+    let fallidos = 0;
+
+    // Cache de resolución cliente→{projectId, tenantId} para evitar N+1
+    const contextCache = new Map<string, { projectId: Types.ObjectId; tenantId: Types.ObjectId }>();
+
+    for (let i = 0; i < rows.length; i++) {
+      const fila = i + 2; // +2 porque la fila 1 es el header
+      const row = rows[i];
+
+      // Saltar filas completamente vacías
+      const titulo = this.cell(row, "Título", "Titulo");
+      if (!titulo) continue;
+
+      try {
+        // Validar campos obligatorios
+        const missingFields: string[] = [];
+        if (!titulo) missingFields.push("Título");
+        if (!this.cell(row, "Descripción", "Descripcion")) missingFields.push("Descripción");
+        if (!this.cell(row, "CAT-COD-interno")) missingFields.push("CAT-COD-interno");
+        if (!this.cell(row, "Criticidad")) missingFields.push("Criticidad");
+        if (!this.cell(row, "Cliente")) missingFields.push("Cliente");
+        if (missingFields.length > 0) {
+          errores.push({ fila, detalle: `Campos obligatorios faltantes: ${missingFields.join(", ")}` });
+          fallidos++;
+          continue;
+        }
+
+        const severity = this.normalizeSeverity(this.cell(row, "Criticidad"));
+        if (!severity) {
+          errores.push({ fila, detalle: `Criticidad inválida: "${this.cell(row, "Criticidad")}"` });
+          fallidos++;
+          continue;
+        }
+
+        // Resolver cliente / proyecto / área desde la columna "Cliente"
+        const clientName = this.cell(row, "Cliente").trim();
+        if (!contextCache.has(clientName)) {
+          const ctx = await this.findOrCreateClientProjectArea(clientName, resolvedProjectName, currentUser);
+          contextCache.set(clientName, ctx);
+        }
+        const { projectId, tenantId } = contextCache.get(clientName)!;
+
+        const internalCode = this.cell(row, "CAT-COD-interno");
+        const description = this.cell(row, "Descripción", "Descripcion");
+
+        // Activos afectados: Dominio + Subdominio
+        const assets = this.parseAssets(
+          this.cell(row, "Dominio asociado"),
+          this.cell(row, "Subdominio"),
+        );
+
+        // Tags: Categoria + REQUIRES_DEEP_REVIEW
+        const tags: string[] = [];
+        const cat = this.cell(row, "Categoria", "Categoría");
+        if (cat) tags.push(cat);
+        const revisarFlag = this.cell(row, "Revisar en profundidad");
+        if (revisarFlag && /^(si|sí|yes|true|1)$/i.test(revisarFlag.trim())) {
+          tags.push("REQUIRES_DEEP_REVIEW");
+        }
+
+        // CVE
+        const cve = this.normalizeCVE(this.cell(row, "CVE/EUVD"));
+
+        // CVSS score
+        const cvss = this.parseCVSS(this.cell(row, "cvss_score (si aplica)", "cvss_score"));
+
+        // Referencias
+        const refs = this.parseReferences(this.cell(row, "referencias(NIST, MITRE, ENISA, INCIBE)", "referencias"));
+
+        // Evidencia → riskJustification
+        const evidencia = this.cell(row, "Evidencia");
+        const observaciones = this.cell(row, "Observaciones");
+        const riskJustification = [evidencia, observaciones].filter(Boolean).join("\n\n") || undefined;
+
+        // Detection source
+        const detectionSource =
+          this.cell(row, "fuente_detectado") ||
+          this.cell(row, "Metodo_de_busqueda") ||
+          undefined;
+
+        // Construir documento (sin código — lo genera pre-save)
+        const finding = new this.findingModel({
+          internal_code: internalCode,
+          title: titulo,
+          description,
+          severity,
+          status: FindingStatus.OPEN,
+          projectId,
+          tenantId,
+          createdBy: this.toObjectId(currentUser.userId || currentUser._id),
+          affectedAssets: assets,
+          tags,
+          ...(cve ? { cve_id: cve } : {}),
+          ...(cvss !== undefined ? { cvss_score: cvss } : {}),
+          ...(detectionSource ? { detection_source: detectionSource } : {}),
+          ...(this.cell(row, "Impacto") ? { impact: this.cell(row, "Impacto") } : {}),
+          ...(this.cell(row, "Recomendación", "Recomendacion") ? { recommendation: this.cell(row, "Recomendación", "Recomendacion") } : {}),
+          ...(refs.length ? { references: refs } : {}),
+          ...(riskJustification ? { riskJustification } : {}),
+        });
+
+        await finding.save();
+
+        // Sobreescribir createdAt con fecha histórica si viene en el CSV
+        const historicalDate = this.parseDate(this.cell(row, "fecha_hallazgo"));
+        if (historicalDate) {
+          await this.findingModel.updateOne(
+            { _id: finding._id },
+            { $set: { createdAt: historicalDate } },
+          ).setOptions({ skipTenantFilter: true });
+        }
+
+        creados++;
+      } catch (e) {
+        errores.push({ fila, detalle: e.message || String(e) });
+        fallidos++;
+      }
+    }
+
+    this.logger.log(
+      `Bulk import (proyecto "${resolvedProjectName}"): ${creados} creados, ${fallidos} fallidos`,
+    );
+
+    return { creados, fallidos, errores };
+  }
+
+  /**
+   * Busca o crea el cliente, proyecto y área necesarios para insertar hallazgos.
+   * Usamos skipTenantFilter para operar cross-tenant (solo OWNER/ADMIN pueden llamar bulkImport).
+   */
+  private async findOrCreateClientProjectArea(
+    clientName: string,
+    projectName: string,
+    currentUser: any,
+  ): Promise<{ projectId: Types.ObjectId; tenantId: Types.ObjectId }> {
+    const escapedName = clientName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+    // 1. Buscar o crear cliente
+    let client = await this.clientModel
+      .findOne({ name: new RegExp(`^${escapedName}$`, "i") })
+      .setOptions({ skipTenantFilter: true });
+
+    if (!client) {
+      client = new this.clientModel({ name: clientName, isActive: true });
+      await client.save();
+      this.logger.log(`Bulk import: cliente creado automáticamente → "${clientName}"`);
+    }
+
+    const tenantId = client._id as Types.ObjectId;
+
+    // 2. Buscar o crear proyecto
+    let project = await this.projectModel
+      .findOne({ name: projectName, tenantId })
+      .setOptions({ skipTenantFilter: true });
+
+    if (!project) {
+      project = new this.projectModel({
+        name: projectName,
+        tenantId,
+        serviceArchitecture: ServiceArchitecture.HYBRID,
+      });
+      await project.save();
+      this.logger.log(`Bulk import: proyecto creado → "${projectName}" para cliente "${clientName}"`);
+    }
+
+    const projectId = project._id as Types.ObjectId;
+
+    // 3. Buscar o crear área por defecto para este tenant
+    const areaCode = "IMP-DEFAULT";
+    let area = await this.areaModel
+      .findOne({ tenantId, code: areaCode })
+      .setOptions({ skipTenantFilter: true });
+
+    if (!area) {
+      area = new this.areaModel({
+        name: "Importación CSV",
+        code: areaCode,
+        tenantId,
+        findingCodePrefix: "VULN",
+      });
+      await area.save();
+      this.logger.log(`Bulk import: área creada → "${areaCode}" para cliente "${clientName}"`);
+    }
+
+    // Vincular área al proyecto si aún no está
+    await this.projectModel
+      .findByIdAndUpdate(projectId, { $addToSet: { areaIds: area._id } })
+      .setOptions({ skipTenantFilter: true });
+
+    return { projectId, tenantId };
+  }
+
+  /** Lee columna por uno o más alias (case-insensitive) */
+  private cell(row: Record<string, string>, ...keys: string[]): string {
+    for (const key of keys) {
+      if (row[key] !== undefined && row[key] !== null) return String(row[key]).trim();
+      // búsqueda case-insensitive
+      const found = Object.keys(row).find(k => k.trim().toLowerCase() === key.toLowerCase());
+      if (found && row[found] !== undefined) return String(row[found]).trim();
+    }
+    return "";
+  }
+
+  /** Parsea CSV con separador ; — detecta encoding UTF-8 (con/sin BOM) y Windows-1252 */
+  private parseCsv(buffer: Buffer): Record<string, string>[] {
+    // Detectar y normalizar encoding
+    let text: string;
+    if (buffer[0] === 0xEF && buffer[1] === 0xBB && buffer[2] === 0xBF) {
+      text = buffer.slice(3).toString("utf8");
+    } else {
+      const utf8 = buffer.toString("utf8");
+      // Si hay caracteres de reemplazo, el archivo es Windows-1252 (CSV de Excel en Windows)
+      if (utf8.includes("�")) {
+        const iconv = require("iconv-lite");
+        text = iconv.decode(buffer, "cp1252");
+      } else {
+        text = utf8;
+      }
+    }
+
+    const lines = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
+    if (lines.length === 0) return [];
+
+    const headers = this.parseCsvRow(lines[0]);
+    const rows: Record<string, string>[] = [];
+
+    for (let i = 1; i < lines.length; i++) {
+      if (!lines[i].trim()) continue;
+      const values = this.parseCsvRow(lines[i]);
+      const obj: Record<string, string> = {};
+      headers.forEach((h, idx) => {
+        if (h) obj[h] = (values[idx] ?? "").trim();
+      });
+      rows.push(obj);
+    }
+
+    return rows;
+  }
+
+  /** Parsea una línea CSV con delimitador ; y soporte para campos entre comillas */
+  private parseCsvRow(line: string): string[] {
+    const result: string[] = [];
+    let field = "";
+    let inQuotes = false;
+
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (inQuotes) {
+        if (ch === '"') {
+          if (line[i + 1] === '"') { field += '"'; i++; }
+          else { inQuotes = false; }
+        } else {
+          field += ch;
+        }
+      } else if (ch === '"') {
+        inQuotes = true;
+      } else if (ch === ";") {
+        result.push(field);
+        field = "";
+      } else {
+        field += ch;
+      }
+    }
+    result.push(field);
+    return result;
+  }
+
+  /** Parsea XLSX usando ExcelJS */
+  private async parseExcel(buffer: any): Promise<Record<string, string>[]> {
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(buffer);
+    const worksheet = workbook.worksheets[0];
+
+    const headers: string[] = [];
+    const rows: Record<string, string>[] = [];
+
+    worksheet.eachRow((row, rowNumber) => {
+      if (rowNumber === 1) {
+        row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+          headers[colNumber - 1] = String(cell.value ?? "").trim();
+        });
+        return;
+      }
+      const obj: Record<string, string> = {};
+      row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+        const header = headers[colNumber - 1];
+        if (header) {
+          const val = cell.value;
+          obj[header] = val instanceof Date
+            ? val.toISOString()
+            : String(val ?? "").trim();
+        }
+      });
+      rows.push(obj);
+    });
+
+    return rows;
+  }
+
+  private normalizeSeverity(raw: string): FindingSeverity | null {
+    const clean = (raw || "")
+      .toLowerCase()
+      .trim()
+      .replace(/á/g, "a").replace(/é/g, "e").replace(/í/g, "i")
+      .replace(/ó/g, "o").replace(/ú/g, "u");
+
+    const map: Record<string, FindingSeverity> = {
+      critica: FindingSeverity.CRITICAL,
+      critical: FindingSeverity.CRITICAL,
+      alta: FindingSeverity.HIGH,
+      alto: FindingSeverity.HIGH,
+      high: FindingSeverity.HIGH,
+      media: FindingSeverity.MEDIUM,
+      medio: FindingSeverity.MEDIUM,
+      medium: FindingSeverity.MEDIUM,
+      baja: FindingSeverity.LOW,
+      bajo: FindingSeverity.LOW,
+      low: FindingSeverity.LOW,
+      informativa: FindingSeverity.INFORMATIONAL,
+      informativo: FindingSeverity.INFORMATIONAL,
+      informational: FindingSeverity.INFORMATIONAL,
+      info: FindingSeverity.INFORMATIONAL,
+    };
+    return map[clean] ?? null;
+  }
+
+  private normalizeCVE(raw: string): string | undefined {
+    if (!raw || raw.toUpperCase() === "N/A") return undefined;
+    const match = raw.match(/CVE-\d{4}-\d{4,7}/i);
+    return match ? match[0].toUpperCase() : undefined;
+  }
+
+  private parseCVSS(raw: string): number | undefined {
+    if (!raw || raw.toUpperCase() === "N/A") return undefined;
+    const n = parseFloat(raw.replace(",", ".").replace(/[^\d.]/g, "").slice(0, 4));
+    if (isNaN(n) || n < 0 || n > 10) return undefined;
+    return n;
+  }
+
+  private parseAssets(domain: string, subdomain: string): string[] {
+    const all: string[] = [];
+    const addParts = (s: string) => {
+      if (s && s.toUpperCase() !== "N/A") {
+        s.split(/[;,\n\t\/]/).map(p => p.trim()).filter(Boolean).forEach(p => all.push(p));
+      }
+    };
+    addParts(domain);
+    addParts(subdomain);
+    return [...new Set(all)];
+  }
+
+  private parseReferences(raw: string): string[] {
+    if (!raw) return [];
+    return raw.split(/[,;\n]/).map(r => r.trim()).filter(Boolean);
+  }
+
+  private parseDate(raw: string): Date | undefined {
+    if (!raw || raw.toUpperCase() === "N/A" || raw === "-") return undefined;
+
+    // DD/MM/YYYY
+    const dmy = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (dmy) {
+      const d = new Date(Number(dmy[3]), Number(dmy[2]) - 1, Number(dmy[1]));
+      return isNaN(d.getTime()) ? undefined : d;
+    }
+
+    // YYYY-MM-DD
+    const ymd = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (ymd) {
+      const d = new Date(raw);
+      return isNaN(d.getTime()) ? undefined : d;
+    }
+
+    // YYYY-MM (e.g. 2025-10)
+    const ym = raw.match(/^(\d{4})-(\d{1,2})$/);
+    if (ym) return new Date(Number(ym[1]), Number(ym[2]) - 1, 1);
+
+    // dic-25, ene-26, etc.
+    const monthMap: Record<string, number> = {
+      ene: 0, feb: 1, mar: 2, abr: 3, may: 4, jun: 5,
+      jul: 6, ago: 7, sep: 8, oct: 9, nov: 10, dic: 11,
+    };
+    const mes = raw.match(/^([a-záéíóú]{3})-(\d{2})$/i);
+    if (mes) {
+      const month = monthMap[mes[1].toLowerCase()];
+      if (month !== undefined) return new Date(2000 + Number(mes[2]), month, 1);
+    }
+
+    const fallback = new Date(raw);
+    return isNaN(fallback.getTime()) ? undefined : fallback;
   }
 }

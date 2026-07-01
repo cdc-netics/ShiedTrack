@@ -1,6 +1,7 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  computed,
   inject,
   OnInit,
   signal,
@@ -26,8 +27,12 @@ import { MatBadgeModule } from '@angular/material/badge';
 import { SelectionModel } from '@angular/cdk/collections';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { FindingService } from '../../../core/services/finding.service';
 import { ProjectService } from '../../../core/services/project.service';
+import { AuthService } from '../../../core/services/auth.service';
+import { BulkImportDialogComponent } from '../bulk-import-dialog/bulk-import-dialog.component';
 import { environment } from '../../../../environments/environment';
 
 /**
@@ -58,7 +63,9 @@ import { environment } from '../../../../environments/environment';
         MatExpansionModule,
         MatDatepickerModule,
         MatNativeDateModule,
-        MatBadgeModule
+        MatBadgeModule,
+        MatDialogModule,
+        MatSnackBarModule,
     ],
     template: `
     <div class="list-page ui-stack">
@@ -73,6 +80,14 @@ import { environment } from '../../../../environments/environment';
                 <mat-icon aria-hidden="true">add</mat-icon>
                 Nuevo hallazgo
               </button>
+
+              @if (canImport()) {
+                <button mat-stroked-button color="primary" type="button" (click)="openImportDialog()"
+                        matTooltip="Importar hallazgos desde CSV o Excel">
+                  <mat-icon aria-hidden="true">upload_file</mat-icon>
+                  Importar CSV
+                </button>
+              }
 
               @if (selection.hasValue()) {
                 <button mat-raised-button color="warn" type="button" (click)="bulkClose()">
@@ -483,12 +498,14 @@ import { environment } from '../../../../environments/environment';
   `]
 })
 export class FindingListComponent implements OnInit {
-  // Servicio para traer hallazgos y estado de carga
   findingService = inject(FindingService);
   projectService = inject(ProjectService);
   http = inject(HttpClient);
   route = inject(ActivatedRoute);
   private router = inject(Router);
+  private dialog = inject(MatDialog);
+  private snackBar = inject(MatSnackBar);
+  private authService = inject(AuthService);
   
   // Columnas visibles de la tabla
   displayedColumns = ['select', 'code', 'title', 'severity', 'cvss', 'status', 'project', 'date', 'actions'];
@@ -523,6 +540,23 @@ export class FindingListComponent implements OnInit {
     }
 
     this.selection.select(...this.filteredFindings());
+  }
+
+  canImport = computed(() => {
+    const role = this.authService.currentUser()?.role;
+    return ['OWNER', 'PLATFORM_ADMIN', 'PENTESTER', 'QA', 'ANALYST'].includes(role || '');
+  });
+
+  openImportDialog(): void {
+    this.dialog.open(BulkImportDialogComponent, {
+      width: '720px',
+      disableClose: true,
+    }).afterClosed().subscribe(imported => {
+      if (imported) {
+        this.snackBar.open('Hallazgos importados correctamente', 'Cerrar', { duration: 4000 });
+        this.loadFindings();
+      }
+    });
   }
 
   /** Cierra masivamente los hallazgos seleccionados */

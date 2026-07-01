@@ -8,12 +8,18 @@ import {
   Param,
   UseGuards,
   Query,
+  UseInterceptors,
+  UploadedFile,
+  BadRequestException,
 } from "@nestjs/common";
+import { FileInterceptor } from "@nestjs/platform-express";
 import {
   ApiTags,
   ApiOperation,
   ApiBearerAuth,
   ApiQuery,
+  ApiConsumes,
+  ApiBody,
 } from "@nestjs/swagger";
 import { FindingService } from "./finding.service";
 import {
@@ -169,6 +175,38 @@ export class FindingController {
     @CurrentUser() user: any,
   ) {
     return this.findingService.createUpdate(dto, user.userId, user);
+  }
+
+  @Post("bulk-import")
+  @Roles(
+    UserRole.OWNER,
+    UserRole.PLATFORM_ADMIN,
+    UserRole.PENTESTER,
+    UserRole.QA,
+    UserRole.ANALYST,
+  )
+  @UseInterceptors(FileInterceptor("file"))
+  @ApiConsumes("multipart/form-data")
+  @ApiBody({
+    schema: {
+      type: "object",
+      properties: { file: { type: "string", format: "binary" } },
+    },
+  })
+  @ApiOperation({
+    summary: "Importar hallazgos masivamente desde CSV o Excel",
+    description:
+      "Lee la columna 'Cliente' para resolver o crear el tenant/proyecto automáticamente. " +
+      "projectName (opcional) define el nombre del engagement; si se omite usa 'Importación CSV'.",
+  })
+  @ApiQuery({ name: "projectName", required: false, description: "Nombre del proyecto/engagement destino" })
+  async bulkImport(
+    @UploadedFile() file: Express.Multer.File,
+    @Query("projectName") projectName: string,
+    @CurrentUser() user: any,
+  ) {
+    if (!file) throw new BadRequestException("Se requiere un archivo");
+    return this.findingService.bulkImport(file, projectName, user);
   }
 
   @Delete(":id/hard")
