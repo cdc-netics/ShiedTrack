@@ -18,6 +18,7 @@ import { MatDividerModule } from '@angular/material/divider';
 import { HttpClient } from '@angular/common/http';
 import { User } from '../../../shared/models';
 import { environment } from '../../../../environments/environment';
+import { AuthService } from '../../../core/services/auth.service';
 import { UserAssignmentDialogComponent } from './user-assignment-dialog.component';
 import { UserDialogComponent } from './user-dialog.component';
 
@@ -126,30 +127,42 @@ export class ConfirmDeleteDialogComponent {
             Crear usuario
           </button>
           <mat-menu #createUserMenu="matMenu">
-            <button mat-menu-item (click)="createUser('OWNER')">
-              <mat-icon>stars</mat-icon>
-              <span>Owner</span>
-            </button>
-            <button mat-menu-item (click)="createUser('ADMIN_AREA')">
-              <mat-icon>admin_panel_settings</mat-icon>
-              <span>Admin Area</span>
-            </button>
-            <button mat-menu-item (click)="createUser('PENTESTER')">
-              <mat-icon>bug_report</mat-icon>
-              <span>Pentester</span>
-            </button>
-            <button mat-menu-item (click)="createUser('QA')">
-              <mat-icon>fact_check</mat-icon>
-              <span>QA</span>
-            </button>
-            <button mat-menu-item (click)="createUser('NORMAL_USER')">
-              <mat-icon>person</mat-icon>
-              <span>Usuario Normal</span>
-            </button>
-            <button mat-menu-item (click)="createUser('AUDITOR')">
-              <mat-icon>visibility</mat-icon>
-              <span>Auditor</span>
-            </button>
+            @if (canCreateRole('OWNER')) {
+              <button mat-menu-item (click)="createUser('OWNER')">
+                <mat-icon>stars</mat-icon>
+                <span>Owner</span>
+              </button>
+            }
+            @if (canCreateRole('ADMIN_AREA')) {
+              <button mat-menu-item (click)="createUser('ADMIN_AREA')">
+                <mat-icon>admin_panel_settings</mat-icon>
+                <span>Admin Area</span>
+              </button>
+            }
+            @if (canCreateRole('PENTESTER')) {
+              <button mat-menu-item (click)="createUser('PENTESTER')">
+                <mat-icon>bug_report</mat-icon>
+                <span>Pentester</span>
+              </button>
+            }
+            @if (canCreateRole('QA')) {
+              <button mat-menu-item (click)="createUser('QA')">
+                <mat-icon>fact_check</mat-icon>
+                <span>QA</span>
+              </button>
+            }
+            @if (canCreateRole('NORMAL_USER')) {
+              <button mat-menu-item (click)="createUser('NORMAL_USER')">
+                <mat-icon>person</mat-icon>
+                <span>Usuario Normal</span>
+              </button>
+            }
+            @if (canCreateRole('AUDITOR')) {
+              <button mat-menu-item (click)="createUser('AUDITOR')">
+                <mat-icon>visibility</mat-icon>
+                <span>Auditor</span>
+              </button>
+            }
           </mat-menu>
         </div>
 
@@ -363,6 +376,7 @@ export class UserListImprovedComponent implements OnInit {
   private http = inject(HttpClient);
   private dialog = inject(MatDialog);
   private snackBar = inject(MatSnackBar);
+  private authService = inject(AuthService);
 
   availableRoles = [
     { value: 'OWNER', label: 'Owner', icon: 'stars' },
@@ -374,6 +388,15 @@ export class UserListImprovedComponent implements OnInit {
   ];
 
   roleChangeOptions = this.availableRoles;
+
+  canCreateRole(role: string): boolean {
+    const currentRole = this.authService.currentUser()?.role;
+    const adminAreaRoles = ['ADMIN_AREA', 'CLIENT_ADMIN', 'AREA_ADMIN'];
+    if (adminAreaRoles.includes(currentRole ?? '')) {
+      return ['NORMAL_USER', 'AUDITOR'].includes(role);
+    }
+    return true;
+  }
 
   users = signal<User[]>([]);
   searchTerm = signal('');
@@ -546,7 +569,7 @@ export class UserListImprovedComponent implements OnInit {
     });
   }
 
-  createUser(role = 'VIEWER'): void {
+  createUser(role = 'NORMAL_USER'): void {
     this.dialog.open(UserDialogComponent, {
       width: '640px',
       data: { role }

@@ -62,6 +62,8 @@ export class UserAssignmentService {
       (assignmentIds.areaIds || []).map((id) => id.toString()),
     );
 
+    let validatedProjectIds: string[] = [];
+
     if (assignmentIds.projectIds && assignmentIds.projectIds.length > 0) {
       const projects = await this.projectModel
         .find({
@@ -83,6 +85,7 @@ export class UserAssignmentService {
         }
       }
 
+      validatedProjectIds = projects.map((p) => p._id.toString());
       result.assigned.projects = projects.map((p) => ({
         _id: p._id,
         name: p.name,
@@ -125,6 +128,14 @@ export class UserAssignmentService {
       assignedBy,
     );
 
+    await this.userModel.findByIdAndUpdate(userId, {
+      $set: {
+        visibleProjectIds: validatedProjectIds.map(
+          (id) => new Types.ObjectId(id),
+        ),
+      },
+    });
+
     return result;
   }
 
@@ -143,28 +154,14 @@ export class UserAssignmentService {
       .exec();
 
     const areasByClient: { [clientId: string]: any[] } = {};
-    const projectIdsByClient: { [clientId: string]: Set<string> } = {};
 
     for (const assignment of userAreas) {
       const area = assignment.areaId as any;
       if (area) {
-        const clientId = area.clientId.toString();
-        if (!areasByClient[clientId]) {
-          areasByClient[clientId] = [];
-          projectIdsByClient[clientId] = new Set();
-        }
-        areasByClient[clientId].push({
-          _id: area._id,
-          name: area.name,
-        });
-
-        const projects = await this.projectModel
-          .find({ areaIds: area._id })
-          .select("_id name")
-          .exec();
-        projects.forEach((p) =>
-          projectIdsByClient[clientId].add(p._id.toString()),
-        );
+        const clientId = area.clientId?.toString();
+        if (!clientId) continue;
+        if (!areasByClient[clientId]) areasByClient[clientId] = [];
+        areasByClient[clientId].push({ _id: area._id, name: area.name });
       }
     }
 
@@ -177,11 +174,54 @@ export class UserAssignmentService {
     const directAreaIds = userAreas
       .map((assignment) => (assignment.areaId as any)?._id?.toString?.())
       .filter(Boolean);
-    const directProjectIds = Array.from(
-      new Set(
-        Object.values(projectIdsByClient).flatMap((set) => Array.from(set)),
-      ),
-    );
+
+    let directProjectIds: string[];
+    const projectsByClient: { [clientId: string]: string[] } = {};
+
+    if (user.visibleProjectIds && user.visibleProjectIds.length > 0) {
+      const visibleProjects = await this.projectModel
+        .find({ _id: { $in: user.visibleProjectIds } })
+        .select("_id tenantId clientId")
+        .setOptions({ skipTenantFilter: true })
+        .exec();
+
+      directProjectIds = visibleProjects.map((p) => p._id.toString());
+      for (const project of visibleProjects) {
+        const clientId =
+          (project as any).tenantId?.toString() ||
+          (project as any).clientId?.toString();
+        if (clientId) {
+          if (!projectsByClient[clientId]) projectsByClient[clientId] = [];
+          projectsByClient[clientId].push(project._id.toString());
+        }
+      }
+    } else {
+      const projectIdsByClient: { [clientId: string]: Set<string> } = {};
+      for (const assignment of userAreas) {
+        const area = assignment.areaId as any;
+        if (area) {
+          const clientId = area.clientId?.toString();
+          if (!clientId) continue;
+          if (!projectIdsByClient[clientId])
+            projectIdsByClient[clientId] = new Set();
+          const projects = await this.projectModel
+            .find({ areaIds: area._id })
+            .select("_id")
+            .exec();
+          projects.forEach((p) =>
+            projectIdsByClient[clientId].add(p._id.toString()),
+          );
+        }
+      }
+      directProjectIds = Array.from(
+        new Set(
+          Object.values(projectIdsByClient).flatMap((set) => Array.from(set)),
+        ),
+      );
+      for (const [clientId, set] of Object.entries(projectIdsByClient)) {
+        projectsByClient[clientId] = Array.from(set);
+      }
+    }
 
     return {
       userId,
@@ -194,13 +234,10 @@ export class UserAssignmentService {
         name: c.name,
         displayName: c.displayName,
         areas: areasByClient[c._id.toString()] || [],
-        projects: Array.from(projectIdsByClient[c._id.toString()] || []),
+        projects: projectsByClient[c._id.toString()] || [],
       })),
       totalAreas: userAreas.length,
-      totalProjects: Object.values(projectIdsByClient).reduce(
-        (sum, set) => sum + set.size,
-        0,
-      ),
+      totalProjects: directProjectIds.length,
       totalClients: clients.length,
     };
   }

@@ -75,10 +75,13 @@ export class FindingService {
 
   private isRestrictedByArea(currentUser?: any): boolean {
     if (!currentUser) return false;
-    if ([UserRole.AREA_ADMIN, UserRole.VIEWER, UserRole.AUDITOR].includes(currentUser.role)) {
+    if ([UserRole.AREA_ADMIN, UserRole.VIEWER].includes(currentUser.role)) {
       return true;
     }
-
+    // AUDITOR con ALL_AREA scope (sin áreas asignadas) ve todo el tenant sin filtro de área
+    if (currentUser.role === UserRole.AUDITOR) {
+      return this.getUserAreaIds(currentUser).length > 0;
+    }
     return this.isOperationalUser(currentUser) && this.getUserAreaIds(currentUser).length > 0;
   }
 
@@ -271,18 +274,32 @@ export class FindingService {
       return;
     }
 
-    const allowedAreas = this.getUserAreaIds(currentUser);
     const projectAreas =
       project?.areaIds?.map((a: any) => a?._id?.toString?.() || a.toString()) ||
       [];
     const legacyArea =
       project?.areaId?._id?.toString?.() || project?.areaId?.toString?.();
 
+    // Proyecto sin áreas asignadas = sin restricción de área;
+    // cualquier usuario operacional del tenant puede acceder
+    if (!projectAreas.length && !legacyArea) {
+      return;
+    }
+
+    const allowedAreas = this.getUserAreaIds(currentUser);
     const hasAccess = allowedAreas.some(
       (area: string) => projectAreas.includes(area) || legacyArea === area,
     );
 
     if (!allowedAreas.length || !hasAccess) {
+      // PENTESTER/QA/ANALYST operan a nivel de tenant, no de área.
+      // El área es una herramienta organizacional/de filtrado, no un gate duro.
+      if (this.isOperationalUser(currentUser)) {
+        this.logger.warn(
+          `Usuario operacional ${currentUser.userId} accede a proyecto fuera de sus áreas asignadas (acceso permitido por rol operacional)`,
+        );
+        return;
+      }
       throw new ForbiddenException(
         "No tiene permisos para acceder a este recurso",
       );
@@ -666,6 +683,9 @@ export class FindingService {
 
     if (!allowedIds.length) return 0;
 
+    // Los IDs ya fueron validados individualmente por findFindingOrFailWithAccess.
+    // Usamos skipTenantFilter para que el updateMany no falle cuando el usuario
+    // operacional (PENTESTER/QA) no tiene CLS tenant activo.
     const result = await this.findingModel.updateMany(
       { _id: { $in: allowedIds } },
       {
@@ -676,7 +696,7 @@ export class FindingService {
           closedBy: userId,
         },
       },
-    );
+    ).setOptions({ skipTenantFilter: true });
 
     this.logger.log(
       `${result.modifiedCount} hallazgos cerrados masivamente por usuario ${userId}`,
@@ -864,6 +884,8 @@ export class FindingService {
     file: Express.Multer.File,
     projectName: string,
     currentUser: any,
+    dryRun = false,
+    fillMissing = false,
   ): Promise<{ creados: number; fallidos: number; errores: { fila: number; detalle: string }[] }> {
     const resolvedProjectName = (projectName || "").trim() || "Importación CSV";
 
@@ -884,7 +906,7 @@ export class FindingService {
     let creados = 0;
     let fallidos = 0;
 
-    // Cache de resolución cliente→{projectId, tenantId} para evitar N+1
+    // Cache de resolución cliente→{projectId, tenantId} para evitar N+1 (solo en modo real)
     const contextCache = new Map<string, { projectId: Types.ObjectId; tenantId: Types.ObjectId }>();
 
     for (let i = 0; i < rows.length; i++) {
@@ -904,20 +926,42 @@ export class FindingService {
         if (!this.cell(row, "Criticidad")) missingFields.push("Criticidad");
         if (!this.cell(row, "Cliente")) missingFields.push("Cliente");
         if (missingFields.length > 0) {
-          errores.push({ fila, detalle: `Campos obligatorios faltantes: ${missingFields.join(", ")}` });
+          if (fillMissing) {
+            // Rellenar campos faltantes con N/A en lugar de fallar
+            missingFields.forEach(f => {
+              const keyMap: Record<string, string[]> = {
+                "Descripción": ["Descripción", "Descripcion"],
+                "CAT-COD-interno": ["CAT-COD-interno"],
+                "Criticidad": ["Criticidad"],
+                "Cliente": ["Cliente"],
+              };
+              const keys = keyMap[f];
+              if (keys) row[keys[0]] = "N/A";
+            });
+          } else {
+            errores.push({ fila, detalle: `Campos obligatorios faltantes: ${missingFields.join(", ")}` });
+            fallidos++;
+            continue;
+          }
+        }
+
+        const rawCriticidad = this.cell(row, "Criticidad");
+        const severity = rawCriticidad === "N/A"
+          ? FindingSeverity.MEDIUM
+          : this.normalizeSeverity(rawCriticidad);
+        if (!severity) {
+          errores.push({ fila, detalle: `Criticidad inválida: "${rawCriticidad}"` });
           fallidos++;
           continue;
         }
 
-        const severity = this.normalizeSeverity(this.cell(row, "Criticidad"));
-        if (!severity) {
-          errores.push({ fila, detalle: `Criticidad inválida: "${this.cell(row, "Criticidad")}"` });
-          fallidos++;
+        if (dryRun) {
+          creados++;
           continue;
         }
 
         // Resolver cliente / proyecto / área desde la columna "Cliente"
-        const clientName = this.cell(row, "Cliente").trim();
+        const clientName = (this.cell(row, "Cliente") || "Sin cliente").trim();
         if (!contextCache.has(clientName)) {
           const ctx = await this.findOrCreateClientProjectArea(clientName, resolvedProjectName, currentUser);
           contextCache.set(clientName, ctx);
@@ -1038,13 +1082,21 @@ export class FindingService {
       .setOptions({ skipTenantFilter: true });
 
     if (!project) {
+      const year = new Date().getFullYear();
+      const count = await this.projectModel
+        .countDocuments()
+        .setOptions({ skipTenantFilter: true });
+      const code = `PROJ-${year}-${String(count + 1).padStart(3, "0")}`;
+
       project = new this.projectModel({
         name: projectName,
+        code,
         tenantId,
+        clientId: tenantId, // clientId = tenantId: necesario para que el listado muestre el cliente
         serviceArchitecture: ServiceArchitecture.HYBRID,
       });
       await project.save();
-      this.logger.log(`Bulk import: proyecto creado → "${projectName}" para cliente "${clientName}"`);
+      this.logger.log(`Bulk import: proyecto creado → "${projectName}" (${code}) para cliente "${clientName}"`);
     }
 
     const projectId = project._id as Types.ObjectId;

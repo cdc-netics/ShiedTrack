@@ -7,6 +7,25 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 ## [Unreleased]
 
+### Correcciones de permisos para PENTESTER y mejora de importación CSV (2026-07-02)
+
+#### Fixes de permisos PENTESTER
+
+- **FIX (Backend — export 403):** `exportProjectToExcel` en `export.service.ts` lanzaba 403 para PENTESTER porque usaba `(currentUser.activeTenantId || currentUser.clientId)?.toString()` para obtener el tenant y bloqueaba cuando ninguno estaba definido. Reemplazado por `getCurrentTenantId(currentUser)` (revisa `tenantId ?? activeTenantId ?? clientId`) y la comparación ahora solo bloquea cuando **ambos** tenants son conocidos y distintos.
+- **FIX (Backend — bulk-close 403):** `POST /findings/bulk-close` no incluía `PENTESTER`, `QA` ni `ANALYST` en el decorador `@Roles()`. Añadidos los tres roles.
+- **FIX (Backend — bulk-close 500):** tras agregar los roles, `bulkClose` fallaba con `"No hay contexto de tenant activo"` porque el `updateMany` pasaba por `multiTenantPlugin` sin CLS tenant disponible para PENTESTER. Resuelto añadiendo `.setOptions({ skipTenantFilter: true })` al `updateMany`; es seguro porque cada `_id` fue validado previamente por `findFindingOrFailWithAccess` con el tenant correcto.
+- **FIX (Backend — cierre individual 403 por área):** `validateProjectAreaAccess` lanzaba `ForbiddenException` cuando un PENTESTER no tenía asignada el área `IMP-DEFAULT` (creada automáticamente en importaciones CSV). Las restricciones de área son organizacionales; los usuarios operacionales (`PENTESTER`, `QA`, `ANALYST`) ahora reciben únicamente un warning en log en caso de área mismatch, sin bloqueo.
+
+#### Mejora M8 — Flujo de previsualización dry-run en importación CSV
+
+- **FEAT (Backend — dryRun):** nuevo query param `?dryRun=true` en `POST /api/findings/bulk-import`. Ejecuta toda la validación (encoding, headers, campos obligatorios, normalización de severidad) sin persistir ningún registro. Retorna el mismo formato `{ creados, fallidos, errores[] }` para informar al usuario antes de confirmar.
+- **FEAT (Backend — fillMissing):** nuevo query param `?fillMissing=true`. Cuando está activo, los campos obligatorios vacíos se rellenan con `"N/A"` en lugar de reportar error por fila. `Criticidad` vacía (o `"N/A"`) se mapea automáticamente a `MEDIUM`.
+- **FEAT (Frontend — máquina de estados 5 pasos):** `BulkImportDialogComponent` reimplementado con `signal<Step>()` (`select → analyzing → preview → importing → done`). Al seleccionar el archivo se llama a `?dryRun=true` automáticamente; si hay errores se muestra una pantalla de previsualización con el recuento de válidas/inválidas y el detalle por fila, más los botones "Cancelar" y "Continuar de todos modos". Al confirmar, la importación real se realiza con `?fillMissing=true`. Si no hay errores, el import procede directamente sin pantalla de confirmación.
+
+#### Fix Docker frontend
+
+- **FIX (Docker — ERR_PNPM_IGNORED_BUILDS):** el build Docker del frontend fallaba porque `frontend/pnpm-workspace.yaml` no se copiaba al contexto de build antes del `pnpm install` y sus valores `allowBuilds` eran placeholders (`set this to true or false`). Corregido: `frontend/Dockerfile` ahora copia `frontend/pnpm-workspace.yaml*` antes de `pnpm install`, y `pnpm-workspace.yaml` tiene `true` en todos los entries de `allowBuilds` (`@parcel/watcher`, `esbuild`, `lmdb`, `msgpackr-extract`).
+
 ### M8 — Importación masiva de hallazgos desde CSV / Excel
 
 - **FEAT (Backend — endpoint):** nuevo `POST /api/findings/bulk-import` con `FileInterceptor` (multer memory storage). Roles autorizados: `OWNER`, `PLATFORM_ADMIN`, `PENTESTER`, `QA`, `ANALYST`.

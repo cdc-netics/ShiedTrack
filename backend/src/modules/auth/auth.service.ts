@@ -26,6 +26,7 @@ import {
   canCreateTargetRole,
   canCreateUsers,
   minimumPasswordLengthForCreator,
+  normalizeRole,
   roleSatisfies,
 } from "../../common/rbac/rbac-policy";
 import { UserAreaService } from "./user-area.service";
@@ -520,6 +521,16 @@ export class AuthService {
       throw new ForbiddenException("No se puede eliminar el usuario OWNER");
     }
 
+    // ADMIN_AREA solo puede bloquear usuarios de menor rango
+    if (normalizeRole(currentUser?.role) === "ADMIN_AREA") {
+      const allowedTargets = [UserRole.NORMAL_USER, UserRole.AUDITOR, UserRole.VIEWER];
+      if (!allowedTargets.includes(user.role as UserRole)) {
+        throw new ForbiddenException(
+          "No tienes permiso para bloquear este tipo de usuario",
+        );
+      }
+    }
+
     // Marcar como eliminado (soft delete)
     user.isDeleted = true;
     user.isActive = false;
@@ -569,10 +580,20 @@ export class AuthService {
   /**
    * Reactivar usuario eliminado
    */
-  async reactivateUser(userId: string): Promise<User> {
+  async reactivateUser(userId: string, currentUser?: any): Promise<User> {
     const user = await this.userModel.findById(userId);
     if (!user) {
       throw new BadRequestException("Usuario no encontrado");
+    }
+
+    // ADMIN_AREA solo puede reactivar usuarios de menor rango
+    if (normalizeRole(currentUser?.role) === "ADMIN_AREA") {
+      const allowedTargets = [UserRole.NORMAL_USER, UserRole.AUDITOR, UserRole.VIEWER];
+      if (!allowedTargets.includes(user.role as UserRole)) {
+        throw new ForbiddenException(
+          "No tienes permiso para reactivar este tipo de usuario",
+        );
+      }
     }
 
     user.isDeleted = false;

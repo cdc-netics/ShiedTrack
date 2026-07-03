@@ -135,9 +135,9 @@ export class AuthController {
   @ApiOperation({ summary: "Listar usuarios (solo admins)" })
   @ApiResponse({ status: 200, description: "Lista de usuarios" })
   async listUsers(@CurrentUser() user: any) {
-    // Client admins solo ven usuarios de su tenant
-    const clientId =
-      user.role === UserRole.CLIENT_ADMIN ? user.clientId : undefined;
+    // OWNER/PLATFORM_ADMIN ven todos; ADMIN_AREA group (CLIENT_ADMIN, AREA_ADMIN, ADMIN_AREA) solo ven su tenant
+    const isGlobal = [UserRole.OWNER, UserRole.PLATFORM_ADMIN].includes(user.role);
+    const clientId = isGlobal ? undefined : user.clientId;
     return this.authService.findAll(clientId);
   }
 
@@ -251,7 +251,7 @@ export class AuthController {
 
   @Delete("users/:id/soft")
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.OWNER, UserRole.PLATFORM_ADMIN)
+  @Roles(UserRole.OWNER, UserRole.PLATFORM_ADMIN, UserRole.CLIENT_ADMIN, UserRole.AREA_ADMIN, UserRole.ADMIN_AREA)
   @ApiBearerAuth("JWT-auth")
   @ApiOperation({
     summary: "Desactivar usuario (soft delete - no eliminación física)",
@@ -281,12 +281,15 @@ export class AuthController {
 
   @Post("users/:id/reactivate")
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.OWNER, UserRole.PLATFORM_ADMIN)
+  @Roles(UserRole.OWNER, UserRole.PLATFORM_ADMIN, UserRole.CLIENT_ADMIN, UserRole.AREA_ADMIN, UserRole.ADMIN_AREA)
   @ApiBearerAuth("JWT-auth")
   @ApiOperation({ summary: "Reactivar usuario previamente desactivado" })
   @ApiResponse({ status: 200, description: "Usuario reactivado" })
-  async reactivateUser(@Param("id") id: string) {
-    return this.authService.reactivateUser(id);
+  async reactivateUser(
+    @Param("id") id: string,
+    @CurrentUser() currentUser: any,
+  ) {
+    return this.authService.reactivateUser(id, currentUser);
   }
 
   @Post("users/:id/reset-password")

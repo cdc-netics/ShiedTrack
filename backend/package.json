@@ -4,7 +4,7 @@
   "description": "ShieldTrack - Sistema de gestión de hallazgos de ciberseguridad",
   "author": "ShieldTrack Team",
   "private": true,
-  "packageManager": "pnpm@10.12.4",
+  "packageManager": "pnpm@11.8.0",
   "license": "UNLICENSED",
   "scripts": {
     "preinstall": "node ../scripts/enforce-pnpm.js",
