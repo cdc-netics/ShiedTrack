@@ -1,36 +1,53 @@
-FROM node:20-alpine AS build
+FROM node:22-alpine AS build
 
 RUN apk add --no-cache python3 make g++
 WORKDIR /app/backend
+ENV CI=true
 RUN corepack enable
 
 # Copiar archivos necesarios para la instalación
 COPY scripts /app/scripts
-COPY backend/package.json backend/pnpm-lock.yaml* ./
+COPY backend/package.json backend/pnpm-lock.yaml* backend/pnpm.yaml* backend/pnpm-workspace.yaml* backend/.npmrc ./
 
-# Instalar dependencias
-# --shamefully-hoist crea node_modules plano (sin symlinks de pnpm virtual store)
-# para que COPY --from=build funcione correctamente en el stage runtime
+# Instalar todas las dependencias (dev + prod) para poder compilar
 RUN pnpm install --frozen-lockfile --shamefully-hoist
 
-# Copiar el resto del código fuente
-COPY backend . 
+# Copiar el resto del código fuente y compilar
+COPY backend .
+RUN pnpm run build
 
-# Compilar y eliminar devDependencies
-RUN pnpm run build && pnpm prune --prod
-
-FROM node:20-alpine
+FROM node:22-alpine
 
 RUN apk add --no-cache mongodb-tools
-# Necesario para que docker-entrypoint.sh pueda llamar pnpm run seed:*
 RUN corepack enable
-WORKDIR /app
 
-COPY --from=build /app/backend/node_modules ./node_modules
-COPY --from=build /app/backend/dist ./dist
-COPY --from=build /app/backend/package.json ./
-COPY --from=build /app/backend/docker-entrypoint.sh ./docker-entrypoint.sh
+# Los scripts raíz van en /app/scripts para que el preinstall del backend
+# (que corre desde /app/backend/) pueda resolverlos con ../scripts/
+WORKDIR /app
 COPY scripts ./scripts
+
+# WORKDIR igual que en build stage: así ../scripts/ y paths relativos del
+# entrypoint (dist/main.js, scripts/seeds/) resuelven correctamente
+WORKDIR /app/backend
+ENV CI=true
+
+COPY --from=build /app/backend/package.json ./
+COPY --from=build /app/backend/pnpm-lock.yaml ./
+COPY --from=build /app/backend/pnpm-workspace.yaml ./
+COPY --from=build /app/backend/pnpm.yaml ./
+# .npmrc ensures shamefully-hoist=true is used by any pnpm invocation (including
+# runDepsStatusCheck reinstalls triggered at runtime by `pnpm run seed:*`)
+COPY --from=build /app/backend/.npmrc ./
+
+# Instalar solo dependencias de producción
+# Sin --ignore-scripts: preinstall (node ../scripts/enforce-pnpm.js) resuelve a
+# /app/scripts/enforce-pnpm.js ✓ y allowBuilds en pnpm-workspace.yaml permite
+# los build scripts de @nestjs/core y @scarf/scarf, evitando runDepsStatusCheck
+RUN pnpm install --frozen-lockfile --shamefully-hoist --prod
+
+COPY --from=build /app/backend/dist ./dist
+COPY --from=build /app/backend/scripts ./scripts
+COPY --from=build /app/backend/docker-entrypoint.sh ./docker-entrypoint.sh
 
 RUN sed -i 's/\r$//' docker-entrypoint.sh && chmod +x docker-entrypoint.sh
 

@@ -74,10 +74,11 @@ export class ProjectService {
   /** Determina si el usuario está restringido por proyectos visibles */
   private isRestrictedByVisibleProjects(currentUser?: any): boolean {
     if (!currentUser) return false;
-    if ([UserRole.VIEWER, UserRole.AUDITOR].includes(currentUser.role)) {
-      return true;
+    if (currentUser.role === UserRole.VIEWER) return true;
+    // AUDITOR con ALL_AREA scope (sin visibleProjectIds) ve todos los proyectos del tenant
+    if (currentUser.role === UserRole.AUDITOR) {
+      return this.getUserVisibleProjectIds(currentUser).length > 0;
     }
-
     return this.isOperationalUser(currentUser) && this.getUserVisibleProjectIds(currentUser).length > 0;
   }
 
@@ -215,7 +216,7 @@ export class ProjectService {
     const currentTenantId = this.getCurrentTenantId(user);
     const requestedTenantId = dto.tenantId || dto.clientId;
     const finalTenantId =
-      this.isGlobalUser(user) && requestedTenantId
+      (this.isGlobalUser(user) || this.isOperationalUser(user)) && requestedTenantId
         ? requestedTenantId
         : currentTenantId || requestedTenantId;
 
@@ -225,7 +226,7 @@ export class ProjectService {
       );
     }
 
-    if (!this.isGlobalUser(user)) {
+    if (!this.isGlobalUser(user) && !this.isOperationalUser(user)) {
       this.validateClientMatchesTenant(dto.clientId, currentTenantId);
     }
 
@@ -379,8 +380,15 @@ export class ProjectService {
     currentUser?: any,
   ): Promise<Project> {
     const project = await this.findProjectOrFailWithAccess(id, currentUser);
-    const currentTenantId = this.getCurrentTenantId(currentUser);
     const isGlobalUser = this.isGlobalUser(currentUser);
+
+    // Usuarios operacionales (PENTESTER/QA) bypasan TenantContextGuard y pueden
+    // no tener activeTenantId en el JWT — usar el tenantId del propio proyecto
+    const currentTenantId =
+      this.getCurrentTenantId(currentUser) ||
+      (this.isOperationalUser(currentUser)
+        ? (project as any).tenantId?.toString?.()
+        : undefined);
 
     if (!currentTenantId && !isGlobalUser) {
       throw new BadRequestException(
@@ -417,15 +425,16 @@ export class ProjectService {
         .filter(Boolean);
     }
 
-    if (!isGlobalUser) {
+    // Usuarios operacionales (QA/PENTESTER/ANALYST) pueden mover proyectos entre tenants
+    if (!isGlobalUser && !this.isOperationalUser(currentUser)) {
       this.validateClientMatchesTenant((dto as any).clientId, currentTenantId);
     }
 
-    // Si viene clientId en el body, usarlo; para usuarios globales también
+    // Si viene clientId en el body, usarlo; para usuarios globales y operacionales también
     // movemos el proyecto a ese tenant para mantener tenantId/clientId alineados.
     if ((dto as any).clientId !== undefined) {
       (dto as any).clientId = this.toObjectId((dto as any).clientId);
-      if (isGlobalUser) {
+      if (isGlobalUser || this.isOperationalUser(currentUser)) {
         (dto as any).tenantId = (dto as any).clientId;
       }
     }

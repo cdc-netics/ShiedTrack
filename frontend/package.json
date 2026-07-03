@@ -1,7 +1,7 @@
 {
   "name": "shieldtrack-frontend",
   "version": "1.0.0",
-  "packageManager": "pnpm@10.12.4",
+  "packageManager": "pnpm@11.8.0",
   "scripts": {
     "preinstall": "node ../scripts/enforce-pnpm.js",
     "ng": "ng",

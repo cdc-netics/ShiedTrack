@@ -157,7 +157,7 @@ import { UserRole } from '../../../shared/enums';
             </mat-card-content>
           </mat-card>
 
-          <!-- FECHAS Y DURACIÓN (se muestran pero NO se envían al backend) -->
+          <!-- FECHAS Y DURACIÓN -->
           <mat-card class="section-card">
             <mat-card-header>
               <mat-card-title>
@@ -168,15 +168,8 @@ import { UserRole } from '../../../shared/enums';
             <mat-card-content>
               <div class="form-row">
                 <mat-form-field appearance="outline" class="half-width">
-                  <mat-label>Fecha de Creación</mat-label>
-                  <input matInput [matDatepicker]="pickerCreated" formControlName="createdAt">
-                  <mat-datepicker-toggle matSuffix [for]="pickerCreated"></mat-datepicker-toggle>
-                  <mat-datepicker #pickerCreated></mat-datepicker>
-                </mat-form-field>
-
-                <mat-form-field appearance="outline" class="half-width">
                   <mat-label>Fecha de Inicio del Servicio</mat-label>
-                  <input matInput [matDatepicker]="pickerStart" formControlName="serviceStartDate">
+                  <input matInput [matDatepicker]="pickerStart" formControlName="startDate">
                   <mat-datepicker-toggle matSuffix [for]="pickerStart"></mat-datepicker-toggle>
                   <mat-datepicker #pickerStart></mat-datepicker>
                 </mat-form-field>
@@ -251,7 +244,7 @@ import { UserRole } from '../../../shared/enums';
             </mat-card-content>
           </mat-card>
 
-          <!-- ESTADO (se muestra pero NO se envía al backend para evitar: projectStatus should not exist) -->
+          <!-- ESTADO -->
           <mat-card class="section-card">
             <mat-card-header>
               <mat-card-title>
@@ -384,21 +377,18 @@ export class ProjectDetailComponent implements OnInit {
     this.projectForm = this.fb.group({
       name: ['', Validators.required],
       code: [''],
-      // ⚠️ lo dejamos en UI, pero NO será obligatorio porque el backend no lo acepta
       clientId: [''],
       areaIds: [[]],
       description: [''],
       serviceArchitecture: ['WEB'],
       testType: ['BLACKBOX'],
-      createdAt: [new Date()],
-      serviceStartDate: [new Date()],
-      endDate: [''],
+      startDate: [null],
+      endDate: [null],
       projectStatus: ['ACTIVE'],
       teamMembers: this.fb.array([])
     });
 
-    // Suscribirse a cambios de fechas para actualizar los signals reactivos
-    this.projectForm.get('serviceStartDate')?.valueChanges.subscribe(v => this.startDateSignal.set(v));
+    this.projectForm.get('startDate')?.valueChanges.subscribe(v => this.startDateSignal.set(v));
     this.projectForm.get('endDate')?.valueChanges.subscribe(v => this.endDateSignal.set(v));
   }
 
@@ -428,14 +418,12 @@ export class ProjectDetailComponent implements OnInit {
           description: project.description,
           serviceArchitecture: project.serviceArchitecture,
           testType: project.testType,
-          createdAt: project.createdAt ? new Date(project.createdAt) : new Date(),
-          serviceStartDate: project.serviceStartDate ? new Date(project.serviceStartDate) : new Date(),
+          startDate: project.startDate ? new Date(project.startDate) : null,
           endDate: project.endDate ? new Date(project.endDate) : null,
           projectStatus: project.projectStatus || 'ACTIVE'
         });
 
-        // Actualizar signals para disparar el cálculo de duración
-        this.startDateSignal.set(project.serviceStartDate);
+        this.startDateSignal.set(project.startDate);
         this.endDateSignal.set(project.endDate);
 
         this.teamMembers.clear();
@@ -499,15 +487,12 @@ saveProject(): void {
   }
 
   const raw = this.projectForm.getRawValue();
-
-  // 🔎 Cliente seleccionado en UI (string o null)
   const selectedClientId = this.normalizeId(raw.clientId);
-
-  // ✅ Resuelve tenantId (como lo venías haciendo)
-  // (si estabas usando effectiveTenantId, mantenlo aquí)
   const tenantId = this.resolveTenantId();
-  if (!tenantId && !selectedClientId) {
-    this.snackBar.open('❌ No se pudo resolver el tenantId del usuario', 'Cerrar', { duration: 5000 });
+
+  // Para CREATE necesitamos poder determinar el tenant; en EDIT no es necesario
+  if (!this.isEditMode() && !tenantId && !selectedClientId) {
+    this.snackBar.open('No se pudo resolver el tenant. Selecciona un cliente.', 'Cerrar', { duration: 5000 });
     return;
   }
 
@@ -515,13 +500,14 @@ saveProject(): void {
     ? raw.areaIds.map((a: any) => this.normalizeId(a)).filter(Boolean)
     : [];
 
-  // ✅ Base payload común (lo que SIEMPRE se manda)
   const basePayload = this.cleanUndefined({
     name: (raw.name ?? '').trim(),
     code: raw.code?.trim() || undefined,
     description: raw.description?.trim() || undefined,
     serviceArchitecture: raw.serviceArchitecture || 'WEB',
     areaIds: cleanAreaIds.length ? cleanAreaIds : undefined,
+    startDate: this.formatDateStr(raw.startDate),
+    endDate: this.formatDateStr(raw.endDate),
   });
 
   const tenantIdForCreate = selectedClientId || tenantId;
@@ -532,16 +518,11 @@ saveProject(): void {
     clientId: selectedClientId || undefined,
   });
 
-  // ✅ UPDATE payload (PUT) — no mandamos tenantId
   const updatePayload: any = this.cleanUndefined({
     ...basePayload,
     clientId: selectedClientId || undefined,
+    projectStatus: this.canChangeStatus() ? (raw.projectStatus || undefined) : undefined,
   });
-
-  console.log('✅ tenantId resuelto:', tenantId);
-  console.log('🟦 CREATE payload (POST):', createPayload);
-  console.log('🟨 UPDATE payload (PUT):', updatePayload);
-  console.log('🧩 Cliente seleccionado en UI:', selectedClientId);
 
   this.saving.set(true);
 
@@ -550,21 +531,15 @@ saveProject(): void {
     : this.http.post(this.API_URL, createPayload);
 
   req$.subscribe({
-    next: (createdOrUpdated: any) => {
-      console.log('🧾 Resultado create/update:', createdOrUpdated);
-
-      // ✅ Flujo normal (UPDATE o CREATE sin cliente)
+    next: () => {
       this.snackBar.open(this.isEditMode() ? '✅ Proyecto actualizado' : '✅ Proyecto creado', 'Cerrar', { duration: 3000 });
       this.router.navigate(['/projects']);
     },
-
     error: (err) => {
-      console.error('❌ Error al guardar proyecto:', err);
-      console.log('❌ Error body:', err?.error);
-
+      console.error('Error al guardar proyecto:', err);
       const msg = err?.error?.message;
       this.snackBar.open(
-        Array.isArray(msg) ? msg.join(' | ') : (msg || '❌ Error al guardar el proyecto'),
+        Array.isArray(msg) ? msg.join(' | ') : (msg || 'Error al guardar el proyecto'),
         'Cerrar',
         { duration: 9000 }
       );
@@ -600,6 +575,7 @@ saveProject(): void {
     const fromUser =
       user?.activeTenantId ||
       user?.tenantId ||
+      user?.clientId ||
       user?.tenant?._id ||
       (Array.isArray(user?.tenantIds) ? user.tenantIds[0] : null);
 
@@ -611,11 +587,18 @@ saveProject(): void {
     const fromJwt =
       jwt?.activeTenantId ||
       jwt?.tenantId ||
+      jwt?.clientId ||
       jwt?.tenant?._id ||
       jwt?.tenant ||
       (Array.isArray(jwt?.tenantIds) ? jwt.tenantIds[0] : null);
 
     return fromJwt ? String(fromJwt) : null;
+  }
+
+  private formatDateStr(v: any): string | undefined {
+    if (!v) return undefined;
+    const d = v instanceof Date ? v : new Date(v);
+    return isNaN(d.getTime()) ? undefined : d.toISOString();
   }
 
   private normalizeId(value: any): string | null {

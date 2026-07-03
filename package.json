@@ -2,7 +2,7 @@
   "name": "shieldtrack",
   "version": "2.2.0",
   "description": "ShieldTrack - Cybersecurity Findings Management",
-  "packageManager": "pnpm@10.12.4",
+  "packageManager": "pnpm@11.8.0",
   "scripts": {
     "preinstall": "node ./scripts/enforce-pnpm.js",
     "start": "docker compose up --build",
