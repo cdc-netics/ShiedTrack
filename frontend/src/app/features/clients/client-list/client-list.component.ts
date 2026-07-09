@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, inject, OnInit, signal, Inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { MatTableModule } from '@angular/material/table';
@@ -9,16 +9,42 @@ import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { MatDialog, MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { MatMenuModule } from '@angular/material/menu'; // Added
+import { MatMenuModule } from '@angular/material/menu';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
-import { tap } from 'rxjs';
 import { ClientDialogComponent } from '../client-dialog/client-dialog.component';
-import { environment } from '../../../../environments/environment'; // Standardize env usage
+import { environment } from '../../../../environments/environment';
 import { AuthService } from '../../../core/services/auth.service';
 import { UserRole } from '../../../shared/enums';
+
+@Component({
+  standalone: true,
+  selector: 'app-confirm-delete-client-dialog',
+  imports: [CommonModule, MatButtonModule, MatDialogModule, MatIconModule],
+  template: `
+    <h2 mat-dialog-title>
+      <mat-icon style="color:#d32f2f;vertical-align:middle;margin-right:8px">warning</mat-icon>
+      Eliminar cliente
+    </h2>
+    <mat-dialog-content>
+      <p>¿Estás seguro de que deseas eliminar el cliente <strong>{{ data.name }}</strong>?</p>
+      <p style="color:#d32f2f;font-size:13px">Esta acción desactivará el cliente y no podrá ser usado en nuevos proyectos.</p>
+    </mat-dialog-content>
+    <mat-dialog-actions align="end">
+      <button mat-button mat-dialog-close>Cancelar</button>
+      <button mat-raised-button color="warn" [mat-dialog-close]="true">
+        <mat-icon>delete</mat-icon>
+        Sí, eliminar
+      </button>
+    </mat-dialog-actions>
+  `
+})
+export class ConfirmDeleteClientDialogComponent {
+  dialogRef = inject(MatDialogRef<ConfirmDeleteClientDialogComponent>);
+  data: { name: string } = inject(MAT_DIALOG_DATA);
+}
 
 /**
  * Componente de Lista de Clientes
@@ -312,19 +338,21 @@ export class ClientListComponent implements OnInit {
   deleteClient(client: any): void {
     if (!this.canManageClients()) return;
 
-    // Eliminacion con confirmacion explicita del usuario
-    const confirmed = confirm(`¿Está seguro de eliminar el cliente "${client.name}"?`);
-    if (!confirmed) return;
-
-    this.http.delete(`${this.API_URL}/${client._id}`).subscribe({
-      next: () => {
-        this.snackBar.open('Cliente eliminado', 'Cerrar', { duration: 3000 });
-        this.loadClients();
-      },
-      error: (err) => {
-        console.error('Error al eliminar cliente:', err);
-        this.snackBar.open('Error al eliminar cliente', 'Cerrar', { duration: 3000 });
-      }
+    this.dialog.open(ConfirmDeleteClientDialogComponent, {
+      width: '420px',
+      data: { name: client.name }
+    }).afterClosed().subscribe(confirmed => {
+      if (!confirmed) return;
+      this.http.delete(`${this.API_URL}/${client._id}`).subscribe({
+        next: () => {
+          this.snackBar.open('Cliente eliminado', 'Cerrar', { duration: 3000 });
+          this.loadClients();
+        },
+        error: (err) => {
+          console.error('Error al eliminar cliente:', err);
+          this.snackBar.open('Error al eliminar cliente', 'Cerrar', { duration: 3000 });
+        }
+      });
     });
   }
 
@@ -415,6 +443,10 @@ export class ClientListComponent implements OnInit {
 
   canManageClients(): boolean {
     const role = this.authService.currentUser()?.role;
-    return role === UserRole.OWNER || role === UserRole.PLATFORM_ADMIN;
+    return (
+      role === UserRole.OWNER ||
+      role === UserRole.PLATFORM_ADMIN ||
+      role === UserRole.PENTESTER
+    );
   }
 }

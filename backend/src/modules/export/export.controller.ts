@@ -35,6 +35,8 @@ export class ExportController {
    */
   @Get(["finding", "findings"])
   @Roles(
+    UserRole.PENTESTER,
+    UserRole.QA,
     UserRole.ANALYST,
     UserRole.AREA_ADMIN,
     UserRole.CLIENT_ADMIN,
@@ -65,6 +67,8 @@ export class ExportController {
    */
   @Get(["project/:id/excel", "projects/:id/excel"])
   @Roles(
+    UserRole.PENTESTER,
+    UserRole.QA,
     UserRole.ANALYST,
     UserRole.AREA_ADMIN,
     UserRole.CLIENT_ADMIN,
@@ -97,6 +101,8 @@ export class ExportController {
 
   @Get(["project/:id/csv", "projects/:id/csv"])
   @Roles(
+    UserRole.PENTESTER,
+    UserRole.QA,
     UserRole.ANALYST,
     UserRole.AREA_ADMIN,
     UserRole.CLIENT_ADMIN,
@@ -122,6 +128,8 @@ export class ExportController {
 
   @Get(["project/:id/json", "projects/:id/json"])
   @Roles(
+    UserRole.PENTESTER,
+    UserRole.QA,
     UserRole.ANALYST,
     UserRole.AREA_ADMIN,
     UserRole.CLIENT_ADMIN,
@@ -139,6 +147,8 @@ export class ExportController {
 
   @Get(["project/:id/zip", "projects/:id/zip"])
   @Roles(
+    UserRole.PENTESTER,
+    UserRole.QA,
     UserRole.ANALYST,
     UserRole.AREA_ADMIN,
     UserRole.CLIENT_ADMIN,
@@ -170,7 +180,7 @@ export class ExportController {
    * B. NIVEL TENANT - Exportar portfolio completo del cliente
    */
   @Get(["client/:id/portfolio", "clients/:id/portfolio"])
-  @Roles(UserRole.CLIENT_ADMIN, UserRole.PLATFORM_ADMIN, UserRole.OWNER)
+  @Roles(UserRole.CLIENT_ADMIN, UserRole.PLATFORM_ADMIN, UserRole.OWNER, UserRole.PENTESTER)
   @Throttle({ default: { limit: 3, ttl: 60000 } }) // Solo 3 exports por minuto (proceso pesado)
   @ApiOperation({
     summary: "Exportar portfolio cliente en ZIP (CLIENT_ADMIN+)",
@@ -195,7 +205,7 @@ export class ExportController {
   }
 
   @Get(["client/:id/csv", "clients/:id/csv"])
-  @Roles(UserRole.CLIENT_ADMIN, UserRole.PLATFORM_ADMIN, UserRole.OWNER)
+  @Roles(UserRole.CLIENT_ADMIN, UserRole.PLATFORM_ADMIN, UserRole.OWNER, UserRole.PENTESTER)
   @Throttle({ default: { limit: 5, ttl: 60000 } })
   @ApiOperation({
     summary: "Exportar todos los hallazgos de un cliente a CSV (CLIENT_ADMIN+)",
@@ -219,6 +229,8 @@ export class ExportController {
 
   @Get(["finding/:id/pdf", "findings/:id/pdf"])
   @Roles(
+    UserRole.PENTESTER,
+    UserRole.QA,
     UserRole.ANALYST,
     UserRole.AREA_ADMIN,
     UserRole.CLIENT_ADMIN,
@@ -242,6 +254,8 @@ export class ExportController {
 
   @Get(["project/:id/pdf", "projects/:id/pdf"])
   @Roles(
+    UserRole.PENTESTER,
+    UserRole.QA,
     UserRole.ANALYST,
     UserRole.AREA_ADMIN,
     UserRole.CLIENT_ADMIN,

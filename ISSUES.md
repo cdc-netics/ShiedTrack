@@ -15,25 +15,68 @@ Este documento contiene únicamente los problemas, mejoras y funcionalidades que
 
 | ID | Estado | Sección | Tarea | Notas |
 | --- | --- | --- | --- | --- |
-| B2c | ⚠️ Parcial | Bugs - Navegación | Botón “Nuevo Proyecto” va a `/projects/new` | Redirige mal, pero creación funciona. Error en lógica de actualización de clientId en edición |
-| B5b | ⚠️ Parcial | Bugs - Asignaciones | Endpoint `/assignments` no persiste | La UI muestra guardado exitoso pero no persiste en base de datos. Validar DTO y modelo |
+| B2c | ✅ Completado | Bugs - Navegación | Botón “Nuevo Proyecto” va a `/projects/new` | Ruta registrada, formulario carga/guarda correctamente (clientId, fechas, estado). Fix en `feature/importar-csv` |
+| B5b | ✅ Completado | Bugs - Asignaciones | Endpoint `/assignments` no persiste | `visibleProjectIds` ahora se persiste en el modelo de usuario; `getAssignments` devuelve los proyectos exactos asignados. Fix en `feature/importar-csv` |
+| B6 | ✅ Completado | Bugs - Permisos | PENTESTER recibe 403 al exportar proyecto | Corregido en `export.service.ts`: lógica de comparación de tenant era demasiado estricta para roles operacionales. Fix en `feature/importar-csv` |
+| B7 | ✅ Completado | Bugs - Permisos | PENTESTER recibe 403/500 al cerrar hallazgos | 403 por falta de rol en `@Roles` de `bulk-close`; 500 por falta de contexto CLS de tenant en `updateMany`. Fix en `feature/importar-csv` |
+| B8 | ✅ Completado | Bugs - Docker | Build de frontend falla con `ERR_PNPM_IGNORED_BUILDS` | `pnpm-workspace.yaml` no se copiaba al contexto Docker y sus valores eran placeholders. Fix en `feature/importar-csv` |
 | M5 | ❌ Pendiente | Mejoras | Gestión avanzada de notificaciones por correo | Configurar reglas y plantillas |
 | M6 | ⚠️ Revisar | Mejoras | Métricas/estadísticas exportables para BI | Integración con Metabase/PowerBI |
-| M8 | ❌ Pendiente | Mejoras | Carga masiva de hallazgos mediante CSV | Importación masiva con validación y RBAC |
+| M8 | ✅ Completado | Mejoras | Carga masiva de hallazgos mediante CSV | Implementado en `feature/importar-csv`. Parser nativo (UTF-8/CP-1252), auto-creación de cliente/proyecto/área, diálogo drag-and-drop en frontend. Mejora (2026-07-02): flujo de previsualización dry-run + relleno de campos con N/A |
 
 ---
 
 ## 📋 Detalle de Tareas Backlog Activo
 
 ### **B2c — Botón “Nuevo Proyecto” apunta a ruta inexistente**
-- **Estado:** ⚠️ Parcial
-- **Descripción:** El botón “Nuevo Proyecto” redirige a `/projects/new`, pero esta ruta no está registrada en el router del frontend.
-- **Sugerencia/Recomendación:** Crear la ruta `/projects/new` o reutilizar el flujo existente de creación de proyectos. Además, al editar un proyecto existente y cambiar el cliente asociado, el sistema no guarda el nuevo cliente correctamente (lógica de actualización de `clientId` en edición).
+- **Estado:** ✅ Completado — resuelto en rama `feature/importar-csv`
+- **Descripción original:** El botón “Nuevo Proyecto” redirigía a `/projects/new` sin ruta registrada. Al editar un proyecto existente y cambiar el cliente asociado, el `clientId` no se guardaba.
+- **Lo resuelto:**
+  - Ruta `/projects/new` registrada en `app.routes.ts` cargando `ProjectDetailComponent` en modo creación.
+  - Guard de tenant (`!tenantId && !selectedClientId`) corregido para no bloquear la edición — solo aplica en modo CREATE.
+  - `resolveTenantId()` ampliado para incluir `user.clientId` y `jwt.clientId`.
+  - Campo de fecha renombrado de `serviceStartDate` (inexistente en el schema) a `startDate`; las fechas ahora cargan y se guardan correctamente.
+  - `projectStatus` incluido en el payload de actualización cuando el usuario tiene permisos.
+  - Eliminados 4 `console.log` de depuración.
 
 ### **B5b — Endpoint /assignments no persiste cambios**
-- **Estado:** ⚠️ Parcial
-- **Descripción:** El sistema indicaba que el endpoint `/assignments` no existía. El endpoint real en backend es `/api/auth/users/:userId/assignments`, pero no persiste las asignaciones.
-- **Sugerencia/Recomendación:** Corregir la lógica de persistencia en el backend, el DTO de asignación y la actualización del modelo de usuario (la UI muestra "Cambios guardados exitosamente" pero no se persisten en MongoDB).
+- **Estado:** ✅ Completado — resuelto en rama `feature/importar-csv`
+- **Descripción original:** El endpoint `POST /api/auth/users/:userId/assignments` guardaba las asignaciones de áreas en `UserAreaAssignment` correctamente, pero los proyectos explícitamente seleccionados se descartaban. Al reabrir el diálogo, se mostraban todos los proyectos de las áreas asignadas en lugar de los proyectos que el administrador había seleccionado.
+- **Lo resuelto:**
+  - `updateAssignments()` ahora guarda los proyectos validados en `user.visibleProjectIds` después de llamar a `replaceUserAreas()`. Esto activa también el control de acceso por proyecto en `project.service.ts` (`isRestrictedByVisibleProjects`).
+  - `getAssignments()` ahora devuelve `projectIds` desde `user.visibleProjectIds` cuando está poblado. Si está vacío (usuarios anteriores), hace fallback a la derivación por áreas. Esto garantiza que al reabrir el diálogo se pre-seleccionen exactamente los proyectos asignados.
+  - Para evitar filtrado por tenant al leer `visibleProjectIds` en `getAssignments()`, se usa `.setOptions({ skipTenantFilter: true })` en la consulta de proyectos visibles.
+
+### **B6 — PENTESTER recibe 403 al exportar proyecto**
+- **Estado:** ✅ Completado — resuelto en rama `feature/importar-csv` (2026-07-02)
+- **Descripción original:** El usuario con rol `PENTESTER` recibía un error 403 al intentar exportar un proyecto a Excel desde la vista de detalles del proyecto.
+- **Causa raíz:** `exportProjectToExcel` en `export.service.ts` obtenía el tenant del usuario con `(currentUser.activeTenantId || currentUser.clientId)?.toString()`. El JWT strategy no devuelve un campo `tenantId` directo; para ciertos PENTESTER sin `activeTenantId` ni `clientId` poblados, la expresión resolvía `undefined`, y el guard lanzaba `ForbiddenException` por `!userTenantId` incluso cuando el usuario era legítimo.
+- **Lo resuelto:**
+  - Se reemplazó la obtención del tenant por `this.getCurrentTenantId(currentUser)`, que revisa correctamente `tenantId ?? activeTenantId ?? clientId`.
+  - La comparación de tenant ahora solo lanza `ForbiddenException` cuando **ambos** tenants son conocidos y no coinciden, en lugar de bloquear cuando el tenant del usuario es indeterminado.
+  - Archivo modificado: `backend/src/modules/export/export.service.ts`.
+
+### **B7 — PENTESTER recibe 403 / 500 al cerrar hallazgos en masa**
+- **Estado:** ✅ Completado — resuelto en rama `feature/importar-csv` (2026-07-02)
+- **Descripción original:** El usuario `PENTESTER` no podía cerrar hallazgos individualmente ni en masa: el cierre individual retornaba 403 por restricción de área, y `POST /findings/bulk-close` retornaba primero 403 y luego 500 tras intentar corregirlo.
+- **Causa raíz (403 en cierre individual):** `validateProjectAreaAccess` lanzaba `ForbiddenException` cuando el PENTESTER no tenía asignada el área `IMP-DEFAULT`, área que se crea automáticamente para todo proyecto importado por CSV. La restricción de área es organizacional/de filtrado para usuarios operacionales, no debe bloquear escrituras.
+- **Causa raíz (403 en bulk-close):** `POST /findings/bulk-close` no incluía `PENTESTER`, `QA` ni `ANALYST` en el decorador `@Roles()`.
+- **Causa raíz (500 en bulk-close):** Tras agregar los roles, el `updateMany` de `bulkClose` pasaba por `multiTenantPlugin`, que lanza `"No hay contexto de tenant activo"` cuando el PENTESTER no tiene `activeTenantId`/`clientId` y por ende no hay contexto CLS de tenant disponible.
+- **Lo resuelto:**
+  - `validateProjectAreaAccess`: usuarios operacionales (`isOperationalUser`: PENTESTER, QA, ANALYST) reciben solo un warning en log en caso de área mismatch; nunca se lanza `ForbiddenException` para este grupo.
+  - `POST /findings/bulk-close` `@Roles()`: se agregaron `ANALYST`, `PENTESTER`, `QA`.
+  - `bulkClose` `updateMany`: se añadió `.setOptions({ skipTenantFilter: true })` ya que cada `_id` fue validado previamente por `findFindingOrFailWithAccess` con el tenant correcto.
+  - Archivos modificados: `backend/src/modules/finding/finding.controller.ts`, `backend/src/modules/finding/finding.service.ts`.
+
+### **B8 — Build de frontend Docker falla con `ERR_PNPM_IGNORED_BUILDS`**
+- **Estado:** ✅ Completado — resuelto en rama `feature/importar-csv` (2026-07-02)
+- **Descripción original:** El build Docker del frontend fallaba con `ERR_PNPM_IGNORED_BUILDS` para los paquetes `@parcel/watcher`, `esbuild`, `lmdb` y `msgpackr-extract`.
+- **Causa raíz:** Dos problemas combinados:
+  1. `frontend/pnpm-workspace.yaml` tenía valores placeholder (`set this to true or false`) en lugar de `true` en la sección `allowBuilds`.
+  2. `frontend/Dockerfile` no copiaba `pnpm-workspace.yaml` al contexto de build antes del `pnpm install`, por lo que el archivo nunca llegaba al contenedor incluso después de corregir los valores.
+- **Lo resuelto:**
+  - `frontend/pnpm-workspace.yaml`: todos los valores de `allowBuilds` cambiados a `true`.
+  - `frontend/Dockerfile`: se añadió `frontend/pnpm-workspace.yaml*` a la instrucción `COPY` que precede al `pnpm install`.
 
 ### **M5 — Gestión avanzada de notificaciones por correo**
 - **Estado:** ❌ Pendiente
@@ -63,8 +106,17 @@ Este documento contiene únicamente los problemas, mejoras y funcionalidades que
   - **Índices recomendados**: `{ tenantId, projectId, severity, status, createdAt }`.
 
 ### **M8 — Carga masiva de hallazgos mediante CSV**
-- **Estado:** ❌ Pendiente
-- **Descripción:** Implementar la carga masiva de hallazgos desde un archivo CSV. La funcionalidad debe validar la estructura del archivo, resolver las relaciones de cliente/proyecto de forma segura respetando el aislamiento multi-tenant, mapear los campos del hallazgo a MongoDB y restringir la acción exclusivamente a los roles autorizados.
+- **Estado:** ✅ Completado — implementado en rama `feature/importar-csv` (2026-06-30); mejorado (2026-07-02)
+- **Descripción:** Importación masiva de hallazgos desde archivos CSV (separador `;`, codificación UTF-8 o Windows-1252) y Excel `.xlsx`. El cliente/tenant, proyecto y área se resuelven o crean automáticamente. Los hallazgos se insertan uno a uno con `.save()` para disparar el hook de generación de códigos `VULN-YYYY-NNNNNN`.
+- **Lo implementado:**
+  - **Backend:** `POST /api/findings/bulk-import` en `FindingController`; `bulkImport()` en `FindingService` con parser CSV nativo (detecta UTF-8 BOM, UTF-8 válido, y CP-1252 vía `iconv-lite`). Auto-creación de `Client`, `Project` y `Area IMP-DEFAULT` por tenant. Caché N+1 por nombre de cliente. Respuesta `{ creados, fallidos, errores[] }`.
+  - **Frontend:** `BulkImportDialogComponent` con zona drag-and-drop, campo opcional de nombre de proyecto, descarga de plantilla CSV, barra de progreso y resumen de resultados. Botón "Importar CSV" en `FindingListComponent` mediante `canImport = computed(...)`.
+  - **RBAC:** `OWNER`, `PLATFORM_ADMIN`, `PENTESTER`, `QA`, `ANALYST`.
+- **Mejora (2026-07-02) — Flujo de previsualización dry-run:**
+  - **Backend:** query params `dryRun=true` (valida el archivo sin guardar, devuelve errores por fila sin crear ningún registro) y `fillMissing=true` (rellena campos obligatorios vacíos con `"N/A"` en lugar de reportar error; `Criticidad` vacía se mapea a `MEDIUM`). Implementados en `FindingController.bulkImport()` y `FindingService.bulkImport()`.
+  - **Frontend:** `BulkImportDialogComponent` reimplementado como máquina de estados de 5 pasos (`select → analyzing → preview → importing → done`). Al seleccionar el archivo se ejecuta automáticamente `?dryRun=true`; si hay errores se muestra una pantalla de previsualización con el detalle de fila y el mensaje de error, y se pregunta al usuario "¿Deseas subirlo de todos modos?" con botones Cancelar / Continuar. Si el usuario acepta, la importación real se realiza con `?fillMissing=true` para completar datos faltantes. Si no hay errores, el import se lanza directamente sin paso de confirmación.
+  - **Bug resuelto:** archivos CSV exportados por Excel en Windows usan CP-1252; los bytes inválidos en UTF-8 corrompían los headers con tildes → 0 hallazgos importados. Solucionado con detección automática de encoding.
+- **Spec original (referencia histórica):**
 - **Roles Autorizados (RBAC):** Solo `OWNER`, `PLATFORM_ADMIN`, `PENTESTER` y `QA` (o `ANALYST`) tienen permitido realizar la importación masiva.
 - **Sugerencias de Diseño Técnico:**
   - **Mapeo de Columnas (CSV -> MongoDB FindingSchema):**

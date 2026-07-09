@@ -1,11 +1,11 @@
 # Etapa de compilación
-FROM node:20-alpine AS build
+FROM node:22-alpine AS build
 WORKDIR /app/frontend
 RUN corepack enable
 
 # Copiar archivos necesarios para la instalación
 COPY scripts /app/scripts
-COPY frontend/package.json frontend/pnpm-lock.yaml* ./
+COPY frontend/package.json frontend/pnpm-lock.yaml* frontend/pnpm-workspace.yaml* ./
 
 # Instalar dependencias
 RUN pnpm install --frozen-lockfile

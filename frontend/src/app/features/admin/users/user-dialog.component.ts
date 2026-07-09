@@ -92,18 +92,20 @@ import { AuthService } from '../../../core/services/auth.service';
           </mat-form-field>
         }
 
-        <!-- Rol -->
-        <mat-form-field appearance="outline" class="full-width">
-          <mat-label>Rol</mat-label>
-          <mat-select formControlName="role" required>
-            @for (option of roleOptions; track option.value) {
-              <mat-option [value]="option.value">{{ option.label }}</mat-option>
+        <!-- Rol (solo visible en modo edición; en creación viene fijo desde el submenú) -->
+        @if (isEditMode) {
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Rol</mat-label>
+            <mat-select formControlName="role" required>
+              @for (option of roleOptions; track option.value) {
+                <mat-option [value]="option.value">{{ option.label }}</mat-option>
+              }
+            </mat-select>
+            @if (userForm.get('role')?.hasError('required')) {
+              <mat-error>El rol es obligatorio</mat-error>
             }
-          </mat-select>
-          @if (userForm.get('role')?.hasError('required')) {
-            <mat-error>El rol es obligatorio</mat-error>
-          }
-        </mat-form-field>
+          </mat-form-field>
+        }
 
         <!-- Áreas/Alcance -->
         @if (showAreaSelect()) {
@@ -312,7 +314,7 @@ export class UserDialogComponent {
     // Mostrar selector de tenants según el rol
     this.userForm.get('role')?.valueChanges.subscribe(role => {
       console.log(`[UserDialog] Rol del formulario cambió a: ${role}`);
-      const needsAreas = ['ADMIN_AREA', 'NORMAL_USER'].includes(role);
+      const needsAreas = ['ADMIN_AREA'].includes(role);
       const isAuditor = role === 'AUDITOR';
       const hideClientForTransversal = ['PENTESTER', 'QA'].includes(role);
       
@@ -335,13 +337,13 @@ export class UserDialogComponent {
 
     // Inicializar la visibilidad del selector de áreas
     const selectedRole = this.userForm.get('role')?.value;
-    const needsAreasOnInit = ['ADMIN_AREA', 'NORMAL_USER'].includes(selectedRole);
+    const needsAreasOnInit = ['ADMIN_AREA'].includes(selectedRole);
     this.showAreaSelect.set(needsAreasOnInit);
     
     // Configurar validacion dinamica de Cliente
     const updateClientValidator = (role: string) => {
       const clientControl = this.userForm.get('clientId');
-      const isClientOptional = ['OWNER', 'PLATFORM_ADMIN', 'PENTESTER', 'QA', 'AUDITOR', 'NORMAL_USER'].includes(role);
+      const isClientOptional = ['OWNER', 'PLATFORM_ADMIN', 'PENTESTER', 'QA', 'NORMAL_USER'].includes(role);
       
       if (isClientOptional) {
         clientControl?.clearValidators();

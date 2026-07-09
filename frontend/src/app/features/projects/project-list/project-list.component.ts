@@ -539,11 +539,16 @@ export class ProjectListComponent implements OnInit {
       },
       error: (err) => {
         console.error('❌ Error exportando proyecto:', err);
-        this.snackBar.open(
-          err.error?.message || 'Error al exportar el proyecto',
-          'Cerrar',
-          { duration: 5000 }
-        );
+        const blob: Blob = err.error;
+        if (blob instanceof Blob) {
+          blob.text().then(text => {
+            let msg = 'Error al exportar el proyecto';
+            try { msg = JSON.parse(text)?.message || msg; } catch { /* non-json */ }
+            this.snackBar.open(msg, 'Cerrar', { duration: 5000 });
+          });
+        } else {
+          this.snackBar.open(err.error?.message || 'Error al exportar el proyecto', 'Cerrar', { duration: 5000 });
+        }
       }
     });
   }

@@ -4,6 +4,7 @@ import {
   IsString,
   IsOptional,
   IsBoolean,
+  IsIn,
   MinLength,
   IsArray,
   IsMongoId,
@@ -61,6 +62,27 @@ export class RegisterUserDto {
   @IsArray()
   @IsMongoId({ each: true, message: "Cada areaId debe ser un ObjectId válido" })
   areaIds?: string[];
+
+  @ApiPropertyOptional({
+    description: "Alcance de visibilidad del auditor: PER_PROJECT, PER_CLIENT, ALL_AREA",
+    enum: ["PER_PROJECT", "PER_CLIENT", "ALL_AREA"],
+  })
+  @IsOptional()
+  @IsString()
+  @IsIn(["PER_PROJECT", "PER_CLIENT", "ALL_AREA"])
+  auditorVisibilityScope?: string;
+
+  @ApiPropertyOptional({ type: [String], description: "IDs de proyectos visibles (AUDITOR con scope PER_PROJECT)" })
+  @IsOptional()
+  @IsArray()
+  @IsMongoId({ each: true, message: "Cada visibleProjectId debe ser un ObjectId válido" })
+  visibleProjectIds?: string[];
+
+  @ApiPropertyOptional({ type: [String], description: "IDs de clientes visibles (AUDITOR con scope PER_CLIENT)" })
+  @IsOptional()
+  @IsArray()
+  @IsMongoId({ each: true, message: "Cada visibleClientId debe ser un ObjectId válido" })
+  visibleClientIds?: string[];
 }
 
 /**
@@ -148,6 +170,24 @@ export class UpdateUserDto {
   @IsOptional()
   @IsString()
   avatarUrl?: string;
+
+  @ApiPropertyOptional({ enum: ["PER_PROJECT", "PER_CLIENT", "ALL_AREA"] })
+  @IsOptional()
+  @IsString()
+  @IsIn(["PER_PROJECT", "PER_CLIENT", "ALL_AREA"])
+  auditorVisibilityScope?: string;
+
+  @ApiPropertyOptional({ type: [String] })
+  @IsOptional()
+  @IsArray()
+  @IsMongoId({ each: true })
+  visibleProjectIds?: string[];
+
+  @ApiPropertyOptional({ type: [String] })
+  @IsOptional()
+  @IsArray()
+  @IsMongoId({ each: true })
+  visibleClientIds?: string[];
 }
 
 export class UpdateProfileDto {

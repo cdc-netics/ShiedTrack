@@ -13,7 +13,7 @@ import { Client } from "../client/schemas/client.schema";
 import { Evidence } from "../evidence/schemas/evidence.schema";
 import { PdfService } from "../../common/services/pdf.service";
 import { FindingStatus, UserRole } from "../../common/enums";
-import { roleSatisfies } from "../../common/rbac/rbac-policy";
+import { roleSatisfies, normalizeRole } from "../../common/rbac/rbac-policy";
 import { Types } from "mongoose";
 import * as ExcelJS from "exceljs";
 import archiver from "archiver";
@@ -55,6 +55,10 @@ export class ExportService {
 
   private isGlobalUser(currentUser?: any): boolean {
     return roleSatisfies(UserRole.OWNER, currentUser?.role);
+  }
+
+  private isOperationalUser(currentUser?: any): boolean {
+    return normalizeRole(currentUser?.role) === "PENTESTER_QA";
   }
 
   private isAreaRestrictedUser(currentUser?: any): boolean {
@@ -233,10 +237,13 @@ export class ExportService {
   }
 
   async exportProjectPdf(projectId: string, currentUser: any): Promise<Buffer> {
-    // Validar permisos
-    const project = await this.projectModel
+    const projectQuery = this.projectModel
       .findById(projectId)
       .populate("clientId areaId areaIds");
+    if (this.isGlobalUser(currentUser) || this.isOperationalUser(currentUser)) {
+      projectQuery.setOptions({ skipTenantFilter: true });
+    }
+    const project = await projectQuery;
     if (!project) throw new NotFoundException("Proyecto no encontrado");
 
     // RBAC (Simplified check)
@@ -256,33 +263,31 @@ export class ExportService {
     projectId: string,
     currentUser: any,
   ): Promise<PassThrough> {
-    // Validar permisos
-    const project = await this.projectModel
+    const projectQuery = this.projectModel
       .findById(projectId)
       .populate("clientId areaId areaIds");
+    if (this.isGlobalUser(currentUser) || this.isOperationalUser(currentUser)) {
+      projectQuery.setOptions({ skipTenantFilter: true });
+    }
+    const project = await projectQuery;
     if (!project) {
       throw new NotFoundException("Proyecto no encontrado");
     }
 
     // RBAC: Validar que el usuario pertenece al cliente/tenant del proyecto
-    if (!this.isGlobalUser(currentUser)) {
-      const userTenantId = (
-        currentUser.activeTenantId || currentUser.clientId
-      )?.toString();
+    // Los usuarios operacionales (PENTESTER/QA/ANALYST) pueden exportar cualquier proyecto
+    if (!this.isGlobalUser(currentUser) && !this.isOperationalUser(currentUser)) {
+      const userTenantId = this.getCurrentTenantId(currentUser);
 
       let projectTenantId: string | undefined;
       if (project.tenantId) {
         projectTenantId = (project.tenantId as any)?.toString();
       } else if (project.clientId && (project.clientId as any)._id) {
-        // Assuming project.clientId is a populated Client object
         projectTenantId = (project.clientId as any)._id.toString();
       }
 
-      if (
-        !userTenantId ||
-        !projectTenantId ||
-        projectTenantId !== userTenantId
-      ) {
+      // Solo bloquear si ambos tenants son conocidos y no coinciden
+      if (userTenantId && projectTenantId && projectTenantId !== userTenantId) {
         throw new ForbiddenException(
           "No tiene permisos para exportar este proyecto",
         );
@@ -533,15 +538,19 @@ export class ExportService {
     projectId: string,
     currentUser: any,
   ): Promise<PassThrough> {
-    const project = await this.projectModel
+    const projectQuery = this.projectModel
       .findById(projectId)
       .populate("clientId areaId areaIds");
+    if (this.isGlobalUser(currentUser) || this.isOperationalUser(currentUser)) {
+      projectQuery.setOptions({ skipTenantFilter: true });
+    }
+    const project = await projectQuery;
     if (!project) {
       throw new NotFoundException("Proyecto no encontrado");
     }
 
-    // RBAC
-    if (!this.isGlobalUser(currentUser)) {
+    // RBAC: operational users (QA/PENTESTER) can export any project
+    if (!this.isGlobalUser(currentUser) && !this.isOperationalUser(currentUser)) {
       const userTenant = (
         currentUser.activeTenantId || currentUser.clientId
       )?.toString();
@@ -599,13 +608,11 @@ export class ExportService {
     clientId: string,
     currentUser: any,
   ): Promise<PassThrough> {
-    // RBAC: Solo CLIENT_ADMIN del cliente u OWNER
-    if (!this.isGlobalUser(currentUser)) {
+    // RBAC: Solo CLIENT_ADMIN del cliente, OWNER, o usuarios operacionales (PENTESTER/QA)
+    if (!this.isGlobalUser(currentUser) && !this.isOperationalUser(currentUser)) {
       const userTenantId = (
         currentUser.activeTenantId || currentUser.clientId
       )?.toString();
-      // The 'clientId' parameter is from the URL, representing the client to export.
-      // Ensure userTenantId is defined and matches the requested clientId.
       if (!userTenantId || clientId !== userTenantId) {
         throw new ForbiddenException(
           "No tiene permisos para exportar este cliente",
@@ -671,13 +678,11 @@ export class ExportService {
     clientId: string,
     currentUser: any,
   ): Promise<string> {
-    // RBAC: Solo CLIENT_ADMIN del cliente u OWNER
-    if (!this.isGlobalUser(currentUser)) {
+    // RBAC: Solo CLIENT_ADMIN del cliente, OWNER, o usuarios operacionales (PENTESTER/QA)
+    if (!this.isGlobalUser(currentUser) && !this.isOperationalUser(currentUser)) {
       const userTenantId = (
         currentUser.activeTenantId || currentUser.clientId
       )?.toString();
-      // The 'clientId' parameter is from the URL, representing the client to export.
-      // Ensure userTenantId is defined and matches the requested clientId.
       if (!userTenantId || clientId !== userTenantId) {
         throw new ForbiddenException(
           "No tiene permisos para exportar este cliente",

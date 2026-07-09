@@ -56,6 +56,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       activeTenantId: user.activeTenantId,
       areaIds: user.areaIds,
       visibleProjectIds: user.visibleProjectIds,
+      visibleClientIds: user.visibleClientIds,
+      auditorVisibilityScope: user.auditorVisibilityScope,
     };
   }
 }
