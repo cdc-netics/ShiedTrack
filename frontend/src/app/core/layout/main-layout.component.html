@@ -70,7 +70,7 @@
         </a>
       </mat-nav-list>
 
-      @if (authService.isAdmin() || canAccessNotifications()) {
+      @if (canManageUsers() || canAccessNotifications()) {
         <section
           class="app-nav__section"
           aria-labelledby="nav-admin-label"
@@ -95,9 +95,11 @@
                   <span>Accesos r&aacute;pidos</span>
                 </mat-panel-title>
               </mat-expansion-panel-header>
-              @if (authService.isAdmin()) {
+              @if (canManageUsers()) {
                 <a mat-list-item class="app-nav__link app-nav__link--nested-item" routerLink="/admin/users" routerLinkActive="app-nav__link--active"><mat-icon>people</mat-icon><span>Usuarios</span></a>
                 <a mat-list-item class="app-nav__link app-nav__link--nested-item" routerLink="/admin/areas" routerLinkActive="app-nav__link--active"><mat-icon>business</mat-icon><span>&Aacute;reas</span></a>
+              }
+              @if (authService.isAdmin()) {
                 <a mat-list-item class="app-nav__link app-nav__link--nested-item" routerLink="/admin/templates" routerLinkActive="app-nav__link--active"><mat-icon>description</mat-icon><span>Plantillas</span></a>
                 <a mat-list-item class="app-nav__link app-nav__link--nested-item" routerLink="/admin/audit" routerLinkActive="app-nav__link--active"><mat-icon>history</mat-icon><span>Auditor&iacute;a</span></a>
                 <a mat-list-item class="app-nav__link app-nav__link--nested-item" routerLink="/admin/branding" routerLinkActive="app-nav__link--active"><mat-icon>palette</mat-icon><span>Marca</span></a>

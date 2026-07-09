@@ -28,13 +28,61 @@ import { environment } from '../../../../environments/environment';
         <p>No se encontr&oacute; el cliente.</p>
       } @else {
         <section class="ui-data-panel">
-          <h2>{{ client()?.name }}</h2>
-          <p>{{ client()?.description || 'Sin descripci&oacute;n' }}</p>
-          <div class="ui-cluster">
-            <mat-chip [class]="client()?.isActive ? 'status-active' : 'status-inactive'">
-              {{ client()?.isActive ? 'Activo' : 'Inactivo' }}
-            </mat-chip>
-            <small>Creado: {{ formatDate(client()?.createdAt) }}</small>
+          <div class="client-header">
+            <div>
+              <h2 class="client-title">{{ client()?.name }}</h2>
+              @if (client()?.displayName && client()?.displayName !== client()?.name) {
+                <p class="client-subtitle">{{ client()?.displayName }}</p>
+              }
+            </div>
+            <div class="ui-cluster">
+              <mat-chip [class]="client()?.isActive ? 'status-active' : 'status-inactive'">
+                {{ client()?.isActive ? 'Activo' : 'Inactivo' }}
+              </mat-chip>
+              <small>Creado: {{ formatDate(client()?.createdAt) }}</small>
+            </div>
+          </div>
+
+          <div class="client-info-grid">
+            @if (client()?.description) {
+              <div class="info-item info-item--full">
+                <mat-icon class="info-icon">description</mat-icon>
+                <div>
+                  <span class="info-label">Descripci&oacute;n</span>
+                  <span class="info-value">{{ client()?.description }}</span>
+                </div>
+              </div>
+            }
+            @if (client()?.code) {
+              <div class="info-item">
+                <mat-icon class="info-icon">tag</mat-icon>
+                <div>
+                  <span class="info-label">C&oacute;digo</span>
+                  <span class="info-value">{{ client()?.code }}</span>
+                </div>
+              </div>
+            }
+            @if (client()?.contactEmail) {
+              <div class="info-item">
+                <mat-icon class="info-icon">email</mat-icon>
+                <div>
+                  <span class="info-label">Email de contacto</span>
+                  <a class="info-value info-link" href="mailto:{{ client()?.contactEmail }}">{{ client()?.contactEmail }}</a>
+                </div>
+              </div>
+            }
+            @if (client()?.contactPhone) {
+              <div class="info-item">
+                <mat-icon class="info-icon">phone</mat-icon>
+                <div>
+                  <span class="info-label">Tel&eacute;fono</span>
+                  <a class="info-value info-link" href="tel:{{ client()?.contactPhone }}">{{ client()?.contactPhone }}</a>
+                </div>
+              </div>
+            }
+            @if (!client()?.description && !client()?.code && !client()?.contactEmail && !client()?.contactPhone) {
+              <p class="no-info">Sin informaci&oacute;n de contacto registrada.</p>
+            }
           </div>
         </section>
 
@@ -93,6 +141,43 @@ import { environment } from '../../../../environments/environment';
   styles: [`
     .status-active { background: #4caf50; color: #fff; }
     .status-inactive { background: #9e9e9e; color: #fff; }
+
+    .client-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .client-title { margin: 0; font-size: 1.4rem; font-weight: 600; }
+    .client-subtitle { margin: 4px 0 0; color: #757575; font-size: 0.9rem; }
+
+    .client-info-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 16px;
+    }
+    .info-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+    }
+    .info-item--full { grid-column: 1 / -1; }
+    .info-icon { color: #757575; font-size: 20px; width: 20px; height: 20px; margin-top: 2px; flex-shrink: 0; }
+    .info-label {
+      display: block;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #9e9e9e;
+      margin-bottom: 2px;
+    }
+    .info-value { display: block; font-size: 14px; color: #212121; font-weight: 500; }
+    .info-link { color: #1976d2; text-decoration: none; }
+    .info-link:hover { text-decoration: underline; }
+    .no-info { color: #9e9e9e; font-size: 14px; margin: 0; }
+
     .severity-grid {
       display: grid;
       gap: 10px;

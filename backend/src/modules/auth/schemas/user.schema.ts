@@ -35,9 +35,17 @@ export class User extends Document {
   @Prop({ type: [Types.ObjectId], ref: "Area", default: [] })
   areaIds: Types.ObjectId[]; // Áreas asignadas (para AREA_ADMIN)
 
-  // NUEVO: proyectos visibles para control de lectura
+  // Proyectos visibles para control de lectura (AUDITOR / visibilidad restringida)
   @Prop({ type: [Types.ObjectId], ref: "Project", default: [] })
   visibleProjectIds: Types.ObjectId[];
+
+  // Clientes visibles (usado cuando auditorVisibilityScope = PER_CLIENT)
+  @Prop({ type: [Types.ObjectId], ref: "Client", default: [] })
+  visibleClientIds: Types.ObjectId[];
+
+  // Alcance de visibilidad del auditor: PER_PROJECT | PER_CLIENT | ALL_AREA
+  @Prop({ type: String, default: null })
+  auditorVisibilityScope?: string;
 
   // Campos de MFA
   @Prop({ default: false })

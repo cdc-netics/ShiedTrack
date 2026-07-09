@@ -15,13 +15,15 @@ import { AuthService } from '../../core/services/auth.service';
       <p class="subtitle">Todo lo administrativo en un solo lugar, con accesos ordenados por tarea.</p>
 
       <div class="grid">
-        @if (authService.isAdmin()) {
+        @if (canManageUsers()) {
           <a class="card" mat-card routerLink="/admin/users">
             <mat-icon>people</mat-icon><h3>Usuarios</h3><p>Altas, roles y permisos.</p>
           </a>
           <a class="card" mat-card routerLink="/admin/areas">
             <mat-icon>business</mat-icon><h3>&Aacute;reas</h3><p>Estructura operativa y alcance por &aacute;rea.</p>
           </a>
+        }
+        @if (authService.isAdmin()) {
           <a class="card" mat-card routerLink="/admin/templates">
             <mat-icon>description</mat-icon><h3>Plantillas</h3><p>Gestiona plantillas base de hallazgos.</p>
           </a>
@@ -74,5 +76,16 @@ export class AdminHomeComponent {
   canAccessNotifications(): boolean {
     const role = this.authService.currentUser()?.role;
     return role === 'OWNER' || role === 'PLATFORM_ADMIN' || role === 'CLIENT_ADMIN';
+  }
+
+  canManageUsers(): boolean {
+    const role = this.authService.currentUser()?.role;
+    return (
+      role === 'OWNER' ||
+      role === 'PLATFORM_ADMIN' ||
+      role === 'ADMIN_AREA' ||
+      role === 'CLIENT_ADMIN' ||
+      role === 'AREA_ADMIN'
+    );
   }
 }

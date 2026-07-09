@@ -16,6 +16,7 @@ import {
 import { Area, AreaSchema } from "../area/schemas/area.schema";
 import { EmailModule } from "../email/email.module";
 import { User, UserSchema } from "../auth/schemas/user.schema";
+import { Client, ClientSchema } from "../client/schemas/client.schema";
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { User, UserSchema } from "../auth/schemas/user.schema";
       { name: SystemConfig.name, schema: SystemConfigSchema },
       { name: Area.name, schema: AreaSchema },
       { name: User.name, schema: UserSchema },
+      { name: Client.name, schema: ClientSchema },
     ]),
     EmailModule,
   ],

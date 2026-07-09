@@ -8,12 +8,18 @@ import {
   Param,
   UseGuards,
   Query,
+  UseInterceptors,
+  UploadedFile,
+  BadRequestException,
 } from "@nestjs/common";
+import { FileInterceptor } from "@nestjs/platform-express";
 import {
   ApiTags,
   ApiOperation,
   ApiBearerAuth,
   ApiQuery,
+  ApiConsumes,
+  ApiBody,
 } from "@nestjs/swagger";
 import { FindingService } from "./finding.service";
 import {
@@ -45,11 +51,10 @@ export class FindingController {
   @Roles(
     UserRole.OWNER,
     UserRole.PLATFORM_ADMIN,
-    UserRole.CLIENT_ADMIN,
-    UserRole.AREA_ADMIN,
     UserRole.ANALYST,
     UserRole.PENTESTER,
     UserRole.QA,
+    UserRole.NORMAL_USER,
   )
   @ApiOperation({ summary: "Crear un nuevo hallazgo" })
   async create(@Body() dto: CreateFindingDto, @CurrentUser() user: any) {
@@ -104,6 +109,7 @@ export class FindingController {
     UserRole.ANALYST,
     UserRole.PENTESTER,
     UserRole.QA,
+    UserRole.NORMAL_USER,
   )
   @ApiOperation({ summary: "Actualizar hallazgo" })
   async update(
@@ -123,6 +129,7 @@ export class FindingController {
     UserRole.ANALYST,
     UserRole.PENTESTER,
     UserRole.QA,
+    UserRole.NORMAL_USER,
   )
   @ApiOperation({ summary: "Cerrar un hallazgo con motivo específico" })
   async close(
@@ -139,6 +146,10 @@ export class FindingController {
     UserRole.PLATFORM_ADMIN,
     UserRole.CLIENT_ADMIN,
     UserRole.AREA_ADMIN,
+    UserRole.ANALYST,
+    UserRole.PENTESTER,
+    UserRole.QA,
+    UserRole.NORMAL_USER,
   )
   @ApiOperation({ summary: "Cerrar múltiples hallazgos" })
   async bulkClose(
@@ -162,6 +173,7 @@ export class FindingController {
     UserRole.ANALYST,
     UserRole.PENTESTER,
     UserRole.QA,
+    UserRole.NORMAL_USER,
   )
   @ApiOperation({ summary: "Agregar actualización al timeline de hallazgo" })
   async createUpdate(
@@ -169,6 +181,45 @@ export class FindingController {
     @CurrentUser() user: any,
   ) {
     return this.findingService.createUpdate(dto, user.userId, user);
+  }
+
+  @Post("bulk-import")
+  @Roles(
+    UserRole.OWNER,
+    UserRole.PLATFORM_ADMIN,
+    UserRole.PENTESTER,
+    UserRole.QA,
+    UserRole.ANALYST,
+  )
+  @UseInterceptors(FileInterceptor("file"))
+  @ApiConsumes("multipart/form-data")
+  @ApiBody({
+    schema: {
+      type: "object",
+      properties: { file: { type: "string", format: "binary" } },
+    },
+  })
+  @ApiOperation({
+    summary: "Importar hallazgos masivamente desde CSV o Excel",
+    description:
+      "Lee la columna 'Cliente' para resolver o crear el tenant/proyecto automáticamente. " +
+      "projectName (opcional) define el nombre del engagement; si se omite usa 'Importación CSV'. " +
+      "dryRun=true solo valida sin guardar. fillMissing=true rellena campos vacíos con 'N/A'.",
+  })
+  @ApiQuery({ name: "projectName", required: false, description: "Nombre del proyecto/engagement destino" })
+  @ApiQuery({ name: "dryRun", required: false, description: "Si true, valida sin guardar" })
+  @ApiQuery({ name: "fillMissing", required: false, description: "Si true, rellena campos faltantes con N/A" })
+  async bulkImport(
+    @UploadedFile() file: Express.Multer.File,
+    @Query("projectName") projectName: string,
+    @Query("dryRun") dryRun: string,
+    @Query("fillMissing") fillMissing: string,
+    @CurrentUser() user: any,
+  ) {
+    if (!file) throw new BadRequestException("Se requiere un archivo");
+    const isDryRun = dryRun === "true" || dryRun === "1";
+    const isFillMissing = fillMissing === "true" || fillMissing === "1";
+    return this.findingService.bulkImport(file, projectName, user, isDryRun, isFillMissing);
   }
 
   @Delete(":id/hard")
