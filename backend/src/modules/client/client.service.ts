@@ -130,43 +130,42 @@ export class ClientService {
     const query: any = includeInactive ? {} : { isActive: true };
 
     // SEGURIDAD MULTI-TENANT: Filtrar según rol
-    let skipProjectCounts = false;
-
     if (currentUser) {
       const isGlobalUser = roleSatisfies(UserRole.OWNER, currentUser.role);
-      const isOperationalUser =
-        normalizeRole(currentUser.role) === "PENTESTER_QA";
+      const isOperationalUser = normalizeRole(currentUser.role) === "PENTESTER_QA";
+      const isAuditorUser = currentUser.role === UserRole.AUDITOR;
       const scopedClientId = currentUser.clientId || currentUser.activeTenantId;
-      skipProjectCounts = isOperationalUser && !scopedClientId;
 
-      if (!isGlobalUser && !scopedClientId && !isOperationalUser) {
+      if (isGlobalUser || isOperationalUser) {
+        // Global y operacionales ven todos los clientes
+      } else if (isAuditorUser) {
+        // AUDITOR: filtrar por clientId propio o por visibleClientIds
+        if (scopedClientId) {
+          query._id = scopedClientId;
+        } else {
+          const visibleClientIds: any[] = currentUser.visibleClientIds || [];
+          if (!visibleClientIds.length) return [];
+          query._id = { $in: visibleClientIds };
+        }
+      } else if (scopedClientId) {
+        query._id = scopedClientId; // Solo su cliente
+      } else {
         throw new ForbiddenException(
           "Tu rol no tiene permiso para listar clientes sin contexto de tenant",
         );
-      }
-
-      if (!isGlobalUser && scopedClientId) {
-        query._id = scopedClientId; // Solo su cliente
       }
     }
 
     const clients = await this.clientModel.find(query).sort({ name: 1 }).lean();
 
-    if (skipProjectCounts) {
-      return clients.map((client) => ({
-        ...client,
-        projectsCount: 0,
-      }));
-    }
-
-    // Agregar conteo de proyectos para cada cliente
+    // Agregar conteo de proyectos para cada cliente (skipTenantFilter para contar en todo el sistema)
     const Project = this.clientModel.db.model("Project");
     const clientsWithCount = await Promise.all(
       clients.map(async (client) => {
         const projectsCount = await Project.countDocuments({
           clientId: client._id,
           projectStatus: ProjectStatus.ACTIVE,
-        });
+        }).setOptions({ skipTenantFilter: true });
         return {
           ...client,
           projectsCount,
@@ -209,7 +208,7 @@ export class ClientService {
       this.validateClientAccess(
         id,
         currentUser,
-        [UserRole.OWNER, UserRole.PLATFORM_ADMIN, UserRole.CLIENT_ADMIN],
+        [UserRole.OWNER, UserRole.PLATFORM_ADMIN, UserRole.CLIENT_ADMIN, UserRole.PENTESTER],
       );
     }
 
@@ -244,7 +243,7 @@ export class ClientService {
       this.validateClientAccess(
         id,
         currentUser,
-        [UserRole.OWNER, UserRole.PLATFORM_ADMIN],
+        [UserRole.OWNER, UserRole.PLATFORM_ADMIN, UserRole.PENTESTER],
       );
     }
 

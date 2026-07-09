@@ -180,7 +180,7 @@ export class ExportController {
    * B. NIVEL TENANT - Exportar portfolio completo del cliente
    */
   @Get(["client/:id/portfolio", "clients/:id/portfolio"])
-  @Roles(UserRole.CLIENT_ADMIN, UserRole.PLATFORM_ADMIN, UserRole.OWNER)
+  @Roles(UserRole.CLIENT_ADMIN, UserRole.PLATFORM_ADMIN, UserRole.OWNER, UserRole.PENTESTER)
   @Throttle({ default: { limit: 3, ttl: 60000 } }) // Solo 3 exports por minuto (proceso pesado)
   @ApiOperation({
     summary: "Exportar portfolio cliente en ZIP (CLIENT_ADMIN+)",
@@ -205,7 +205,7 @@ export class ExportController {
   }
 
   @Get(["client/:id/csv", "clients/:id/csv"])
-  @Roles(UserRole.CLIENT_ADMIN, UserRole.PLATFORM_ADMIN, UserRole.OWNER)
+  @Roles(UserRole.CLIENT_ADMIN, UserRole.PLATFORM_ADMIN, UserRole.OWNER, UserRole.PENTESTER)
   @Throttle({ default: { limit: 5, ttl: 60000 } })
   @ApiOperation({
     summary: "Exportar todos los hallazgos de un cliente a CSV (CLIENT_ADMIN+)",
