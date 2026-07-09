@@ -47,11 +47,18 @@ export class ProjectService {
   /** Determina si el usuario está restringido por área */
   private isRestrictedByArea(currentUser?: any): boolean {
     if (!currentUser) return false;
-    if ([UserRole.AREA_ADMIN, UserRole.VIEWER, UserRole.AUDITOR].includes(currentUser.role)) {
+    if ([UserRole.AREA_ADMIN, UserRole.VIEWER].includes(currentUser.role)) {
       return true;
     }
-
+    // AUDITOR: solo restringido por área si tiene áreas asignadas
+    if (currentUser.role === UserRole.AUDITOR) {
+      return this.getUserAreaIds(currentUser).length > 0;
+    }
     return this.isOperationalUser(currentUser) && this.getUserAreaIds(currentUser).length > 0;
+  }
+
+  private isAuditorUser(currentUser?: any): boolean {
+    return currentUser?.role === UserRole.AUDITOR;
   }
 
   private isGlobalUser(currentUser?: any): boolean {
@@ -63,7 +70,9 @@ export class ProjectService {
   }
 
   private shouldBypassTenantFilter(currentUser?: any): boolean {
-    return this.isOperationalUser(currentUser) && !this.getCurrentTenantId(currentUser);
+    if (this.isOperationalUser(currentUser) && !this.getCurrentTenantId(currentUser)) return true;
+    if (this.isAuditorUser(currentUser) && !this.getCurrentTenantId(currentUser)) return true;
+    return false;
   }
 
   /** Obtiene áreas asignadas al usuario */
@@ -323,6 +332,22 @@ export class ProjectService {
       });
     }
 
+    // AUDITOR con scope PER_CLIENT y sin tenant propio: filtrar por visibleClientIds
+    if (this.isAuditorUser(currentUser) && !currentTenantId) {
+      const scope: string | undefined = currentUser?.auditorVisibilityScope;
+      const visibleClientIds: string[] = (currentUser?.visibleClientIds || []).map((id: any) => id.toString());
+
+      if (scope === "PER_CLIENT" && visibleClientIds.length > 0) {
+        const clientObjectIds = visibleClientIds.map((id) => this.toObjectId(id)).filter(Boolean);
+        query.$or = [
+          { clientId: { $in: clientObjectIds } },
+          { tenantId: { $in: clientObjectIds } },
+        ];
+      } else if (!restrictedByArea && !restrictedByVisibleProjects) {
+        return [];
+      }
+    }
+
     if (andConditions.length > 0) {
       query.$and = andConditions;
     }
@@ -344,10 +369,9 @@ export class ProjectService {
       projects.map(async (project) => {
         const findingsCountQuery = this.findingModel.countDocuments({
           projectId: project._id,
+          status: { $ne: FindingStatus.CLOSED },
         });
-        if (this.shouldBypassTenantFilter(currentUser)) {
-          findingsCountQuery.setOptions({ skipTenantFilter: true });
-        }
+        findingsCountQuery.setOptions({ skipTenantFilter: true });
         const findingsCount = await findingsCountQuery;
 
         return {

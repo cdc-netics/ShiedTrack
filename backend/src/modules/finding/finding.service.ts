@@ -89,8 +89,14 @@ export class FindingService {
     return normalizeRole(currentUser?.role) === "PENTESTER_QA";
   }
 
+  private isAuditorUser(currentUser?: any): boolean {
+    return currentUser?.role === UserRole.AUDITOR;
+  }
+
   private shouldBypassTenantFilter(currentUser?: any): boolean {
-    return this.isOperationalUser(currentUser) && !this.getCurrentTenantId(currentUser);
+    if (this.isOperationalUser(currentUser) && !this.getCurrentTenantId(currentUser)) return true;
+    if (this.isAuditorUser(currentUser) && !this.getCurrentTenantId(currentUser)) return true;
+    return false;
   }
 
   private getUserAreaIds(currentUser?: any): string[] {
@@ -491,6 +497,18 @@ export class FindingService {
       query.status = { $ne: FindingStatus.CLOSED };
     }
 
+    // AUDITOR con scope PER_CLIENT y sin tenant propio: filtrar por visibleClientIds
+    if (this.isAuditorUser(currentUser) && !currentTenantId) {
+      const scope: string | undefined = currentUser?.auditorVisibilityScope;
+      const visibleClientIds: string[] = (currentUser?.visibleClientIds || []).map((id: any) => id.toString());
+
+      if (scope === "PER_CLIENT" && visibleClientIds.length > 0) {
+        query.tenantId = { $in: visibleClientIds.map((id) => this.toObjectId(id)).filter(Boolean) };
+      } else if (!restrictedByArea && !filters.projectId) {
+        return [];
+      }
+    }
+
     if (filters.projectId) {
       await this.findProjectOrFailWithAccess(filters.projectId, currentUser);
       query.projectId = this.toObjectId(filters.projectId);
@@ -541,7 +559,10 @@ export class FindingService {
       .populate("createdBy", "firstName lastName email")
       .sort({ createdAt: -1 });
 
-    if (this.shouldBypassTenantFilter(currentUser)) {
+    // Skip the tenant plugin when we already have an explicit tenantId filter in the query
+    // (avoids double-filtering conflicts from multiTenantPlugin), or when bypassing for
+    // cross-tenant operational users (PENTESTER/QA without clientId).
+    if (query.tenantId || this.shouldBypassTenantFilter(currentUser)) {
       findingsQuery.setOptions({ skipTenantFilter: true });
     }
 

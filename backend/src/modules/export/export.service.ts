@@ -263,10 +263,13 @@ export class ExportService {
     projectId: string,
     currentUser: any,
   ): Promise<PassThrough> {
-    // Validar permisos
-    const project = await this.projectModel
+    const projectQuery = this.projectModel
       .findById(projectId)
       .populate("clientId areaId areaIds");
+    if (this.isGlobalUser(currentUser) || this.isOperationalUser(currentUser)) {
+      projectQuery.setOptions({ skipTenantFilter: true });
+    }
+    const project = await projectQuery;
     if (!project) {
       throw new NotFoundException("Proyecto no encontrado");
     }
@@ -605,13 +608,11 @@ export class ExportService {
     clientId: string,
     currentUser: any,
   ): Promise<PassThrough> {
-    // RBAC: Solo CLIENT_ADMIN del cliente u OWNER
-    if (!this.isGlobalUser(currentUser)) {
+    // RBAC: Solo CLIENT_ADMIN del cliente, OWNER, o usuarios operacionales (PENTESTER/QA)
+    if (!this.isGlobalUser(currentUser) && !this.isOperationalUser(currentUser)) {
       const userTenantId = (
         currentUser.activeTenantId || currentUser.clientId
       )?.toString();
-      // The 'clientId' parameter is from the URL, representing the client to export.
-      // Ensure userTenantId is defined and matches the requested clientId.
       if (!userTenantId || clientId !== userTenantId) {
         throw new ForbiddenException(
           "No tiene permisos para exportar este cliente",
@@ -677,13 +678,11 @@ export class ExportService {
     clientId: string,
     currentUser: any,
   ): Promise<string> {
-    // RBAC: Solo CLIENT_ADMIN del cliente u OWNER
-    if (!this.isGlobalUser(currentUser)) {
+    // RBAC: Solo CLIENT_ADMIN del cliente, OWNER, o usuarios operacionales (PENTESTER/QA)
+    if (!this.isGlobalUser(currentUser) && !this.isOperationalUser(currentUser)) {
       const userTenantId = (
         currentUser.activeTenantId || currentUser.clientId
       )?.toString();
-      // The 'clientId' parameter is from the URL, representing the client to export.
-      // Ensure userTenantId is defined and matches the requested clientId.
       if (!userTenantId || clientId !== userTenantId) {
         throw new ForbiddenException(
           "No tiene permisos para exportar este cliente",

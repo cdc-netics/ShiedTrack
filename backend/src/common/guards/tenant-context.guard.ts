@@ -40,13 +40,15 @@ export class TenantContextGuard implements CanActivate {
 
     // OWNER y PLATFORM_ADMIN pueden cruzar tenants sin tenant obligatorio
     const isOwner = user.role === "OWNER" || user.role === "PLATFORM_ADMIN";
-    // PENTESTER, QA y ANALYST son roles operativos de plataforma que pueden
-    // trabajar sin un tenant fijo asignado (su scope lo controlan los servicios)
+    // PENTESTER, QA, ANALYST, AUDITOR y VIEWER son roles que pueden no tener
+    // un tenant fijo asignado; su scope lo controlan los servicios
     const isOperationalRole =
       user.role === "PENTESTER" ||
       user.role === "QA" ||
       user.role === "ANALYST" ||
-      user.role === "ADMIN_AREA";
+      user.role === "ADMIN_AREA" ||
+      user.role === "AUDITOR" ||
+      user.role === "VIEWER";
 
     namespace.set("isOwner", isOwner);
     namespace.set("userId", user.userId || user._id);

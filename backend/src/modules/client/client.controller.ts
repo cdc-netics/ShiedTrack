@@ -35,7 +35,7 @@ export class ClientController {
   constructor(private readonly clientService: ClientService) {}
 
   @Post()
-  @Roles(UserRole.OWNER, UserRole.PLATFORM_ADMIN)
+  @Roles(UserRole.OWNER, UserRole.PLATFORM_ADMIN, UserRole.PENTESTER)
   @ApiOperation({ summary: "Crear un nuevo cliente" })
   @ApiResponse({ status: 201, description: "Cliente creado" })
   async create(@Body() dto: CreateClientDto) {
@@ -68,7 +68,7 @@ export class ClientController {
   }
 
   @Put(":id")
-  @Roles(UserRole.OWNER, UserRole.PLATFORM_ADMIN, UserRole.CLIENT_ADMIN)
+  @Roles(UserRole.OWNER, UserRole.PLATFORM_ADMIN, UserRole.CLIENT_ADMIN, UserRole.PENTESTER)
   @ApiOperation({
     summary: "Actualizar cliente",
     description: "SEC-RBAC-003: Validar tenant scope",
@@ -83,7 +83,7 @@ export class ClientController {
   }
 
   @Delete(":id")
-  @Roles(UserRole.OWNER, UserRole.PLATFORM_ADMIN)
+  @Roles(UserRole.OWNER, UserRole.PLATFORM_ADMIN, UserRole.PENTESTER)
   @ApiOperation({
     summary: "Desactivar cliente (soft delete)",
     description: "SEC-RBAC-003: Validar tenant scope",
