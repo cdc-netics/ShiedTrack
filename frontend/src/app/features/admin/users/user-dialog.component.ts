@@ -13,6 +13,8 @@ import { MatChipsModule } from '@angular/material/chips';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../environments/environment';
 import { AuthService } from '../../../core/services/auth.service';
+import { UserRole } from '../../../shared/enums';
+import { roleSatisfies } from '../../../shared/utils/rbac';
 
 @Component({
   selector: 'app-user-dialog',
@@ -254,7 +256,7 @@ export class UserDialogComponent {
       firstName: [data?.firstName || '', Validators.required],
       lastName: [data?.lastName || '', Validators.required],
       email: [data?.email || '', [Validators.required, Validators.email]],
-      password: ['', this.isEditMode ? [] : [Validators.required, Validators.minLength((currentUserRole === 'OWNER' || currentUserRole === 'PLATFORM_ADMIN') ? 1 : 6)]],
+      password: ['', this.isEditMode ? [] : [Validators.required, Validators.minLength(roleSatisfies(UserRole.OWNER, currentUserRole) ? 1 : 6)]],
       role: [data?.role || 'NORMAL_USER', Validators.required],
       clientId: [data?.clientId || null],
       areaIds: [data?.areaIds || []],
@@ -264,11 +266,11 @@ export class UserDialogComponent {
     });
 
     // Determine if we should show client select
-    const canManageClients = ['OWNER', 'PLATFORM_ADMIN', 'ADMIN_AREA', 'CLIENT_ADMIN', 'AREA_ADMIN'].includes(currentUserRole);
+    const canManageClients = roleSatisfies(UserRole.ADMIN_AREA, currentUserRole);
     this.showClientSelect.set(canManageClients);
     console.log(`[UserDialog] Constructor - Puede gestionar clientes: ${canManageClients}`);
 
-    if (currentUserRole === 'OWNER' || currentUserRole === 'PLATFORM_ADMIN') {
+    if (roleSatisfies(UserRole.OWNER, currentUserRole)) {
       this.roleOptions = [
         { value: 'OWNER', label: 'OWNER' },
         { value: 'ADMIN_AREA', label: 'ADMIN_AREA' },
@@ -277,7 +279,7 @@ export class UserDialogComponent {
         { value: 'NORMAL_USER', label: 'NORMAL_USER' },
         { value: 'AUDITOR', label: 'AUDITOR' }
       ];
-    } else if (['ADMIN_AREA', 'CLIENT_ADMIN', 'AREA_ADMIN'].includes(currentUserRole)) {
+    } else if (roleSatisfies(UserRole.ADMIN_AREA, currentUserRole)) {
       this.roleOptions = [
         { value: 'NORMAL_USER', label: 'NORMAL_USER' },
         { value: 'AUDITOR', label: 'AUDITOR' }

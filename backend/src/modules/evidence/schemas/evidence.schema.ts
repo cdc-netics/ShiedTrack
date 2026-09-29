@@ -8,20 +8,28 @@ import { Document, Types } from "mongoose";
  */
 @Schema({ timestamps: true })
 export class Evidence extends Document {
-  @Prop({ required: true })
-  filename: string; // Nombre original del archivo
+  // "FILE" = archivo subido y almacenado en disco (default); "LINK" = enlace externo
+  // (ej. SharePoint) para evidencias que exceden el límite de tamaño, como videos grandes
+  @Prop({ required: true, enum: ["FILE", "LINK"], default: "FILE" })
+  evidenceType: "FILE" | "LINK";
 
   @Prop({ required: true })
-  storedFilename: string; // Nombre único en el sistema de archivos (UUID)
+  filename: string; // Nombre original del archivo, o etiqueta descriptiva si es un LINK
 
-  @Prop({ required: true })
-  filePath: string; // Ruta completa en el servidor
+  @Prop()
+  storedFilename?: string; // Nombre único en el sistema de archivos (UUID) — solo FILE
 
-  @Prop({ required: true })
-  mimeType: string;
+  @Prop()
+  filePath?: string; // Ruta completa en el servidor — solo FILE
 
-  @Prop({ required: true })
-  size: number; // Tamaño en bytes
+  @Prop()
+  mimeType?: string; // Solo FILE
+
+  @Prop()
+  size?: number; // Tamaño en bytes — solo FILE
+
+  @Prop()
+  externalUrl?: string; // URL del enlace externo — solo LINK
 
   @Prop({ type: Types.ObjectId, ref: "Finding", required: true })
   findingId: Types.ObjectId;

@@ -10,7 +10,7 @@ import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
 import { Client } from "./schemas/client.schema";
 import { CreateClientDto, UpdateClientDto } from "./dto/client.dto";
-import { ProjectStatus } from "../../common/enums";
+import { ProjectStatus, FindingStatus } from "../../common/enums";
 import { AuthService } from "../auth/auth.service";
 import { UserRole } from "../../common/enums";
 import {
@@ -158,17 +158,30 @@ export class ClientService {
 
     const clients = await this.clientModel.find(query).sort({ name: 1 }).lean();
 
-    // Agregar conteo de proyectos para cada cliente (skipTenantFilter para contar en todo el sistema)
+    // Agregar conteo de proyectos y hallazgos para cada cliente (skipTenantFilter para contar en todo el sistema)
     const Project = this.clientModel.db.model("Project");
+    const Finding = this.clientModel.db.model("Finding");
     const clientsWithCount = await Promise.all(
       clients.map(async (client) => {
         const projectsCount = await Project.countDocuments({
           clientId: client._id,
           projectStatus: ProjectStatus.ACTIVE,
         }).setOptions({ skipTenantFilter: true });
+
+        // Los hallazgos se asocian al cliente vía Project.clientId, no vía
+        // Finding.tenantId: ese campo puede no coincidir con el clientId real
+        // del proyecto (son campos independientes en el schema).
+        const clientProjects = await Project.find({ clientId: client._id })
+          .select("_id")
+          .setOptions({ skipTenantFilter: true });
+        const findingsCount = await Finding.countDocuments({
+          projectId: { $in: clientProjects.map((p: any) => p._id) },
+          status: { $ne: FindingStatus.CLOSED },
+        }).setOptions({ skipTenantFilter: true });
         return {
           ...client,
           projectsCount,
+          findingsCount,
         };
       }),
     );

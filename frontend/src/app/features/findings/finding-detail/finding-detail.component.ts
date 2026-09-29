@@ -22,6 +22,11 @@ import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { CloseFindingDialogComponent, CloseDialogResult } from '../close-finding-dialog/close-finding-dialog.component';
 import { AddUpdateDialogComponent, AddUpdateDialogResult } from '../add-update-dialog/add-update-dialog.component';
+import { AddEvidenceLinkDialogComponent, AddEvidenceLinkDialogResult } from '../add-evidence-link-dialog/add-evidence-link-dialog.component';
+import { UserRole } from '../../../shared/enums';
+import { roleSatisfies } from '../../../shared/utils/rbac';
+import { CvssCalculatorComponent } from '../../../shared/components/cvss-calculator/cvss-calculator.component';
+import { CvssResult, formatCvssScore } from '../../../shared/utils/cvss';
 import {
   getEvidenceMimeType as getNormalizedEvidenceMimeType,
   getEvidenceName as getNormalizedEvidenceName,
@@ -46,6 +51,7 @@ interface Finding {
   affectedAsset?: string;
   cweId?: string;
   cvss_score?: number;
+  cvss_vector?: string;
   cve_id?: string;
   detection_source?: string;
   recommendation?: string;
@@ -70,6 +76,9 @@ interface Evidence {
   size: number;
   uploadedBy: any;
   createdAt: string;
+  evidenceType?: 'FILE' | 'LINK';
+  externalUrl?: string;
+  description?: string;
 }
 
 interface EvidenceRef {
@@ -118,7 +127,8 @@ interface FindingUpdate {
         MatSnackBarModule,
         MatDialogModule,
         MatTooltipModule,
-        MatExpansionModule
+        MatExpansionModule,
+        CvssCalculatorComponent
     ],
     template: `
     <div class="finding-detail-container">
@@ -325,6 +335,21 @@ interface FindingUpdate {
                     <mat-hint>Formato: CVE-YYYY-NNNNN</mat-hint>
                   </mat-form-field>
 
+                  @if (editMode()) {
+                    <button type="button" mat-stroked-button color="primary" class="full-width cvss-toggle"
+                            (click)="showCvssCalculator.set(!showCvssCalculator())">
+                      <mat-icon>calculate</mat-icon>
+                      {{ showCvssCalculator() ? 'Ocultar calculadora CVSS' : 'Calcular con CVSS 3.1' }}
+                    </button>
+
+                    @if (showCvssCalculator()) {
+                      <div class="full-width">
+                        <app-cvss-calculator [initialVector]="findingForm.value.cvss_vector"
+                                              (resultChange)="onCvssCalculated($event)"></app-cvss-calculator>
+                      </div>
+                    }
+                  }
+
                   <!-- Origen de Detección -->
                   <mat-form-field appearance="outline" class="full-width">
                     <mat-label>Origen de Detección (IP/URL)</mat-label>
@@ -447,41 +472,74 @@ interface FindingUpdate {
               <div class="evidences-section">
                 <div class="section-header">
                   <h3><mat-icon>attach_file</mat-icon> Archivos de Evidencia</h3>
-                  <button mat-raised-button color="primary" (click)="uploadEvidence()">
-                    <mat-icon>upload</mat-icon>
-                    Subir Evidencia
-                  </button>
+                  <div class="section-header-actions">
+                    <button mat-stroked-button color="primary" (click)="openAddEvidenceLinkDialog()" matTooltip="Para videos u archivos grandes que no entran en el límite de subida">
+                      <mat-icon>link</mat-icon>
+                      Agregar Enlace
+                    </button>
+                    <button mat-raised-button color="primary" (click)="uploadEvidence()">
+                      <mat-icon>upload</mat-icon>
+                      Subir Evidencia
+                    </button>
+                  </div>
                 </div>
                 @if (loadingEvidences()) {
                   <mat-spinner></mat-spinner>
                 } @else if (evidences().length > 0) {
                   <div class="evidences-list">
                     @for (evidence of evidences(); track evidence._id) {
-                      <mat-card class="evidence-card">
+                      <mat-card class="evidence-card" [id]="'evidence-card-' + evidence._id"
+                                [class.evidence-card--highlighted]="highlightedEvidenceId() === evidence._id">
                         <mat-card-content>
                           <div class="evidence-header">
                             <div class="evidence-info">
-                              <mat-icon>{{ getFileIcon(getEvidenceMimeType(evidence)) }}</mat-icon>
+                              @if (evidenceToUpdateMap().has(evidence._id)) {
+                                <button type="button" class="evidence-number evidence-number--linked"
+                                        matTooltip="Ver el seguimiento donde se adjuntó esta evidencia"
+                                        (click)="goToUpdate(evidenceToUpdateMap().get(evidence._id)!)">
+                                  #{{ evidenceNumbers().get(evidence._id) }}
+                                </button>
+                              } @else {
+                                <span class="evidence-number" matTooltip="Número de evidencia">#{{ evidenceNumbers().get(evidence._id) }}</span>
+                              }
+                              @if (evidence.evidenceType === 'LINK') {
+                                <mat-icon class="link-evidence-icon">link</mat-icon>
+                              } @else {
+                                <mat-icon>{{ getFileIcon(getEvidenceMimeType(evidence)) }}</mat-icon>
+                              }
                               <div class="evidence-details">
                                 <h4>{{ getEvidenceName(evidence) }}</h4>
-                                <p>{{ formatFileSize(evidence.size) }} • {{ evidence.createdAt | date:'dd/MM/yyyy HH:mm' }}</p>
+                                @if (evidence.evidenceType === 'LINK') {
+                                  <p class="evidence-link-url">
+                                    <a [href]="evidence.externalUrl" target="_blank" rel="noopener">{{ evidence.externalUrl }}</a>
+                                  </p>
+                                  <p>{{ evidence.createdAt | date:'dd/MM/yyyy HH:mm' }}</p>
+                                } @else {
+                                  <p>{{ formatFileSize(evidence.size) }} • {{ evidence.createdAt | date:'dd/MM/yyyy HH:mm' }}</p>
+                                }
                                 <p class="uploader">Subido por: {{ evidence.uploadedBy?.email || 'Desconocido' }}</p>
                               </div>
                             </div>
                             <div class="evidence-actions">
-                              @if (isTextFile(getEvidenceMimeType(evidence))) {
-                                <button mat-icon-button color="accent" (click)="toggleTextPreview(evidence._id)" matTooltip="Ver contenido">
-                                  <mat-icon>description</mat-icon>
+                              @if (evidence.evidenceType === 'LINK') {
+                                <button mat-icon-button color="primary" (click)="openEvidenceLink(evidence)" matTooltip="Abrir enlace">
+                                  <mat-icon>open_in_new</mat-icon>
+                                </button>
+                              } @else {
+                                @if (isTextFile(getEvidenceMimeType(evidence))) {
+                                  <button mat-icon-button color="accent" (click)="toggleTextPreview(evidence._id)" matTooltip="Ver contenido">
+                                    <mat-icon>description</mat-icon>
+                                  </button>
+                                }
+                                @if (getEvidenceMimeType(evidence).includes('pdf')) {
+                                  <button mat-icon-button color="accent" (click)="viewEvidence(evidence)" matTooltip="Abrir PDF">
+                                    <mat-icon>picture_as_pdf</mat-icon>
+                                  </button>
+                                }
+                                <button mat-icon-button color="primary" (click)="downloadEvidence(evidence)" matTooltip="Descargar">
+                                  <mat-icon>download</mat-icon>
                                 </button>
                               }
-                              @if (getEvidenceMimeType(evidence).includes('pdf')) {
-                                <button mat-icon-button color="accent" (click)="viewEvidence(evidence)" matTooltip="Abrir PDF">
-                                  <mat-icon>picture_as_pdf</mat-icon>
-                                </button>
-                              }
-                              <button mat-icon-button color="primary" (click)="downloadEvidence(evidence)" matTooltip="Descargar">
-                                <mat-icon>download</mat-icon>
-                              </button>
                               <button mat-icon-button color="warn" (click)="deleteEvidence(evidence._id)" matTooltip="Eliminar">
                                 <mat-icon>delete</mat-icon>
                               </button>
@@ -492,6 +550,11 @@ interface FindingUpdate {
                             <div class="image-preview">
                               @if (imageUrls[evidence._id]) {
                                 <img [src]="imageUrls[evidence._id]" [alt]="getEvidenceName(evidence)" (click)="viewEvidence(evidence)" />
+                              } @else if (imageUrls[evidence._id] === null) {
+                                <div class="loading-image">
+                                  <mat-icon>broken_image</mat-icon>
+                                  <span>Imagen no disponible en el servidor</span>
+                                </div>
                               } @else {
                                 <div class="loading-image">
                                   <mat-icon>image</mat-icon>
@@ -541,7 +604,8 @@ interface FindingUpdate {
                     @for (update of updates(); track update._id) {
                       <div class="timeline-item">
                         <div class="timeline-marker" [class]="'marker-' + update.type.toLowerCase()"></div>
-                        <mat-card class="timeline-card">
+                        <mat-card class="timeline-card" [id]="'update-card-' + update._id"
+                                  [class.timeline-card--highlighted]="highlightedUpdateId() === update._id">
                           <mat-card-content>
                             <div class="update-header">
                               <div class="update-type">
@@ -565,6 +629,34 @@ interface FindingUpdate {
                               <div class="update-evidences">
                                 <mat-icon>attach_file</mat-icon>
                                 <span>{{ update.evidenceIds.length }} evidencia(s) adjunta(s)</span>
+                              </div>
+                              <div class="update-evidence-previews">
+                                @for (ev of update.evidenceIds; track $index) {
+                                  @if (typeof ev !== 'string') {
+                                    <div class="update-evidence-item">
+                                      @if (getEvidenceMimeType(ev).startsWith('image/')) {
+                                        <div class="update-image-preview" (click)="imageUrls[ev._id] && viewEvidence(ev)" [matTooltip]="imageUrls[ev._id] === null ? 'Imagen no disponible en el servidor' : getEvidenceName(ev)">
+                                          @if (imageUrls[ev._id]) {
+                                            <img [src]="imageUrls[ev._id]" [alt]="getEvidenceName(ev)" />
+                                          } @else if (imageUrls[ev._id] === null) {
+                                            <div class="loading-image">
+                                              <mat-icon>broken_image</mat-icon>
+                                            </div>
+                                          } @else {
+                                            <div class="loading-image">
+                                              <mat-icon>image</mat-icon>
+                                            </div>
+                                          }
+                                        </div>
+                                      }
+                                      <button type="button" class="evidence-number-badge" (click)="goToEvidence(ev._id)"
+                                              [matTooltip]="'Ver evidencia #' + (evidenceNumbers().get(ev._id) || '?') + ' en la pestaña Evidencias'">
+                                        <span class="evidence-number-badge__num">#{{ evidenceNumbers().get(ev._id) || '?' }}</span>
+                                        <span class="evidence-number-badge__label">Ver evidencia asociada</span>
+                                      </button>
+                                    </div>
+                                  }
+                                }
                               </div>
                             }
                           </mat-card-content>
@@ -676,6 +768,14 @@ interface FindingUpdate {
       grid-column: span 2;
     }
 
+    .cvss-toggle {
+      justify-self: start;
+      margin-top: -8px;
+    }
+    .cvss-toggle mat-icon {
+      margin-right: 4px;
+    }
+
     .info-section {
       padding: 16px 0;
     }
@@ -774,6 +874,12 @@ interface FindingUpdate {
       margin: 0;
     }
 
+    .section-header-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
     .evidences-list {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -782,6 +888,40 @@ interface FindingUpdate {
 
     .evidence-card {
       border: 1px solid #e0e0e0;
+      scroll-margin: 24px;
+      transition: box-shadow 0.3s ease, border-color 0.3s ease;
+    }
+
+    .evidence-card--highlighted {
+      border-color: #1976d2;
+      box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.35);
+    }
+
+    .evidence-number {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 24px;
+      height: 24px;
+      padding: 0 6px;
+      border-radius: 12px;
+      background: #1976d2;
+      color: #fff;
+      font-size: 12px;
+      font-weight: 600;
+      flex-shrink: 0;
+    }
+
+    .evidence-number--linked {
+      border: none;
+      cursor: pointer;
+      font-family: inherit;
+      transition: background 0.15s ease, transform 0.15s ease;
+    }
+
+    .evidence-number--linked:hover {
+      background: #0d47a1;
+      transform: scale(1.08);
     }
 
     .evidence-header {
@@ -794,6 +934,8 @@ interface FindingUpdate {
       display: flex;
       gap: 12px;
       align-items: flex-start;
+      flex: 1;
+      min-width: 0;
     }
 
     .evidence-info mat-icon {
@@ -801,24 +943,64 @@ interface FindingUpdate {
       width: 48px;
       height: 48px;
       color: #1976d2;
+      flex-shrink: 0;
+    }
+
+    .evidence-link-url {
+      margin: 4px 0 !important;
+      overflow-wrap: anywhere;
+    }
+
+    .evidence-link-url a {
+      color: #1976d2;
+      font-size: 12px;
+      text-decoration: none;
+    }
+
+    .evidence-link-url a:hover {
+      text-decoration: underline;
+    }
+
+    .evidence-details {
+      min-width: 0;
     }
 
     .evidence-details h4 {
       margin: 0 0 4px 0;
       font-size: 14px;
       font-weight: 500;
+      overflow-wrap: break-word;
+      word-break: break-word;
     }
 
     .evidence-details p {
       margin: 4px 0;
       font-size: 12px;
       color: #666;
+      overflow-wrap: break-word;
     }
 
     .evidence-actions {
       display: flex;
-      gap: 4px;
+      gap: 0;
       flex-shrink: 0;
+    }
+
+    .evidence-actions button.mat-mdc-icon-button {
+      width: 32px;
+      height: 32px;
+      padding: 4px;
+    }
+
+    .evidence-actions button.mat-mdc-icon-button .mat-mdc-button-touch-target {
+      width: 32px;
+      height: 32px;
+    }
+
+    .evidence-actions mat-icon {
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
     }
 
     .image-preview {
@@ -1117,6 +1299,13 @@ interface FindingUpdate {
 
     .timeline-card {
       margin-bottom: 16px;
+      scroll-margin: 24px;
+      transition: box-shadow 0.3s ease, border-color 0.3s ease;
+    }
+
+    .timeline-card--highlighted {
+      border: 1px solid #1976d2;
+      box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.35);
     }
 
     .update-header {
@@ -1192,6 +1381,84 @@ interface FindingUpdate {
       height: 18px;
     }
 
+    .update-evidence-previews {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .update-image-preview {
+      width: 120px;
+      height: 120px;
+      border-radius: 4px;
+      overflow: hidden;
+      background: #f5f5f5;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .update-image-preview img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.2s;
+    }
+
+    .update-image-preview img:hover {
+      transform: scale(1.05);
+    }
+
+    .update-image-preview .loading-image {
+      padding: 0;
+      background: transparent;
+    }
+
+    .update-evidence-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .evidence-number-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border: none;
+      background: #e3f2fd;
+      color: #0d47a1;
+      border-radius: 14px;
+      padding: 3px 10px 3px 3px;
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
+
+    .evidence-number-badge:hover {
+      background: #bbdefb;
+    }
+
+    .evidence-number-badge__num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 22px;
+      height: 22px;
+      padding: 0 4px;
+      border-radius: 50%;
+      background: #1976d2;
+      color: #fff;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .evidence-number-badge__label {
+      font-size: 12px;
+      font-weight: 500;
+    }
+
     .status-change {
       display: flex;
       align-items: center;
@@ -1259,6 +1526,34 @@ export class FindingDetailComponent implements OnInit {
   updates = signal<FindingUpdate[]>([]);
   textPreviews: { [key: string]: string } = {};
   imageUrls: { [key: string]: any } = {};
+  highlightedEvidenceId = signal<string | null>(null);
+  highlightedUpdateId = signal<string | null>(null);
+
+  // Numeración estable de evidencias (orden de subida, #1 = la más antigua),
+  // compartida entre la pestaña Evidencias y los badges de Seguimiento
+  evidenceNumbers = computed(() => {
+    const sorted = [...this.evidences()].sort(
+      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    );
+    const map = new Map<string, number>();
+    sorted.forEach((e, i) => map.set(e._id, i + 1));
+    return map;
+  });
+
+  // Evidencia -> seguimiento donde fue adjuntada (para el link inverso desde la pestaña Evidencias).
+  // Si una evidencia llegara a estar referenciada por más de un seguimiento, se enlaza al primero.
+  evidenceToUpdateMap = computed(() => {
+    const map = new Map<string, string>();
+    for (const update of this.updates()) {
+      for (const ev of update.evidenceIds || []) {
+        const evidenceId = typeof ev === 'string' ? ev : ev._id;
+        if (evidenceId && !map.has(evidenceId)) {
+          map.set(evidenceId, update._id);
+        }
+      }
+    }
+    return map;
+  });
 
   // Manejo de etiquetas del hallazgo
   tags = signal<string[]>([]);
@@ -1273,6 +1568,9 @@ export class FindingDetailComponent implements OnInit {
   newRefLabel = '';
   newRefUrl = '';
 
+  // Calculadora CVSS 3.1
+  showCvssCalculator = signal(false);
+
   findingForm: FormGroup = this.fb.group({
     title: ['', Validators.required],
     description: ['', Validators.required],
@@ -1281,12 +1579,21 @@ export class FindingDetailComponent implements OnInit {
     affectedAsset: [''],
     cweId: [''],
     cvss_score: [''],
+    cvss_vector: [''],
     cve_id: [''],
     detection_source: [''],
     recommendation: [''],
     impact: [''],
     implications: ['']
   });
+
+  onCvssCalculated(result: CvssResult): void {
+    this.findingForm.patchValue({
+      cvss_score: formatCvssScore(result.score),
+      cvss_vector: result.vector,
+      severity: result.severity
+    });
+  }
 
   ngOnInit(): void {
     // Carga el hallazgo y recursos asociados al entrar
@@ -1320,6 +1627,7 @@ export class FindingDetailComponent implements OnInit {
             affectedAsset: data.affectedAsset || '',
             cweId: data.cweId || '',
             cvss_score: data.cvss_score || '',
+            cvss_vector: data.cvss_vector || '',
             cve_id: data?.cve_id || '',
             detection_source: data.detection_source || '',
             recommendation: data.recommendation || '',
@@ -1379,8 +1687,18 @@ export class FindingDetailComponent implements OnInit {
       .subscribe({
         next: (data) => {
           console.log('✅ Seguimientos cargados:', data.length, 'entrada(s)', data);
-          this.updates.set(this.normalizeUpdates(data));
+          const normalizedUpdates = this.normalizeUpdates(data);
+          this.updates.set(normalizedUpdates);
           this.loadingUpdates.set(false);
+
+          // Cargar automáticamente previews de las imágenes adjuntas a cada seguimiento
+          normalizedUpdates.forEach(update => {
+            (update.evidenceIds || []).forEach(ev => {
+              if (typeof ev !== 'string' && this.getEvidenceMimeType(ev).startsWith('image/')) {
+                this.loadImagePreview(ev._id);
+              }
+            });
+          });
         },
         error: (err) => {
           console.error('❌ Error cargando seguimientos:', err);
@@ -1433,6 +1751,7 @@ export class FindingDetailComponent implements OnInit {
         affectedAsset: currentFinding.affectedAsset || '',
         cweId: currentFinding.cweId || '',
         cvss_score: currentFinding.cvss_score || '',
+        cvss_vector: currentFinding.cvss_vector || '',
         cve_id: currentFinding.cve_id || '',
         detection_source: currentFinding.detection_source || '',
         recommendation: currentFinding.recommendation || '',
@@ -1454,6 +1773,7 @@ export class FindingDetailComponent implements OnInit {
       affectedAsset: this.findingForm.value.affectedAsset || '',
       cweId: this.findingForm.value.cweId || '',
       cvssScore: this.findingForm.value.cvss_score === '' ? undefined : Number(this.findingForm.value.cvss_score),
+      cvssVector: this.findingForm.value.cvss_vector || undefined,
       cve_id: this.findingForm.value.cve_id || '',
       detection_source: this.findingForm.value.detection_source || '',
       recommendation: this.findingForm.value.recommendation || '',
@@ -1534,7 +1854,7 @@ export class FindingDetailComponent implements OnInit {
     const input = document.createElement('input');
     input.type = 'file';
     input.multiple = true;
-    input.accept = '.pdf,.log,.txt,.jpg,.jpeg,.png,.gif,.zip,.rar,.7z,.doc,.docx,.xls,.xlsx,.json,.xml,.csv';
+    input.accept = '.pdf,.log,.txt,.jpg,.jpeg,.png,.gif,.zip,.rar,.7z,.doc,.docx,.xls,.xlsx,.json,.xml,.csv,.mp4,.webm,.mov';
     
     input.onchange = async (e: any) => {
       const files = e.target.files;
@@ -1604,6 +1924,46 @@ export class FindingDetailComponent implements OnInit {
     input.click();
   }
 
+  /**
+   * Abre el diálogo para registrar una evidencia como enlace externo (SharePoint, Drive, etc.),
+   * pensado para archivos que exceden el límite de subida (ej. videos grandes)
+   */
+  openAddEvidenceLinkDialog(): void {
+    const findingId = this.finding()?._id;
+    if (!findingId) return;
+
+    const dialogRef = this.dialog.open(AddEvidenceLinkDialogComponent, {
+      width: '520px',
+      maxWidth: '95vw',
+      data: { findingTitle: this.finding()?.title || '' }
+    });
+
+    dialogRef.afterClosed().subscribe(async (result: AddEvidenceLinkDialogResult | undefined) => {
+      if (!result) return;
+
+      try {
+        await firstValueFrom(
+          this.http.post(`${environment.apiUrl}/evidence/link`, {
+            findingId,
+            url: result.url,
+            description: result.description
+          })
+        );
+        this.snackBar.open('✅ Enlace agregado correctamente', 'Cerrar', { duration: 3000 });
+        this.loadEvidences(findingId);
+      } catch (err: any) {
+        const errorMsg = err.error?.message || err.message || 'Error desconocido';
+        this.snackBar.open(`❌ Error al agregar el enlace: ${errorMsg}`, 'Cerrar', { duration: 4000 });
+      }
+    });
+  }
+
+  openEvidenceLink(evidence: Evidence): void {
+    if (evidence.externalUrl) {
+      window.open(evidence.externalUrl, '_blank', 'noopener');
+    }
+  }
+
   downloadEvidence(evidence: Evidence): void {
     // Descarga un archivo y crea un enlace temporal
     console.log('📥 Descargando evidencia:', evidence.originalName);
@@ -1640,9 +2000,36 @@ export class FindingDetailComponent implements OnInit {
     });
   }
 
-  viewEvidence(evidence: Evidence): void {
+  goToEvidence(evidenceId: string): void {
+    // Le quita el foco al botón clickeado antes de ocultar su pestaña: si el foco
+    // se queda dentro de un panel con aria-hidden, el navegador bloquea el cambio
+    // y lo reporta como warning de accesibilidad en consola.
+    (document.activeElement as HTMLElement | null)?.blur();
+    // Cambia a la pestaña Evidencias, hace scroll hasta la tarjeta y la resalta ~2s
+    this.selectedTabIndex.set(2);
+    setTimeout(() => {
+      document.getElementById('evidence-card-' + evidenceId)
+        ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      this.highlightedEvidenceId.set(evidenceId);
+      setTimeout(() => this.highlightedEvidenceId.set(null), 2000);
+    }, 100);
+  }
+
+  goToUpdate(updateId: string): void {
+    (document.activeElement as HTMLElement | null)?.blur();
+    // Cambia a la pestaña Seguimiento, hace scroll hasta la tarjeta y la resalta ~2s
+    this.selectedTabIndex.set(3);
+    setTimeout(() => {
+      document.getElementById('update-card-' + updateId)
+        ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      this.highlightedUpdateId.set(updateId);
+      setTimeout(() => this.highlightedUpdateId.set(null), 2000);
+    }, 100);
+  }
+
+  viewEvidence(evidence: Evidence | EvidenceRef): void {
     // Visualiza el archivo en nueva pestana si el navegador lo permite
-    console.log('👁️ Visualizando evidencia:', evidence.originalName);
+    console.log('👁️ Visualizando evidencia:', this.getEvidenceName(evidence));
     
     this.http.get(`${environment.apiUrl}/evidence/${evidence._id}/download`, {
       responseType: 'blob'
@@ -1729,10 +2116,14 @@ export class FindingDetailComponent implements OnInit {
 
   isTextFile(mimetype: string): boolean {
     // Determina si se puede previsualizar como texto
+    // Nota: usar '/xml' (no solo 'xml') para no matchear formatos Office como
+    // "application/vnd.openxmlformats-officedocument..." (docx/xlsx/pptx),
+    // que son binarios (ZIP) aunque su mimetype contenga la subcadena "xml".
     if (!mimetype) return false;
-    return mimetype.includes('text/') || 
-           mimetype.includes('json') || 
-           mimetype.includes('xml') ||
+    return mimetype.includes('text/') ||
+           mimetype.includes('json') ||
+           mimetype.includes('/xml') ||
+           mimetype.endsWith('+xml') ||
            mimetype.includes('javascript') ||
            mimetype.includes('html') ||
            mimetype.includes('css');
@@ -1747,8 +2138,11 @@ export class FindingDetailComponent implements OnInit {
         const url = URL.createObjectURL(blob);
         this.imageUrls[evidenceId] = url;
       },
-      error: (err) => {
-        console.error('Error cargando preview:', err);
+      error: () => {
+        // 404 = archivo no disponible en el servidor; la UI ya lo maneja
+        // mostrando "Imagen no disponible", no es necesario loguear como error.
+        // null = se intentó y falló, distinto de undefined (todavía cargando)
+        this.imageUrls[evidenceId] = null;
       }
     });
   }
@@ -1795,15 +2189,20 @@ export class FindingDetailComponent implements OnInit {
   }
 
   /**
-   * Verifica si el usuario puede cerrar hallazgos
-   * Solo OWNER, PLATFORM_ADMIN, CLIENT_ADMIN, AREA_ADMIN y ANALYST pueden cerrar
+   * Verifica si el usuario puede cerrar hallazgos.
+   * Mismos roles que el backend permite en POST /findings/:id/close y
+   * /findings/bulk-close: todos excepto AUDITOR (solo lectura).
    */
   canCloseFinding(): boolean {
     const currentUser = this.authService.currentUser();
     if (!currentUser) return false;
-    
-    const allowedRoles = ['OWNER', 'PLATFORM_ADMIN', 'CLIENT_ADMIN', 'AREA_ADMIN', 'ANALYST'];
-    return allowedRoles.includes(currentUser.role);
+
+    return (
+      roleSatisfies(UserRole.OWNER, currentUser.role) ||
+      roleSatisfies(UserRole.ADMIN_AREA, currentUser.role) ||
+      roleSatisfies(UserRole.PENTESTER, currentUser.role) ||
+      roleSatisfies(UserRole.NORMAL_USER, currentUser.role)
+    );
   }
 
   /**

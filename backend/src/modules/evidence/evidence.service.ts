@@ -15,6 +15,7 @@ import * as fs from "fs";
 import * as path from "path";
 import { createReadStream } from "fs";
 import { promisify } from "util";
+import sharp from "sharp";
 
 const unlinkAsync = promisify(fs.unlink);
 const mkdirAsync = promisify(fs.mkdir);
@@ -49,12 +50,65 @@ export class EvidenceService {
     ".json",
     ".xml",
     ".csv",
+    ".mp4",
+    ".webm",
+    ".mov",
   ];
+
+  // Formatos de imagen que se recomprimen a WebP al subir (GIF se excluye para no
+  // romper animaciones; SVG se excluye por ser vectorial, sin beneficio de recompresión)
+  private readonly compressibleImageMimeTypes = [
+    "image/png",
+    "image/jpeg",
+    "image/jpg",
+    "image/bmp",
+    "image/tiff",
+  ];
+  private readonly maxImageDimension = 1920; // px, lado más largo
+  private readonly imageWebpQuality = 80;
 
   constructor(
     @InjectModel(Evidence.name) private evidenceModel: Model<Evidence>,
   ) {
     this.ensureUploadDirectory();
+  }
+
+  /**
+   * Recomprime una imagen a WebP (redimensionando si excede maxImageDimension) para
+   * reducir el uso de disco en el volumen de evidencias. Si el resultado no es más
+   * liviano que el original (ej. imágenes ya muy pequeñas/optimizadas), se descarta
+   * y se conserva el archivo original sin tocar.
+   */
+  private async compressImageIfApplicable(
+    file: Express.Multer.File,
+  ): Promise<{ buffer: Buffer; mimeType: string; extension: string } | null> {
+    if (!this.compressibleImageMimeTypes.includes(file.mimetype)) {
+      return null;
+    }
+
+    try {
+      const compressed = await sharp(file.buffer)
+        .rotate() // Auto-orienta según EXIF antes de descartar los metadatos
+        .resize({
+          width: this.maxImageDimension,
+          height: this.maxImageDimension,
+          fit: "inside",
+          withoutEnlargement: true,
+        })
+        .webp({ quality: this.imageWebpQuality })
+        .toBuffer();
+
+      if (compressed.length >= file.buffer.length) {
+        return null;
+      }
+
+      return { buffer: compressed, mimeType: "image/webp", extension: ".webp" };
+    } catch (error) {
+      this.logger.warn(
+        `No se pudo comprimir la imagen "${file.originalname}", se conserva el original: ${error.message}`,
+      );
+      return null;
+    }
   }
 
   /**
@@ -124,22 +178,74 @@ export class EvidenceService {
     const access = await this.validateAccessToFinding(findingId, currentUser);
     this.validateFileExtension(file.originalname);
 
+    // Si es una imagen comprimible, se recomprime a WebP antes de guardar en disco
+    const compressed = await this.compressImageIfApplicable(file);
+    const bufferToStore = compressed?.buffer ?? file.buffer;
+    const mimeTypeToStore = compressed?.mimeType ?? file.mimetype;
+    const sizeToStore = bufferToStore.length;
+    const originalExt = path.extname(file.originalname);
+    const storedExt = compressed?.extension ?? originalExt;
+    const filenameToStore = compressed
+      ? `${path.basename(file.originalname, originalExt)}${compressed.extension}`
+      : file.originalname;
+
     // Generar nombre único para evitar colisiones
     const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-    const ext = path.extname(file.originalname);
-    const storedFilename = `${uniqueSuffix}${ext}`;
+    const storedFilename = `${uniqueSuffix}${storedExt}`;
     const filePath = path.join(this.uploadPath, storedFilename);
 
     // Guardar archivo en disco
-    fs.writeFileSync(filePath, file.buffer);
+    fs.writeFileSync(filePath, bufferToStore);
 
     // Crear registro en BD
     const evidence = new this.evidenceModel({
-      filename: file.originalname,
+      evidenceType: "FILE",
+      filename: filenameToStore,
       storedFilename,
       filePath,
-      mimeType: file.mimetype,
-      size: file.size,
+      mimeType: mimeTypeToStore,
+      size: sizeToStore,
+      findingId: this.toObjectId(findingId),
+      updateId: this.toObjectId(updateId),
+      uploadedBy: this.toObjectId(uploadedBy),
+      description,
+      tenantId: this.toObjectId(access.tenantId),
+    });
+
+    await evidence.save();
+
+    if (compressed) {
+      const savedPct = Math.round((1 - sizeToStore / file.size) * 100);
+      this.logger.log(
+        `Evidencia subida: ${file.originalname} recomprimida a WebP (${file.size} → ${sizeToStore} bytes, -${savedPct}%) para hallazgo ${findingId}`,
+      );
+    } else {
+      this.logger.log(
+        `Evidencia subida: ${file.originalname} (${file.size} bytes) para hallazgo ${findingId}`,
+      );
+    }
+    return evidence;
+  }
+
+  /**
+   * Registra una evidencia de tipo enlace externo (ej. SharePoint, Drive) — pensado
+   * para archivos que exceden el límite de subida (videos grandes principalmente),
+   * ya que no se almacena ningún archivo en disco, solo la URL y una descripción.
+   */
+  async addLink(
+    findingId: string,
+    url: string,
+    uploadedBy: string,
+    description?: string,
+    updateId?: string,
+    currentUser?: any,
+  ): Promise<Evidence> {
+    const access = await this.validateAccessToFinding(findingId, currentUser);
+
+    const evidence = new this.evidenceModel({
+      evidenceType: "LINK",
+      filename: description?.trim() || this.labelFromUrl(url),
+      externalUrl: url,
       findingId: this.toObjectId(findingId),
       updateId: this.toObjectId(updateId),
       uploadedBy: this.toObjectId(uploadedBy),
@@ -150,9 +256,19 @@ export class EvidenceService {
     await evidence.save();
 
     this.logger.log(
-      `Evidencia subida: ${file.originalname} (${file.size} bytes) para hallazgo ${findingId}`,
+      `Evidencia de tipo enlace agregada para hallazgo ${findingId}: ${url}`,
     );
     return evidence;
+  }
+
+  /** Genera una etiqueta legible a partir de la URL cuando no hay descripción */
+  private labelFromUrl(url: string): string {
+    try {
+      const { hostname } = new URL(url);
+      return `Enlace externo (${hostname})`;
+    } catch {
+      return "Enlace externo";
+    }
   }
 
   /**
@@ -285,6 +401,12 @@ export class EvidenceService {
       await this.validateAccessToFinding(String(evidence.findingId), currentUser);
     }
 
+    if (evidence.evidenceType === "LINK" || !evidence.filePath) {
+      throw new BadRequestException(
+        "Esta evidencia es un enlace externo, no un archivo — ábrelo directamente desde su URL",
+      );
+    }
+
     // Verificar que el archivo existe en disco
     if (!fs.existsSync(evidence.filePath)) {
       this.logger.error(`Archivo no encontrado en disco: ${evidence.filePath}`);
@@ -307,17 +429,19 @@ export class EvidenceService {
       await this.validateAccessToFinding(String(evidence.findingId), currentUser);
     }
 
-    // Eliminar archivo físico
-    try {
-      if (fs.existsSync(evidence.filePath)) {
-        await unlinkAsync(evidence.filePath);
-      } else {
-        this.logger.warn(
-          `Archivo fisico no encontrado al eliminar evidencia: ${evidence.filePath}`,
-        );
+    // Eliminar archivo físico (no aplica a evidencias de tipo LINK, no tienen archivo)
+    if (evidence.evidenceType !== "LINK") {
+      try {
+        if (evidence.filePath && fs.existsSync(evidence.filePath)) {
+          await unlinkAsync(evidence.filePath);
+        } else {
+          this.logger.warn(
+            `Archivo fisico no encontrado al eliminar evidencia: ${evidence.filePath}`,
+          );
+        }
+      } catch (error) {
+        this.logger.error(`Error eliminando archivo: ${error.message}`);
       }
-    } catch (error) {
-      this.logger.error(`Error eliminando archivo: ${error.message}`);
     }
 
     // Eliminar registro

@@ -33,6 +33,7 @@ import { FindingService } from '../../../core/services/finding.service';
 import { ProjectService } from '../../../core/services/project.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { BulkImportDialogComponent } from '../bulk-import-dialog/bulk-import-dialog.component';
+import { matchesSearchTerm } from '../../../shared/utils/search-utils';
 import { environment } from '../../../../environments/environment';
 
 /**
@@ -70,85 +71,113 @@ import { environment } from '../../../../environments/environment';
     template: `
     <div class="list-page ui-stack">
       <header class="ui-screen-toolbar">
-        <h1 class="ui-screen-title">Hallazgos</h1>
+        <div class="ui-cluster">
+          @if (isClientOnlyView()) {
+            <button mat-icon-button routerLink="/clients" aria-label="Volver a clientes" matTooltip="Volver a Clientes">
+              <mat-icon aria-hidden="true">arrow_back</mat-icon>
+            </button>
+          }
+          <h1 class="ui-screen-title">Hallazgos</h1>
+        </div>
       </header>
+
+      @if (isClientOnlyView()) {
+        <div class="active-filter-banner">
+          <mat-icon aria-hidden="true">filter_alt</mat-icon>
+          <span>Mostrando hallazgos de: <strong>{{ clientFilterName() }}</strong></span>
+          <button mat-button type="button" (click)="clearClientFilter()">
+            Ver todos los hallazgos
+          </button>
+        </div>
+      }
 
       <section class="ui-data-panel" aria-label="Filtros y resumen">
           <div class="finding-toolbar ui-cluster ui-cluster--between">
-            <div class="ui-cluster">
-              <button mat-raised-button color="primary" type="button" routerLink="/findings/new">
-                <mat-icon aria-hidden="true">add</mat-icon>
-                Nuevo hallazgo
-              </button>
-
-              @if (canImport()) {
-                <button mat-stroked-button color="primary" type="button" (click)="openImportDialog()"
-                        matTooltip="Importar hallazgos desde CSV o Excel">
-                  <mat-icon aria-hidden="true">upload_file</mat-icon>
-                  Importar CSV
+            @if (!isClientOnlyView()) {
+              <div class="ui-cluster">
+                <button mat-raised-button color="primary" type="button" routerLink="/findings/new">
+                  <mat-icon aria-hidden="true">add</mat-icon>
+                  Nuevo hallazgo
                 </button>
-              }
 
-              @if (selection.hasValue()) {
+                @if (canImport()) {
+                  <button mat-stroked-button color="primary" type="button" (click)="openImportDialog()"
+                          matTooltip="Importar hallazgos desde CSV o Excel">
+                    <mat-icon aria-hidden="true">upload_file</mat-icon>
+                    Importar CSV
+                  </button>
+                }
+
+                @if (selection.hasValue()) {
+                  <button mat-raised-button color="warn" type="button" (click)="bulkClose()">
+                    <mat-icon aria-hidden="true">done_all</mat-icon>
+                    Cerrar ({{ selection.selected.length }})
+                  </button>
+                }
+              </div>
+            } @else if (selection.hasValue()) {
+              <div class="ui-cluster">
                 <button mat-raised-button color="warn" type="button" (click)="bulkClose()">
                   <mat-icon aria-hidden="true">done_all</mat-icon>
                   Cerrar ({{ selection.selected.length }})
                 </button>
-              }
-            </div>
-            
+              </div>
+            }
+
             <div class="finding-filters ui-cluster">
               <mat-form-field appearance="outline" class="filter-field">
                 <mat-label>Buscar</mat-label>
-                <input matInput [ngModel]="searchTerm()" 
+                <input matInput [ngModel]="searchTerm()"
                        (ngModelChange)="searchTerm.set($event); applyFilters()"
-                       placeholder="Código, título o CVE...">
+                       placeholder="Código, título, descripción, CVE, activo, tag o creador...">
                 <mat-icon matSuffix>search</mat-icon>
               </mat-form-field>
 
-              <mat-form-field appearance="outline" class="filter-field">
-                <mat-label>Cliente</mat-label>
-                <mat-select [ngModel]="clientFilter()" (selectionChange)="onClientChange($event.value)">
-                  <mat-option value="">Todos</mat-option>
-                  @for (client of clients(); track client._id) {
-                    <mat-option [value]="client._id">{{ client.name }}</mat-option>
-                  }
-                </mat-select>
-              </mat-form-field>
+              @if (!isClientOnlyView()) {
+                <mat-form-field appearance="outline" class="filter-field">
+                  <mat-label>Cliente</mat-label>
+                  <mat-select [ngModel]="clientFilter()" (selectionChange)="onClientChange($event.value)">
+                    <mat-option value="">Todos</mat-option>
+                    @for (client of clients(); track client._id) {
+                      <mat-option [value]="client._id">{{ client.name }}</mat-option>
+                    }
+                  </mat-select>
+                </mat-form-field>
 
-              <mat-form-field appearance="outline" class="filter-field">
-                <mat-label>Proyecto</mat-label>
-                <mat-select [ngModel]="projectFilter()" (selectionChange)="onProjectChange($event.value)" [disabled]="!clientFilter()">
-                  <mat-option value="">Todos</mat-option>
-                  @for (project of projects(); track project._id) {
-                    <mat-option [value]="project._id">{{ project.name }}</mat-option>
-                  }
-                </mat-select>
-              </mat-form-field>
-              
-              <mat-form-field appearance="outline" class="filter-field">
-                <mat-label>Severidad</mat-label>
-                <mat-select [ngModel]="severityFilter()" (ngModelChange)="severityFilter.set($event); applyFilters()">
-                  <mat-option value="">Todas</mat-option>
-                  <mat-option value="CRITICAL">Crítica</mat-option>
-                  <mat-option value="HIGH">Alta</mat-option>
-                  <mat-option value="MEDIUM">Media</mat-option>
-                  <mat-option value="LOW">Baja</mat-option>
-                  <mat-option value="INFO">Informativa</mat-option>
-                </mat-select>
-              </mat-form-field>
-              
-              <mat-form-field appearance="outline" class="filter-field">
-                <mat-label>Estado</mat-label>
-                <mat-select [ngModel]="statusFilter()" (ngModelChange)="statusFilter.set($event); applyFilters()">
-                  <mat-option value="">Todos</mat-option>
-                  <mat-option value="OPEN">Abierto</mat-option>
-                  <mat-option value="IN_PROGRESS">En Progreso</mat-option>
-                  <mat-option value="RETEST">Retest</mat-option>
-                  <mat-option value="CLOSED">Cerrado</mat-option>
-                </mat-select>
-              </mat-form-field>
-              
+                <mat-form-field appearance="outline" class="filter-field">
+                  <mat-label>Proyecto</mat-label>
+                  <mat-select [ngModel]="projectFilter()" (selectionChange)="onProjectChange($event.value)" [disabled]="!clientFilter()">
+                    <mat-option value="">Todos</mat-option>
+                    @for (project of projects(); track project._id) {
+                      <mat-option [value]="project._id">{{ project.name }}</mat-option>
+                    }
+                  </mat-select>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline" class="filter-field">
+                  <mat-label>Severidad</mat-label>
+                  <mat-select [ngModel]="severityFilter()" (ngModelChange)="severityFilter.set($event); applyFilters()">
+                    <mat-option value="">Todas</mat-option>
+                    <mat-option value="CRITICAL">Crítica</mat-option>
+                    <mat-option value="HIGH">Alta</mat-option>
+                    <mat-option value="MEDIUM">Media</mat-option>
+                    <mat-option value="LOW">Baja</mat-option>
+                    <mat-option value="INFO">Informativa</mat-option>
+                  </mat-select>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline" class="filter-field">
+                  <mat-label>Estado</mat-label>
+                  <mat-select [ngModel]="statusFilter()" (ngModelChange)="statusFilter.set($event); applyFilters()">
+                    <mat-option value="">Todos</mat-option>
+                    <mat-option value="OPEN">Abierto</mat-option>
+                    <mat-option value="IN_PROGRESS">En Progreso</mat-option>
+                    <mat-option value="RETEST">Retest</mat-option>
+                    <mat-option value="CLOSED">Cerrado</mat-option>
+                  </mat-select>
+                </mat-form-field>
+              }
+
               <button mat-icon-button type="button" (click)="loadFindings()" matTooltip="Actualizar lista" aria-label="Actualizar lista">
                 <mat-icon aria-hidden="true">refresh</mat-icon>
               </button>
@@ -337,6 +366,22 @@ import { environment } from '../../../../environments/environment';
     </div>
   `,
     styles: [`
+    .active-filter-banner {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      margin-bottom: 12px;
+      background: #e3f2fd;
+      color: #0d47a1;
+      border-radius: 8px;
+      font-size: 14px;
+    }
+
+    .active-filter-banner button {
+      margin-left: auto;
+    }
+
     .finding-toolbar {
       align-items: flex-start;
       gap: 1rem;
@@ -517,7 +562,13 @@ export class FindingListComponent implements OnInit {
   statusFilter = signal('');
   clientFilter = signal('');
   projectFilter = signal('');
-  
+
+  // Vista simplificada al llegar filtrado solo por cliente (ej. desde Clientes)
+  isClientOnlyView = computed(() => !!this.clientFilter() && !this.projectFilter());
+  clientFilterName = computed(() =>
+    this.clients().find(c => c?._id === this.clientFilter())?.name || 'Cliente'
+  );
+
   clients = signal<any[]>([]);
   projects = signal<any[]>([]);
   
@@ -583,9 +634,23 @@ export class FindingListComponent implements OnInit {
     this.loadFindings();
     this.loadClients();
 
-    // Soporte para filtros por cliente vía query param (ej. /findings?clientId=...)
+    // Soporte para filtros por cliente/proyecto vía query param
+    // (ej. /findings?projectId=...&clientId=... al venir desde el detalle de un proyecto)
     const clientIdFromQuery = this.route.snapshot.queryParamMap.get('clientId');
-    if (clientIdFromQuery) {
+    const projectIdFromQuery = this.route.snapshot.queryParamMap.get('projectId');
+
+    if (projectIdFromQuery) {
+      this.projectFilter.set(projectIdFromQuery);
+      if (clientIdFromQuery) {
+        this.clientFilter.set(clientIdFromQuery);
+        this.projectService.loadProjects({ clientId: clientIdFromQuery }).subscribe(projects => {
+          this.projects.set(projects);
+          this.applyFilters();
+        });
+      } else {
+        this.applyFilters();
+      }
+    } else if (clientIdFromQuery) {
       this.onClientChange(clientIdFromQuery);
     }
     const severityFromQuery = this.route.snapshot.queryParamMap.get('severity');
@@ -611,7 +676,7 @@ export class FindingListComponent implements OnInit {
     this.clientFilter.set(clientId);
     this.projectFilter.set('');
     this.projects.set([]);
-    
+
     if (clientId) {
       this.projectService.loadProjects({ clientId }).subscribe(projects => {
         this.projects.set(projects);
@@ -620,6 +685,11 @@ export class FindingListComponent implements OnInit {
     } else {
       this.applyFilters();
     }
+  }
+
+  clearClientFilter(): void {
+    this.onClientChange('');
+    void this.router.navigate(['/findings']);
   }
 
   onProjectChange(projectId: string) {
@@ -639,12 +709,23 @@ export class FindingListComponent implements OnInit {
     let findings = this.findingService.findings();
     
     if (this.searchTerm()) {
-      const term = this.searchTerm().toLowerCase();
-      findings = findings.filter(f => 
-        f.code?.toLowerCase().includes(term) ||
-        f.title?.toLowerCase().includes(term) ||
-        f.cweId?.toLowerCase().includes(term)
-      );
+      const term = this.searchTerm();
+      findings = findings.filter(f => {
+        const createdBy = typeof f.createdBy === 'string' ? null : f.createdBy;
+        const createdByName = createdBy ? `${createdBy.firstName} ${createdBy.lastName}` : undefined;
+        return matchesSearchTerm(
+          term,
+          f.code,
+          f.internal_code,
+          f.title,
+          f.description,
+          f.cweId,
+          f.cve_id,
+          f.tags,
+          f.affectedAssets,
+          createdByName,
+        );
+      });
     }
     
     if (this.severityFilter()) {
@@ -660,9 +741,10 @@ export class FindingListComponent implements OnInit {
         const pId = typeof f.projectId === 'string' ? f.projectId : f.projectId?._id;
         return pId === this.projectFilter();
       });
-    } else if (this.clientFilter() && this.projects().length > 0) {
-      // Filter by client ONLY if we have loaded projects
-      // Otherwise, don't apply client filter (avoid empty list)
+    } else if (this.clientFilter()) {
+      // Filtra siempre por los proyectos del cliente, incluso si aún no
+      // terminaron de cargar o el cliente no tiene ninguno (arreglo vacío):
+      // en ambos casos el resultado correcto es "sin hallazgos", nunca "todos".
       const clientProjectIds = this.projects().map(p => p._id);
       findings = findings.filter(f => {
         const pId = typeof f.projectId === 'string' ? f.projectId : f.projectId?._id;

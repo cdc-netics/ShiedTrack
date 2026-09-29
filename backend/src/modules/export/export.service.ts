@@ -127,8 +127,14 @@ export class ExportService {
       }
     }
 
+    // 4. Evidencias asociadas, en el mismo orden de numeración (#1 = más antigua) que
+    // usa la pestaña Evidencias del frontend
+    const evidences = await this.evidenceModel
+      .find({ findingId: finding._id })
+      .sort({ createdAt: 1 });
+
     // If all checks pass, generate the PDF report
-    return this.pdfService.generateFindingReport(finding);
+    return this.pdfService.generateFindingReport(finding, evidences, project);
   }
 
   /**
@@ -150,8 +156,10 @@ export class ExportService {
 
     // 2. Aplicar filtros opcionales
     if (filters.projectId) query.projectId = this.toObjectId(filters.projectId);
-    if (filters.status) query.status = filters.status;
     if (filters.severity) query.severity = filters.severity;
+    // Por defecto solo se exportan hallazgos vigentes (no cerrados); si se pide
+    // un estado explícito (incluido CLOSED) se respeta tal cual.
+    query.status = filters.status || { $ne: FindingStatus.CLOSED };
 
     // Si es un rol restringido (AREA_ADMIN, ANALYST), solo ve sus áreas
     if (this.isAreaRestrictedUser(currentUser) && currentUser.areaIds?.length > 0) {
@@ -297,7 +305,8 @@ export class ExportService {
     // Obtener hallazgos del proyecto
     // IMPORTANT: Usar project._id en lugar del string para que la query funcione con lean()
     const findings = await this.findingModel
-      .find({ projectId: project._id })
+      .find({ projectId: project._id, status: { $ne: FindingStatus.CLOSED } })
+      .setOptions({ skipTenantFilter: true })
       .populate("assignedTo", "firstName lastName")
       .populate("createdBy", "firstName lastName")
       .lean();
@@ -435,7 +444,8 @@ export class ExportService {
     // IMPORTANT: Mongoose no convierte automáticamente string a ObjectId con lean()
     // Debemos convertirlo explícitamente
     const findings = await this.findingModel
-      .find({ projectId: project._id })
+      .find({ projectId: project._id, status: { $ne: FindingStatus.CLOSED } })
+      .setOptions({ skipTenantFilter: true })
       .populate("assignedTo", "firstName lastName")
       .lean();
 
@@ -508,7 +518,8 @@ export class ExportService {
     }
 
     const findings = await this.findingModel
-      .find({ projectId })
+      .find({ projectId, status: { $ne: FindingStatus.CLOSED } })
+      .setOptions({ skipTenantFilter: true })
       .populate("assignedTo createdBy")
       .lean();
 
@@ -572,9 +583,9 @@ export class ExportService {
     const excelStream = await this.exportProjectToExcel(projectId, currentUser);
     archive.append(excelStream, { name: `${project.name}/hallazgos.xlsx` });
 
-    // Agregar evidencias
+    // Agregar evidencias (solo de hallazgos vigentes, igual que el Excel del ZIP)
     const findings = await this.findingModel
-      .find({ projectId })
+      .find({ projectId, status: { $ne: FindingStatus.CLOSED } })
       .select("_id code")
       .lean();
     const findingIds = findings.map((f: any) => f._id);
@@ -645,9 +656,9 @@ export class ExportService {
         name: `${client.name}/${project.name}/findings.xlsx`,
       });
 
-      // Agregar evidencias si existen
+      // Agregar evidencias si existen (solo de hallazgos vigentes)
       const projectFindings = await this.findingModel
-        .find({ projectId: project._id })
+        .find({ projectId: project._id, status: { $ne: FindingStatus.CLOSED } })
         .select("_id code")
         .lean();
       const projectFindingIds = projectFindings.map((f: any) => f._id);
@@ -739,7 +750,7 @@ export class ExportService {
     this.logger.log(`🔍 Buscando hallazgos en ${projectIds.length} proyectos`);
 
     const findings = await this.findingModel
-      .find({ projectId: { $in: projectIds } })
+      .find({ projectId: { $in: projectIds }, status: { $ne: FindingStatus.CLOSED } })
       .populate("assignedTo", "firstName lastName")
       .lean();
 

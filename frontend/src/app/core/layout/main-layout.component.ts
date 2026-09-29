@@ -15,6 +15,8 @@ import { MatExpansionModule } from '@angular/material/expansion';
 import { AuthService } from '../services/auth.service';
 import { ThemeService } from '../services/theme.service';
 import { environment } from '../../../environments/environment';
+import { UserRole } from '../../shared/enums';
+import { roleSatisfies } from '../../shared/utils/rbac';
 
 @Component({
   standalone: true,
@@ -46,23 +48,11 @@ export class MainLayoutComponent implements OnInit, AfterViewInit {
   ) {}
 
   canAccessNotifications(): boolean {
-    const role = this.authService.currentUser()?.role;
-    return (
-      role === 'OWNER' ||
-      role === 'PLATFORM_ADMIN' ||
-      role === 'CLIENT_ADMIN'
-    );
+    return roleSatisfies(UserRole.CLIENT_ADMIN, this.authService.currentUser()?.role);
   }
 
   canManageUsers(): boolean {
-    const role = this.authService.currentUser()?.role;
-    return (
-      role === 'OWNER' ||
-      role === 'PLATFORM_ADMIN' ||
-      role === 'ADMIN_AREA' ||
-      role === 'CLIENT_ADMIN' ||
-      role === 'AREA_ADMIN'
-    );
+    return roleSatisfies(UserRole.CLIENT_ADMIN, this.authService.currentUser()?.role);
   }
 
   userFullName(): string {
