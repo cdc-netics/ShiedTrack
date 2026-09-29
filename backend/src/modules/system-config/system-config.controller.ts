@@ -21,6 +21,7 @@ import { SystemConfigService } from "./system-config.service";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { RolesGuard } from "../auth/guards/roles.guard";
 import { Roles } from "../auth/decorators/roles.decorator";
+import { Public } from "../auth/decorators/public.decorator";
 import { UserRole } from "../../common/enums";
 import { diskStorage } from "multer";
 import { extname } from "path";
@@ -86,9 +87,11 @@ export class SystemConfigController {
   // Branding Configuration Endpoints
   // ============================================================================
 
+  @Public()
   @Get("branding")
-  @Roles(UserRole.OWNER, UserRole.PLATFORM_ADMIN)
-  @ApiOperation({ summary: "Obtener configuración de branding" })
+  @ApiOperation({
+    summary: "Obtener configuración de branding (público, sin login)",
+  })
   async getBranding() {
     return this.systemConfigService.getBrandingConfig();
   }

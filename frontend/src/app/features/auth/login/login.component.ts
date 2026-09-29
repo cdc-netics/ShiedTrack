@@ -129,13 +129,21 @@ const DEV_ADMIN_PASSWORD = 'Admin123!';
               <div class="error-message" role="alert">{{ error }}</div>
             }
 
-            <button mat-raised-button color="primary" type="submit" 
+            @if (successMessage) {
+              <div class="success-message" role="status">{{ successMessage }}</div>
+            }
+
+            <button mat-raised-button color="primary" type="submit"
                     [disabled]="loading || !loginForm.valid" class="full-width login-submit">
               @if (loading) {
                 <mat-spinner diameter="20"></mat-spinner>
               } @else {
                 Iniciar Sesión
               }
+            </button>
+
+            <button type="button" class="forgot-password-link" (click)="openForgotPassword()">
+              ¿Olvidaste tu contraseña?
             </button>
           </form>
         </mat-card-content>
@@ -148,7 +156,7 @@ const DEV_ADMIN_PASSWORD = 'Admin123!';
             <h2 id="password-change-title">Cambiar contraseña</h2>
             <p class="password-guidance">
               Por seguridad debes definir una nueva contraseña. Se sugiere usar al menos una letra mayúscula,
-              un número y un carácter especial como -, . o *.
+              un número y un carácter especial (ej: ! @ # $ % & - . * entre otros).
             </p>
 
             <mat-form-field appearance="outline" class="full-width">
@@ -188,6 +196,98 @@ const DEV_ADMIN_PASSWORD = 'Admin123!';
                 Guardar
               }
             </button>
+          </section>
+        </div>
+      }
+
+      @if (showForgotPasswordDialog) {
+        <div class="password-change-backdrop" role="dialog" aria-modal="true" aria-labelledby="forgot-password-title">
+          <section class="password-change-dialog">
+            @if (forgotPasswordStep === 'email') {
+              <h2 id="forgot-password-title">Recuperar contraseña</h2>
+              <p class="password-guidance">
+                Ingresa el correo asociado a tu cuenta. Si está registrado, te enviaremos un código de verificación.
+              </p>
+
+              <mat-form-field appearance="outline" class="full-width">
+                <mat-label>Correo electrónico</mat-label>
+                <input matInput type="email" [(ngModel)]="forgotEmail" name="forgotEmail" autocomplete="username">
+              </mat-form-field>
+
+              @if (forgotPasswordError) {
+                <div class="error-message" role="alert">{{ forgotPasswordError }}</div>
+              }
+              @if (forgotPasswordInfo) {
+                <div class="success-message" role="status">{{ forgotPasswordInfo }}</div>
+              }
+
+              <div class="dialog-actions">
+                <button mat-button type="button" (click)="closeForgotPassword()">Cancelar</button>
+                <button mat-raised-button color="primary" (click)="submitForgotEmail()"
+                        [disabled]="forgotPasswordLoading || !forgotEmail">
+                  @if (forgotPasswordLoading) {
+                    <mat-spinner diameter="20"></mat-spinner>
+                  } @else {
+                    Enviar código
+                  }
+                </button>
+              </div>
+            } @else {
+              <h2 id="forgot-password-title">Ingresa el código</h2>
+              <p class="password-guidance">
+                Si <strong>{{ forgotEmail }}</strong> está registrado, te enviamos un código de verificación.
+                Ingrésalo junto con tu nueva contraseña.
+              </p>
+
+              <mat-form-field appearance="outline" class="full-width">
+                <mat-label>Código de verificación</mat-label>
+                <input matInput [(ngModel)]="resetCode" name="resetCode" maxlength="6"
+                       inputmode="numeric" autocomplete="one-time-code">
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" class="full-width">
+                <mat-label>Nueva contraseña</mat-label>
+                <input matInput [type]="showResetNewPassword ? 'text' : 'password'"
+                       [(ngModel)]="resetNewPassword" name="resetNewPassword" autocomplete="new-password">
+                <button mat-icon-button matSuffix type="button" (click)="showResetNewPassword = !showResetNewPassword"
+                        [attr.aria-label]="showResetNewPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'">
+                  <mat-icon>{{ showResetNewPassword ? 'visibility_off' : 'visibility' }}</mat-icon>
+                </button>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" class="full-width">
+                <mat-label>Confirmar nueva contraseña</mat-label>
+                <input matInput [type]="showResetConfirmPassword ? 'text' : 'password'"
+                       [(ngModel)]="resetConfirmPassword" name="resetConfirmPassword" autocomplete="new-password">
+                <button mat-icon-button matSuffix type="button" (click)="showResetConfirmPassword = !showResetConfirmPassword"
+                        [attr.aria-label]="showResetConfirmPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'">
+                  <mat-icon>{{ showResetConfirmPassword ? 'visibility_off' : 'visibility' }}</mat-icon>
+                </button>
+              </mat-form-field>
+
+              @if (forgotPasswordError) {
+                <div class="error-message" role="alert">{{ forgotPasswordError }}</div>
+              }
+              @if (forgotPasswordInfo) {
+                <div class="success-message" role="status">{{ forgotPasswordInfo }}</div>
+              }
+
+              <button mat-raised-button color="primary" class="full-width login-submit"
+                      (click)="submitResetCode()" [disabled]="forgotPasswordLoading">
+                @if (forgotPasswordLoading) {
+                  <mat-spinner diameter="20"></mat-spinner>
+                } @else {
+                  Restablecer contraseña
+                }
+              </button>
+
+              <div class="dialog-actions">
+                <button mat-button type="button" (click)="forgotPasswordStep = 'email'">Volver</button>
+                <button mat-button type="button" (click)="resendCode()" [disabled]="forgotPasswordLoading">
+                  Reenviar código
+                </button>
+              </div>
+            }
           </section>
         </div>
       }
@@ -365,8 +465,43 @@ const DEV_ADMIN_PASSWORD = 'Admin123!';
       font-size: 14px;
     }
 
+    .success-message {
+      color: #166534;
+      background: #f0fdf4;
+      padding: 12px;
+      border-radius: 6px;
+      margin-bottom: 16px;
+      text-align: center;
+      font-size: 14px;
+    }
+
     .login-submit {
       min-height: 48px;
+    }
+
+    .forgot-password-link {
+      display: block;
+      width: 100%;
+      margin-top: 12px;
+      background: none;
+      border: none;
+      color: #667eea;
+      font-size: 13px;
+      font-weight: 500;
+      text-align: center;
+      cursor: pointer;
+      padding: 4px;
+    }
+
+    .forgot-password-link:hover {
+      text-decoration: underline;
+    }
+
+    .dialog-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 12px;
     }
 
     .password-change-backdrop {
@@ -421,6 +556,19 @@ export class LoginComponent implements AfterViewInit {
   showConfirmPassword = false;
   passwordChangeLoading = false;
   passwordChangeError = '';
+  successMessage = '';
+
+  showForgotPasswordDialog = false;
+  forgotPasswordStep: 'email' | 'code' = 'email';
+  forgotEmail = '';
+  resetCode = '';
+  resetNewPassword = '';
+  resetConfirmPassword = '';
+  showResetNewPassword = false;
+  showResetConfirmPassword = false;
+  forgotPasswordLoading = false;
+  forgotPasswordError = '';
+  forgotPasswordInfo = '';
 
   particleArray = new Array(30); // 30 partículas
 
@@ -595,7 +743,7 @@ export class LoginComponent implements AfterViewInit {
     this.passwordChangeError = '';
 
     if (!this.isStrongSuggestedPassword(this.newPassword)) {
-      this.passwordChangeError = 'La contraseña debe tener al menos 6 caracteres, una mayúscula, un número y un carácter especial como -, . o *.';
+      this.passwordChangeError = 'La contraseña debe tener al menos 6 caracteres, una mayúscula, un número y un carácter especial (ej: ! @ # $ % & - . * entre otros).';
       return;
     }
 
@@ -622,8 +770,85 @@ export class LoginComponent implements AfterViewInit {
     });
   }
 
+  openForgotPassword(): void {
+    this.forgotEmail = this.email;
+    this.forgotPasswordStep = 'email';
+    this.resetCode = '';
+    this.resetNewPassword = '';
+    this.resetConfirmPassword = '';
+    this.forgotPasswordError = '';
+    this.forgotPasswordInfo = '';
+    this.successMessage = '';
+    this.showForgotPasswordDialog = true;
+  }
+
+  closeForgotPassword(): void {
+    this.showForgotPasswordDialog = false;
+  }
+
+  submitForgotEmail(): void {
+    if (!this.forgotEmail) return;
+
+    this.forgotPasswordError = '';
+    this.forgotPasswordLoading = true;
+    this.authService.forgotPassword(this.forgotEmail).subscribe({
+      next: (res) => {
+        this.forgotPasswordLoading = false;
+        this.forgotPasswordInfo = res.message;
+        this.forgotPasswordStep = 'code';
+      },
+      error: (err) => {
+        this.forgotPasswordLoading = false;
+        this.forgotPasswordError = err?.error?.message || 'No se pudo procesar la solicitud.';
+      }
+    });
+  }
+
+  resendCode(): void {
+    this.forgotPasswordError = '';
+    this.forgotPasswordInfo = '';
+    this.submitForgotEmail();
+  }
+
+  submitResetCode(): void {
+    this.forgotPasswordError = '';
+
+    if (!this.resetCode || this.resetCode.trim().length !== 6) {
+      this.forgotPasswordError = 'Ingresa el código de 6 dígitos que recibiste por correo.';
+      return;
+    }
+
+    if (!this.isStrongSuggestedPassword(this.resetNewPassword)) {
+      this.forgotPasswordError = 'La contraseña debe tener al menos 6 caracteres, una mayúscula, un número y un carácter especial (ej: ! @ # $ % & - . * entre otros).';
+      return;
+    }
+
+    if (this.resetNewPassword !== this.resetConfirmPassword) {
+      this.forgotPasswordError = 'Las contraseñas no coinciden.';
+      return;
+    }
+
+    this.forgotPasswordLoading = true;
+    this.authService.resetPasswordWithCode(this.forgotEmail, this.resetCode.trim(), this.resetNewPassword)
+      .subscribe({
+        next: () => {
+          this.forgotPasswordLoading = false;
+          this.showForgotPasswordDialog = false;
+          this.email = this.forgotEmail;
+          this.password = '';
+          this.error = '';
+          this.successMessage = 'Contraseña actualizada. Ya puedes iniciar sesión con tu nueva contraseña.';
+        },
+        error: (err) => {
+          this.forgotPasswordLoading = false;
+          this.forgotPasswordError = err?.error?.message || 'No se pudo restablecer la contraseña.';
+        }
+      });
+  }
+
   private isStrongSuggestedPassword(value: string): boolean {
-    return value.length >= 6 && /[A-Z]/.test(value) && /\d/.test(value) && /[-.*]/.test(value);
+    // Carácter especial = cualquiera que no sea letra, número ni espacio (! " # $ % & / ( ) = ? - . * + etc.)
+    return value.length >= 6 && /[A-Z]/.test(value) && /\d/.test(value) && /[^A-Za-z0-9\s]/.test(value);
   }
 }
 

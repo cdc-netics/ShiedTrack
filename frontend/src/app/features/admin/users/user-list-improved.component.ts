@@ -21,6 +21,8 @@ import { environment } from '../../../../environments/environment';
 import { AuthService } from '../../../core/services/auth.service';
 import { UserAssignmentDialogComponent } from './user-assignment-dialog.component';
 import { UserDialogComponent } from './user-dialog.component';
+import { UserRole } from '../../../shared/enums';
+import { roleSatisfies } from '../../../shared/utils/rbac';
 
 @Component({
   standalone: true,
@@ -391,11 +393,13 @@ export class UserListImprovedComponent implements OnInit {
 
   canCreateRole(role: string): boolean {
     const currentRole = this.authService.currentUser()?.role;
-    const adminAreaRoles = ['ADMIN_AREA', 'CLIENT_ADMIN', 'AREA_ADMIN'];
-    if (adminAreaRoles.includes(currentRole ?? '')) {
-      return ['NORMAL_USER', 'AUDITOR'].includes(role);
+    if (roleSatisfies(UserRole.OWNER, currentRole)) {
+      return true;
     }
-    return true;
+    if (roleSatisfies(UserRole.ADMIN_AREA, currentRole)) {
+      return role === UserRole.NORMAL_USER || role === UserRole.AUDITOR;
+    }
+    return false;
   }
 
   users = signal<User[]>([]);

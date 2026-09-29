@@ -25,8 +25,8 @@ services:
           'mongosh --quiet --eval "db.adminCommand({ ping: 1 })" || mongosh -u "$$MONGO_INITDB_ROOT_USERNAME" -p "$$MONGO_INITDB_ROOT_PASSWORD" --authenticationDatabase admin --quiet --eval "db.adminCommand({ ping: 1 })"',
         ]
       start_period: 45s
-      interval: 10s
-      timeout: 10s
+      interval: 15s
+      timeout: 30s
       retries: 12
     networks:
       - shieldtrack-network
@@ -53,8 +53,12 @@ services:
       CORS_ORIGINS: "http://localhost,http://127.0.0.1,http://localhost:${FRONTEND_PORT:-80},http://localhost:4200,http://127.0.0.1:4200"
       SKIP_LOCAL_MONGO_DIAGNOSTICS: "true"
     volumes:
-      - backups_data:/app/backups
-      - evidence_uploads:/app/uploads/evidence
+      # WORKDIR del backend en runtime es /app/backend (ver backend/Dockerfile),
+      # por lo que las rutas relativas "./backups" y "./uploads/evidence" del
+      # código resuelven ahí, no en /app. Los mounts deben apuntar a esas rutas
+      # reales o los archivos se pierden en cada recreación del contenedor.
+      - backups_data:/app/backend/backups
+      - evidence_uploads:/app/backend/uploads/evidence
     depends_on:
       mongodb:
         condition: service_healthy

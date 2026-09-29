@@ -70,6 +70,7 @@ export interface Project {
 export interface Finding {
   _id: string;
   code: string;
+  internal_code?: string;
   title: string;
   description: string;
   severity: string;
@@ -80,8 +81,11 @@ export interface Finding {
   closedAt?: Date | string;
   closedBy?: string | User;
   affectedAsset?: string;
+  affectedAssets?: string[];
   cvssScore?: number;
+  cvssVector?: string;
   cweId?: string;
+  cve_id?: string;
   tags: string[];
   assignedTo?: string | User;
   createdBy: string | User;

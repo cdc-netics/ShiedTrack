@@ -417,9 +417,14 @@ export class FindingService {
       currentUser,
     );
 
+    // El tenantId del hallazgo SIEMPRE se deriva del proyecto, nunca del contexto
+    // del usuario: un OWNER/PLATFORM_ADMIN con un tenant activo distinto al del
+    // proyecto (ej. tras cambiar de contexto) terminaba guardando el hallazgo con
+    // un tenantId que no coincidía con el del proyecto, y el hook pre-save fallaba
+    // con "Proyecto no encontrado para asignar prefijo de código".
     const currentTenantId =
-      this.getCurrentTenantId(currentUser) ||
-      this.resolveProjectTenantId(project);
+      this.resolveProjectTenantId(project) ||
+      this.getCurrentTenantId(currentUser);
 
     if (!currentTenantId) {
       throw new BadRequestException(
@@ -435,6 +440,10 @@ export class FindingService {
     if (dto.cvssScore !== undefined) {
       createPayload.cvss_score = dto.cvssScore;
       delete createPayload.cvssScore;
+    }
+    if (dto.cvssVector !== undefined) {
+      createPayload.cvss_vector = dto.cvssVector;
+      delete createPayload.cvssVector;
     }
 
     const finding = new this.findingModel({
@@ -607,6 +616,11 @@ export class FindingService {
     if (dto.cvssScore !== undefined) {
       (dto as any).cvss_score = dto.cvssScore;
       delete (dto as any).cvssScore;
+    }
+
+    if (dto.cvssVector !== undefined) {
+      (dto as any).cvss_vector = dto.cvssVector;
+      delete (dto as any).cvssVector;
     }
 
     if ((dto as any).projectId !== undefined) {

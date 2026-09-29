@@ -69,6 +69,16 @@ export class User extends Document {
   @Prop()
   lastLogin?: Date;
 
+  // Recuperación de contraseña por código enviado al correo
+  @Prop()
+  passwordResetCodeHash?: string;
+
+  @Prop()
+  passwordResetCodeExpiresAt?: Date;
+
+  @Prop()
+  passwordResetRequestedAt?: Date; // Throttle de reenvío
+
   // Timestamps automáticos: createdAt, updatedAt
   // Multi-tenant: lista de tenants permitidos para el usuario
   @Prop({ type: [Types.ObjectId], ref: "Tenant", default: [] })

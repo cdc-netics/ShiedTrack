@@ -20,6 +20,9 @@ export class AuthService {
   
   // Signal para el token
   private tokenSignal = signal<string | null>(null);
+
+  // Evita disparar /auth/profile dos veces en paralelo al iniciar la app
+  private profileLoading = false;
   
   // Computed signals para estado derivado
   public readonly currentUser = this.currentUserSignal.asReadonly();
@@ -54,14 +57,21 @@ export class AuthService {
    * Obtiene el perfil del usuario actual
    */
   private loadUserProfile(): void {
+    if (this.profileLoading) return; // Evita llamadas duplicadas (ej. constructor + authGuard en la misma carga)
+    this.profileLoading = true;
     this.http.get<User>(`${this.API_URL}/profile`)
       .subscribe({
-        next: (user) => this.currentUserSignal.set(user),
+        next: (user) => {
+          this.currentUserSignal.set(user);
+          this.profileLoading = false;
+        },
         error: (err) => {
-          console.error('Error cargando perfil:', err);
-          // Solo hacer logout si el token es inválido (401)
+          this.profileLoading = false;
+          // 401 = sesión vencida/inválida, es un flujo normal: cerrar sesión sin ruido en consola
           if (err.status === 401) {
             this.logout();
+          } else {
+            console.error('Error cargando perfil:', err);
           }
         }
       });
@@ -137,6 +147,26 @@ export class AuthService {
           this.currentUserSignal.set({ ...user, mfaEnabled: true });
         }
       })
+    );
+  }
+
+  /**
+   * Solicita el código de recuperación de contraseña por email
+   */
+  forgotPassword(email: string) {
+    return this.http.post<{ message: string }>(
+      `${this.API_URL}/forgot-password`,
+      { email }
+    );
+  }
+
+  /**
+   * Restablece la contraseña usando el código enviado por email
+   */
+  resetPasswordWithCode(email: string, code: string, newPassword: string) {
+    return this.http.post<{ message: string }>(
+      `${this.API_URL}/reset-password`,
+      { email, code, newPassword }
     );
   }
 

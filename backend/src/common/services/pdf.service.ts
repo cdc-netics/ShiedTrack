@@ -1,9 +1,10 @@
 import { Injectable, Logger } from "@nestjs/common";
 // @ts-ignore
 import PdfPrinter = require("pdfmake");
-import { TDocumentDefinitions } from "pdfmake/interfaces";
-import { createWriteStream } from "fs";
+import { TDocumentDefinitions, Content } from "pdfmake/interfaces";
+import { createWriteStream, promises as fsp } from "fs";
 import { join } from "path";
+import sharp from "sharp";
 
 @Injectable()
 export class PdfService {
@@ -53,60 +54,142 @@ export class PdfService {
   }
 
   /**
-   * Genera un PDF de un hallazgo individual
+   * Genera un PDF de un hallazgo individual, con todo el detalle técnico y la
+   * lista de evidencias (imágenes embebidas como miniatura; videos y enlaces
+   * externos se referencian por texto, ya que no se pueden "imprimir")
    */
-  async generateFindingReport(finding: any): Promise<Buffer> {
-    const docDefinition: TDocumentDefinitions = {
-      content: [
-        { text: "Reporte de Hallazgo de Seguridad", style: "header" },
-        { text: "\n" },
+  async generateFindingReport(
+    finding: any,
+    evidences: any[] = [],
+    project?: any,
+  ): Promise<Buffer> {
+    const infoRows: any[] = [
+      ["Código:", finding.code || "N/A"],
+      ["Código interno:", finding.internal_code || "N/A"],
+      [
+        "Severidad:",
         {
-          table: {
-            widths: ["30%", "70%"],
-            body: [
-              ["ID:", finding.code],
-              ["Título:", finding.title],
-              [
-                "Severidad:",
-                {
-                  text: finding.severity,
-                  color: this.getSeverityColor(finding.severity),
-                  bold: true,
-                },
-              ],
-              ["Estado:", finding.status],
-              ["CVSS:", finding.cvss_score || "N/A"],
-              [
-                "Activos Afectados:",
-                finding.affectedAssets?.join(", ") ||
-                  finding.affectedAsset ||
-                  "N/A",
-              ],
-            ],
-          },
+          text: finding.severity,
+          color: this.getSeverityColor(finding.severity),
+          bold: true,
         },
-        { text: "\nDescripción", style: "subheader" },
-        { text: finding.description || "Sin descripción" },
-
-        { text: "\nImpacto", style: "subheader" },
-        { text: finding.impact || "N/A" },
-
-        { text: "\nRecomendación", style: "subheader" },
-        { text: finding.recommendation || "N/A" },
-
-        { text: "\nReferencias", style: "subheader" },
-        finding.references?.length
-          ? { ul: finding.references }
-          : { text: "N/A" },
       ],
+    ];
+
+    if (finding.businessRisk) {
+      infoRows.push([
+        "Riesgo de Negocio:",
+        {
+          text: finding.businessRisk,
+          color: this.getSeverityColor(finding.businessRisk),
+          bold: true,
+        },
+      ]);
+    }
+
+    infoRows.push(["Estado:", finding.status]);
+
+    if (finding.status === "CLOSED") {
+      infoRows.push([
+        "Motivo de cierre:",
+        `${finding.closeReason || "N/A"}${finding.closedAt ? ` (${new Date(finding.closedAt).toLocaleDateString("es-CL")})` : ""}`,
+      ]);
+    }
+
+    infoRows.push(
+      ["CVSS Score:", finding.cvss_score ?? "N/A"],
+      ["Vector CVSS:", finding.cvss_vector || "N/A"],
+      ["CVE ID:", finding.cve_id || "N/A"],
+      ["CWE ID:", finding.cweId || "N/A"],
+      ["Origen de Detección:", finding.detection_source || "N/A"],
+      [
+        "Activos Afectados:",
+        finding.affectedAssets?.join(", ") || finding.affectedAsset || "N/A",
+      ],
+    );
+
+    if (project) {
+      infoRows.push([
+        "Proyecto:",
+        `${project.name || "N/A"}${project.clientId?.name ? ` — ${project.clientId.name}` : ""}`,
+      ]);
+    }
+
+    if (finding.createdAt) {
+      infoRows.push([
+        "Fecha de creación:",
+        new Date(finding.createdAt).toLocaleDateString("es-CL"),
+      ]);
+    }
+
+    const content: Content[] = [
+      { text: "Reporte de Hallazgo de Seguridad", style: "header" },
+      { text: finding.title, style: "subheader" },
+      { text: "\n" },
+      { table: { widths: ["30%", "70%"], body: infoRows } },
+
+      { text: "\nDescripción", style: "sectionHeader" },
+      { text: finding.description || "Sin descripción" },
+
+      { text: "\nImpacto", style: "sectionHeader" },
+      { text: finding.impact || "N/A" },
+    ];
+
+    if (finding.implications) {
+      content.push(
+        { text: "\nImplicancias", style: "sectionHeader" },
+        { text: finding.implications },
+      );
+    }
+
+    if (finding.riskJustification) {
+      content.push(
+        { text: "\nJustificación del Riesgo", style: "sectionHeader" },
+        { text: finding.riskJustification },
+      );
+    }
+
+    content.push(
+      { text: "\nRecomendación", style: "sectionHeader" },
+      { text: finding.recommendation || "N/A" },
+    );
+
+    if (finding.controls?.length) {
+      content.push(
+        { text: "\nControles (CIS/NIST/OWASP)", style: "sectionHeader" },
+        { ul: finding.controls },
+      );
+    }
+
+    if (finding.tags?.length) {
+      content.push(
+        { text: "\nTags", style: "sectionHeader" },
+        { text: finding.tags.join(", ") },
+      );
+    }
+
+    content.push(
+      { text: "\nReferencias", style: "sectionHeader" },
+      finding.references?.length ? { ul: finding.references } : { text: "N/A" },
+    );
+
+    content.push({
+      text: `\nEvidencias (${evidences.length})`,
+      style: "sectionHeader",
+    });
+    content.push(...(await this.buildEvidenceBlocks(evidences)));
+
+    const docDefinition: TDocumentDefinitions = {
+      content,
       styles: {
         header: {
-          fontSize: 22,
+          fontSize: 20,
           bold: true,
           alignment: "center",
-          margin: [0, 0, 0, 10],
+          margin: [0, 0, 0, 4],
         },
-        subheader: { fontSize: 16, bold: true, margin: [0, 10, 0, 5] },
+        subheader: { fontSize: 13, alignment: "center", color: "#555" },
+        sectionHeader: { fontSize: 14, bold: true, margin: [0, 8, 0, 4] },
       },
       defaultStyle: {
         font: "Roboto",
@@ -114,6 +197,85 @@ export class PdfService {
     };
 
     return this.createPdfBuffer(docDefinition);
+  }
+
+  /**
+   * Construye el bloque de cada evidencia para el PDF: las imágenes se embeben
+   * como miniatura (convertidas a PNG con sharp — el WebP que ahora usamos para
+   * comprimir no lo soporta nativamente pdfmake). Videos y enlaces externos no
+   * se pueden "imprimir", así que solo se referencian con una nota.
+   */
+  private async buildEvidenceBlocks(evidences: any[]): Promise<Content[]> {
+    if (!evidences.length) {
+      return [{ text: "No hay evidencias asociadas.", italics: true }];
+    }
+
+    const blocks: Content[] = [];
+    let index = 0;
+    for (const evidence of evidences) {
+      index++;
+      const label = `#${index} — ${evidence.filename || "Evidencia"}`;
+
+      if (evidence.evidenceType === "LINK") {
+        blocks.push({
+          text: [
+            { text: `${label}: `, bold: true },
+            {
+              text: evidence.externalUrl,
+              link: evidence.externalUrl,
+              color: "#1976d2",
+              decoration: "underline",
+            },
+            { text: "  (enlace externo)", italics: true, color: "#777" },
+          ],
+          margin: [0, 2, 0, 6],
+        });
+        continue;
+      }
+
+      const mimeType: string = evidence.mimeType || "";
+      if (mimeType.startsWith("image/")) {
+        const thumbnail = await this.tryBuildImageThumbnail(evidence.filePath);
+        if (thumbnail) {
+          blocks.push(
+            { text: label, bold: true, margin: [0, 4, 0, 2] },
+            { image: thumbnail, width: 260, margin: [0, 0, 0, 8] },
+          );
+          continue;
+        }
+      }
+
+      const isVideo = mimeType.startsWith("video/");
+      const note = isVideo
+        ? "[Video] — visualizar en la plataforma (no se incluye en el PDF)"
+        : "[Archivo] — descargar/visualizar en la plataforma";
+      blocks.push({
+        text: `${label} — ${note}`,
+        margin: [0, 2, 0, 6],
+      });
+    }
+
+    return blocks;
+  }
+
+  /** Lee el archivo de evidencia y lo convierte a PNG en miniatura (data URI) para pdfmake */
+  private async tryBuildImageThumbnail(
+    filePath?: string,
+  ): Promise<string | null> {
+    if (!filePath) return null;
+    try {
+      const buffer = await fsp.readFile(filePath);
+      const png = await sharp(buffer)
+        .resize({ width: 500, withoutEnlargement: true })
+        .png()
+        .toBuffer();
+      return `data:image/png;base64,${png.toString("base64")}`;
+    } catch (error) {
+      this.logger.warn(
+        `No se pudo generar la miniatura de evidencia "${filePath}" para el PDF: ${error.message}`,
+      );
+      return null;
+    }
   }
 
   /**

@@ -6,11 +6,33 @@ import {
   IsBoolean,
   IsIn,
   MinLength,
+  Matches,
   IsArray,
   IsMongoId,
 } from "class-validator";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { applyDecorators } from "@nestjs/common";
 import { UserRole } from "../../../common/enums";
+
+/**
+ * Requisitos de fortaleza de contraseña — deben coincidir exactamente con
+ * `isStrongSuggestedPassword()` en `frontend/src/app/features/auth/login/login.component.ts`
+ * (mayúscula + número + un carácter especial: cualquiera que no sea letra, número
+ * ni espacio, ej. ! @ # $ % & - . * +). El frontend ya valida esto antes de enviar,
+ * pero se repite aquí porque el backend nunca debe confiar únicamente en la
+ * validación del cliente.
+ */
+function IsStrongPassword() {
+  // Un solo regex con lookaheads en vez de 3 @Matches separados: class-validator
+  // agrupa los errores por nombre de validador ("matches"), así que 3 @Matches en el
+  // mismo campo se pisan entre sí y solo el último mensaje sobrevive en la respuesta.
+  return applyDecorators(
+    Matches(/^(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9\s]).+$/, {
+      message:
+        "La contraseña debe contener al menos una letra mayúscula, un número y un carácter especial (ej: ! @ # $ % & - . * entre otros)",
+    }),
+  );
+}
 
 /**
  * DTO para registro de nuevos usuarios
@@ -25,10 +47,12 @@ export class RegisterUserDto {
 
   @ApiProperty({
     example: "SecureP@ssw0rd",
-    description: "Contraseña del usuario (mínimo 6 caracteres)",
+    description:
+      "Contraseña del usuario (mínimo 6 caracteres, con mayúscula, número y carácter especial: ej. ! @ # $ % & - . * entre otros)",
   })
   @IsString()
   @MinLength(6, { message: "La contraseña debe tener al menos 6 caracteres" })
+  @IsStrongPassword()
   password: string;
 
   @ApiProperty({ example: "Juan", description: "Nombre del usuario" })
@@ -107,6 +131,41 @@ export class LoginDto {
 }
 
 /**
+ * DTO para solicitar código de recuperación de contraseña
+ */
+export class ForgotPasswordDto {
+  @ApiProperty({ example: "user@example.com" })
+  @IsEmail({}, { message: "Debe ser un email válido" })
+  email: string;
+}
+
+/**
+ * DTO para restablecer contraseña con el código enviado por email
+ */
+export class ResetPasswordDto {
+  @ApiProperty({ example: "user@example.com" })
+  @IsEmail({}, { message: "Debe ser un email válido" })
+  email: string;
+
+  @ApiProperty({
+    example: "482913",
+    description: "Código de 6 dígitos enviado al correo",
+  })
+  @IsString()
+  code: string;
+
+  @ApiProperty({
+    example: "NuevaP@ssw0rd",
+    description:
+      "Nueva contraseña (mínimo 6 caracteres, con mayúscula, número y carácter especial: ej. ! @ # $ % & - . * entre otros)",
+  })
+  @IsString()
+  @MinLength(6, { message: "La contraseña debe tener al menos 6 caracteres" })
+  @IsStrongPassword()
+  newPassword: string;
+}
+
+/**
  * DTO para habilitar MFA
  */
 export class EnableMfaDto {
@@ -156,11 +215,13 @@ export class UpdateUserDto {
   areaIds?: string[];
 
   @ApiPropertyOptional({
-    description: "Nueva contraseña del usuario (mínimo 6 caracteres)",
+    description:
+      "Nueva contraseña del usuario (mínimo 6 caracteres, con mayúscula, número y carácter especial: ej. ! @ # $ % & - . * entre otros)",
   })
   @IsOptional()
   @IsString()
   @MinLength(6, { message: "La contraseña debe tener al menos 6 caracteres" })
+  @IsStrongPassword()
   password?: string;
 
   @ApiPropertyOptional({
@@ -221,11 +282,13 @@ export class UpdateProfileDto {
   currentPassword?: string;
 
   @ApiPropertyOptional({
-    description: "Nueva contraseña (mínimo 6 caracteres)",
+    description:
+      "Nueva contraseña (mínimo 6 caracteres, con mayúscula, número y carácter especial: ej. ! @ # $ % & - . * entre otros)",
   })
   @IsOptional()
   @IsString()
   @MinLength(6, { message: "La contraseña debe tener al menos 6 caracteres" })
+  @IsStrongPassword()
   newPassword?: string;
 }
 

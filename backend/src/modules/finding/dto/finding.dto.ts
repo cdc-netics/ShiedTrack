@@ -84,6 +84,14 @@ export class CreateFindingDto {
   @IsNumber()
   cvssScore?: number;
 
+  @ApiPropertyOptional({
+    example: "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
+    description: "Vector CVSS 3.1 completo",
+  })
+  @IsOptional()
+  @IsString()
+  cvssVector?: string;
+
   @ApiPropertyOptional({ example: "CVE-2024-12345", description: "ID de CVE" })
   @IsOptional()
   @IsString()
@@ -196,6 +204,11 @@ export class UpdateFindingDto {
   @IsOptional()
   @IsNumber()
   cvssScore?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  cvssVector?: string;
 
   @ApiPropertyOptional()
   @IsOptional()

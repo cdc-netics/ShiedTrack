@@ -1,7 +1,8 @@
-import { Component, inject, OnInit, signal, Inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, OnInit, signal, Inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { MatTableModule } from '@angular/material/table';
+import { MatSortModule, Sort } from '@angular/material/sort';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatChipsModule } from '@angular/material/chips';
@@ -52,12 +53,14 @@ export class ConfirmDeleteClientDialogComponent {
  */
 @Component({
   standalone: true,
+    changeDetection: ChangeDetectionStrategy.OnPush,
     selector: 'app-client-list',
     imports: [
         CommonModule,
         RouterLink,
         FormsModule,
         MatTableModule,
+        MatSortModule,
         MatButtonModule,
         MatIconModule,
         MatChipsModule,
@@ -75,17 +78,17 @@ export class ConfirmDeleteClientDialogComponent {
         <h1 class="ui-screen-title">Clientes</h1>
       </header>
 
-      <section class="ui-cluster ui-cluster--between" aria-label="Filtros y acciones">
+      <section class="ui-cluster ui-cluster--between clients-toolbar" aria-label="Filtros y acciones">
         @if (canManageClients()) {
           <button mat-raised-button color="primary" type="button" (click)="openClientDialog()">
             <mat-icon aria-hidden="true">add</mat-icon>
             Nuevo cliente
           </button>
         }
-        <div class="ui-cluster">
+        <div class="ui-cluster clients-toolbar-actions">
           <mat-form-field appearance="outline" class="filter-field">
             <mat-label>Buscar</mat-label>
-            <input matInput [ngModel]="searchTerm()" 
+            <input matInput [ngModel]="searchTerm()"
                    (ngModelChange)="searchTerm.set($event); applyFilters()"
                    placeholder="Buscar por nombre…"
                    aria-label="Filtrar clientes por nombre">
@@ -118,10 +121,11 @@ export class ConfirmDeleteClientDialogComponent {
           </div>
         } @else {
           <div class="ui-table-scroll">
-          <table mat-table [dataSource]="filteredClients()" class="clients-table">
+          <table mat-table [dataSource]="filteredClients()" class="clients-table"
+                 matSort [matSortActive]="sortField()" [matSortDirection]="sortDirection()" (matSortChange)="onSortChange($event)">
             <!-- Columna Nombre -->
             <ng-container matColumnDef="name">
-              <th mat-header-cell *matHeaderCellDef>Nombre</th>
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>Nombre</th>
               <td mat-cell *matCellDef="let client">
                 <div class="client-name">
                   <span class="name">{{ client.name }}</span>
@@ -134,15 +138,29 @@ export class ConfirmDeleteClientDialogComponent {
 
             <!-- Columna Proyectos -->
             <ng-container matColumnDef="projects">
-              <th mat-header-cell *matHeaderCellDef>Proyectos</th>
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>Proyectos</th>
               <td mat-cell *matCellDef="let client">
-                <span class="badge">{{ client.projectsCount || 0 }}</span>
+                <button type="button" class="badge badge--link" matTooltip="Ver proyectos de este cliente"
+                        (click)="viewProjects(client); $event.stopPropagation()">
+                  {{ client.projectsCount || 0 }}
+                </button>
+              </td>
+            </ng-container>
+
+            <!-- Columna Hallazgos -->
+            <ng-container matColumnDef="findings">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>Hallazgos</th>
+              <td mat-cell *matCellDef="let client">
+                <button type="button" class="badge badge--findings badge--link" matTooltip="Ver hallazgos de este cliente"
+                        (click)="viewFindings(client); $event.stopPropagation()">
+                  {{ client.findingsCount || 0 }}
+                </button>
               </td>
             </ng-container>
 
             <!-- Columna Estado -->
             <ng-container matColumnDef="status">
-              <th mat-header-cell *matHeaderCellDef>Estado</th>
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>Estado</th>
               <td mat-cell *matCellDef="let client">
                 <mat-chip [class]="client.isActive ? 'status-active' : 'status-inactive'">
                   {{ client.isActive ? 'Activo' : 'Inactivo' }}
@@ -152,7 +170,7 @@ export class ConfirmDeleteClientDialogComponent {
 
             <!-- Columna Fecha Creación -->
             <ng-container matColumnDef="created">
-              <th mat-header-cell *matHeaderCellDef>Creado</th>
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>Creado</th>
               <td mat-cell *matCellDef="let client">
                 <small>{{ formatDate(client.createdAt) }}</small>
               </td>
@@ -205,6 +223,19 @@ export class ConfirmDeleteClientDialogComponent {
     styles: [`
     .filter-field {
       width: min(100%, 280px);
+    }
+
+    .clients-toolbar {
+      align-items: center;
+    }
+
+    .clients-toolbar-actions {
+      flex-wrap: nowrap;
+      align-items: center;
+    }
+
+    .clients-toolbar-actions .filter-field {
+      margin-bottom: -1.25em;
     }
 
     .clients-table {
@@ -260,6 +291,20 @@ export class ConfirmDeleteClientDialogComponent {
       font-size: 13px;
     }
 
+    .badge--findings {
+      background: #ff9800;
+    }
+
+    .badge--link {
+      border: none;
+      cursor: pointer;
+      font-family: inherit;
+    }
+
+    .badge--link:hover {
+      filter: brightness(0.9);
+    }
+
     .status-active {
       background: #4caf50;
       color: white;
@@ -290,13 +335,15 @@ export class ClientListComponent implements OnInit {
   private readonly API_URL = `${environment.apiUrl}/clients`;
   
   // Columnas visibles en la tabla
-  displayedColumns = ['name', 'projects', 'status', 'created', 'actions'];
+  displayedColumns = ['name', 'projects', 'findings', 'status', 'created', 'actions'];
   
   // Estado local y filtros del listado
   clients = signal<any[]>([]);
   searchTerm = signal('');
   filteredClients = signal<any[]>([]);
   loading = signal(false);
+  sortField = signal('');
+  sortDirection = signal<'asc' | 'desc' | ''>('');
 
   ngOnInit() {
     // Carga inicial para poblar el listado
@@ -359,16 +406,52 @@ export class ClientListComponent implements OnInit {
   applyFilters() {
     // Filtra por texto en nombre o descripcion
     let clients = this.clients();
-    
+
     if (this.searchTerm()) {
       const term = this.searchTerm().toLowerCase();
-      clients = clients.filter(c => 
+      clients = clients.filter(c =>
         c.name.toLowerCase().includes(term) ||
         c.description?.toLowerCase().includes(term)
       );
     }
-    
+
+    const field = this.sortField();
+    const direction = this.sortDirection();
+    if (field && direction) {
+      const factor = direction === 'asc' ? 1 : -1;
+      clients = [...clients].sort((a, b) => {
+        const av = this.sortValue(a, field);
+        const bv = this.sortValue(b, field);
+        if (av < bv) return -1 * factor;
+        if (av > bv) return 1 * factor;
+        return 0;
+      });
+    }
+
     this.filteredClients.set(clients);
+  }
+
+  onSortChange(sort: Sort): void {
+    this.sortField.set(sort.direction ? sort.active : '');
+    this.sortDirection.set(sort.direction as 'asc' | 'desc' | '');
+    this.applyFilters();
+  }
+
+  private sortValue(client: any, field: string): string | number {
+    switch (field) {
+      case 'name':
+        return client.name?.toLowerCase() || '';
+      case 'projects':
+        return client.projectsCount || 0;
+      case 'findings':
+        return client.findingsCount || 0;
+      case 'status':
+        return client.isActive ? 1 : 0;
+      case 'created':
+        return new Date(client.createdAt).getTime() || 0;
+      default:
+        return '';
+    }
   }
 
   formatDate(date: any): string {
@@ -439,6 +522,16 @@ export class ClientListComponent implements OnInit {
   openClientDetails(client: any): void {
     if (!client?._id) return;
     void this.router.navigate(['/clients', client._id]);
+  }
+
+  viewProjects(client: any): void {
+    if (!client?._id) return;
+    void this.router.navigate(['/projects'], { queryParams: { clientId: client._id } });
+  }
+
+  viewFindings(client: any): void {
+    if (!client?._id) return;
+    void this.router.navigate(['/findings'], { queryParams: { clientId: client._id } });
   }
 
   canManageClients(): boolean {

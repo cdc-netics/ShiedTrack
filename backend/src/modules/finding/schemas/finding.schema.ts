@@ -72,6 +72,14 @@ export class Finding extends Document {
 
   @Prop({
     validate: {
+      validator: (v: string) => !v || /^CVSS:3\.[01]\/.+/.test(v),
+      message: "Vector CVSS inválido",
+    },
+  })
+  cvss_vector?: string; // Vector CVSS 3.1 completo (ej: CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H)
+
+  @Prop({
+    validate: {
       validator: (v: string) => !v || /^CVE-\d{4}-\d{4,7}$/.test(v),
       message: "CVE ID debe tener formato CVE-YYYY-NNNN (ej: CVE-2024-12345)",
     },

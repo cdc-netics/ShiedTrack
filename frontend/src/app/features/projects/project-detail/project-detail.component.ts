@@ -19,6 +19,7 @@ import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../environments/environment';
 import { AuthService } from '../../../core/services/auth.service';
 import { UserRole } from '../../../shared/enums';
+import { roleSatisfies } from '../../../shared/utils/rbac';
 
 @Component({
   standalone: true,
@@ -56,6 +57,11 @@ import { UserRole } from '../../../shared/enums';
         </h1>
         <div class="header-actions">
           @if (isEditMode()) {
+            <button mat-raised-button color="primary" class="view-findings-btn"
+                    matTooltip="Ver solo los hallazgos de este proyecto" (click)="viewFindings()">
+              <mat-icon>bug_report</mat-icon>
+              Ver Hallazgos
+            </button>
             <button mat-icon-button color="primary" matTooltip="Descargar Reporte PDF" (click)="downloadPdf()">
               <mat-icon>picture_as_pdf</mat-icon>
             </button>
@@ -284,6 +290,8 @@ import { UserRole } from '../../../shared/enums';
     .project-detail-container { padding: 0; max-width: 1200px; margin: 0 auto; }
     .header { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; }
     .header h1 { margin: 0; font-size: 28px; font-weight: 500; }
+    .header-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+    .view-findings-btn mat-icon { margin-right: 6px; }
     .section-card { margin-bottom: 24px; }
     mat-card-header { margin-bottom: 16px; }
     mat-card-title { display: flex; align-items: center; gap: 8px; font-size: 18px; }
@@ -462,9 +470,12 @@ export class ProjectDetailComponent implements OnInit {
   canChangeStatus(): boolean {
     const user = this.authService.currentUser();
     if (!user) return false;
-    if (user.role === UserRole.OWNER) return true;
-    if (user.role === UserRole.CLIENT_ADMIN || user.role === UserRole.AREA_ADMIN) return true;
-    return false;
+    // Mismos roles que backend permite en PUT/PATCH /projects/:id
+    return (
+      roleSatisfies(UserRole.OWNER, user.role) ||
+      roleSatisfies(UserRole.ADMIN_AREA, user.role) ||
+      roleSatisfies(UserRole.PENTESTER, user.role)
+    );
   }
 
   downloadPdf() {
@@ -477,6 +488,17 @@ export class ProjectDetailComponent implements OnInit {
     if (!this.projectId()) return;
     const token = this.authService.getToken();
     window.open(`${environment.apiUrl}/export/project/${this.projectId()}/zip?token=${token}`, '_blank');
+  }
+
+  viewFindings(): void {
+    if (!this.projectId()) return;
+    const clientId = this.normalizeId(this.projectForm.get('clientId')?.value);
+    this.router.navigate(['/findings'], {
+      queryParams: {
+        projectId: this.projectId(),
+        ...(clientId ? { clientId } : {}),
+      },
+    });
   }
 
 saveProject(): void {

@@ -26,6 +26,9 @@ Skills/
 .env.production
 .env.development
 
+# Claude Code
+CLAUDE.md
+
 # IDE
 .idea/
 .vscode/
@@ -89,3 +92,4 @@ INSTRUCCIONES-INICIO.md
 # Local MongoDB Data
 data/
 data/db/
+CLAUDE.md
