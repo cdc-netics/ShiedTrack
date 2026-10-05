@@ -50,7 +50,11 @@ import { roleSatisfies } from '../../../shared/utils/rbac';
         </button>
         <h1>
           @if (isEditMode()) {
-            📝 Editar Proyecto
+            @if (canChangeStatus()) {
+              📝 Editar Proyecto
+            } @else {
+              👁️ Ver Proyecto
+            }
           } @else {
             ➕ Nuevo Proyecto
           }
@@ -234,19 +238,23 @@ import { roleSatisfies } from '../../../shared/utils/rbac';
                       </mat-select>
                     </mat-form-field>
 
-                    <button mat-icon-button color="warn" type="button"
-                            (click)="removeTeamMember($index)"
-                            [disabled]="teamMembers.length === 1">
-                      <mat-icon>delete</mat-icon>
-                    </button>
+                    @if (canChangeStatus()) {
+                      <button mat-icon-button color="warn" type="button"
+                              (click)="removeTeamMember($index)"
+                              [disabled]="teamMembers.length === 1">
+                        <mat-icon>delete</mat-icon>
+                      </button>
+                    }
                   </div>
                 }
               </div>
 
-              <button mat-stroked-button type="button" (click)="addTeamMember()">
-                <mat-icon>add</mat-icon>
-                Agregar Miembro
-              </button>
+              @if (canChangeStatus()) {
+                <button mat-stroked-button type="button" (click)="addTeamMember()">
+                  <mat-icon>add</mat-icon>
+                  Agregar Miembro
+                </button>
+              }
             </mat-card-content>
           </mat-card>
 
@@ -275,12 +283,14 @@ import { roleSatisfies } from '../../../shared/utils/rbac';
           <!-- ACCIONES -->
           <div class="actions">
             <button mat-button type="button" routerLink="/projects">
-              Cancelar
+              {{ canChangeStatus() ? 'Cancelar' : 'Volver' }}
             </button>
-            <button mat-raised-button color="primary" type="submit" [disabled]="projectForm.invalid || saving()">
-              <mat-icon>{{ saving() ? 'hourglass_empty' : 'save' }}</mat-icon>
-              {{ saving() ? 'Guardando...' : 'Guardar Proyecto' }}
-            </button>
+            @if (canChangeStatus()) {
+              <button mat-raised-button color="primary" type="submit" [disabled]="projectForm.invalid || saving()">
+                <mat-icon>{{ saving() ? 'hourglass_empty' : 'save' }}</mat-icon>
+                {{ saving() ? 'Guardando...' : 'Guardar Proyecto' }}
+              </button>
+            }
           </div>
         </form>
       }
@@ -372,6 +382,22 @@ export class ProjectDetailComponent implements OnInit {
     this.loadAreas();
 
     const id = this.route.snapshot.paramMap.get('id');
+    const creating = !id || id === 'new';
+
+    // Mismos roles que el backend exige en POST/PUT/PATCH /projects — un usuario sin
+    // ese permiso no debería ni llegar a un formulario de creación funcional.
+    if (creating && !this.canChangeStatus()) {
+      alert('⚠️ No tienes permisos para crear proyectos.');
+      this.router.navigate(['/projects']);
+      return;
+    }
+
+    // Al ver un proyecto existente sin permiso de edición, el formulario queda de solo
+    // lectura en vez de dejar que el usuario lo llene y recién se entere del 403 al guardar.
+    if (!creating && !this.canChangeStatus()) {
+      this.projectForm.disable();
+    }
+
     if (id && id !== 'new') {
       this.isEditMode.set(true);
       this.projectId.set(id);
@@ -439,6 +465,12 @@ export class ProjectDetailComponent implements OnInit {
           project.teamMembers.forEach((member: any) => this.teamMembers.push(this.createTeamMember(member)));
         } else {
           this.addTeamMember();
+        }
+
+        // Los FormGroup recién agregados al FormArray no heredan el estado disabled
+        // del padre — hay que re-aplicarlo tras poblar los miembros del equipo.
+        if (!this.canChangeStatus()) {
+          this.projectForm.disable();
         }
 
         this.loading.set(false);

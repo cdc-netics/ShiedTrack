@@ -204,7 +204,9 @@ export class ConfirmDeleteClientDialogComponent {
                       <span>Reporte General (CSV)</span>
                     </button>
                   </mat-menu>
-                  <button mat-icon-button (click)="deleteClient(client); $event.stopPropagation()" 
+                }
+                @if (canDeleteClients()) {
+                  <button mat-icon-button (click)="deleteClient(client); $event.stopPropagation()"
                           matTooltip="Eliminar" color="warn">
                     <mat-icon>delete</mat-icon>
                   </button>
@@ -383,7 +385,7 @@ export class ClientListComponent implements OnInit {
   }
 
   deleteClient(client: any): void {
-    if (!this.canManageClients()) return;
+    if (!this.canDeleteClients()) return;
 
     this.dialog.open(ConfirmDeleteClientDialogComponent, {
       width: '420px',
@@ -539,7 +541,15 @@ export class ClientListComponent implements OnInit {
     return (
       role === UserRole.OWNER ||
       role === UserRole.PLATFORM_ADMIN ||
-      role === UserRole.PENTESTER
+      role === UserRole.PENTESTER ||
+      role === UserRole.QA
     );
+  }
+
+  /** Eliminar/desactivar cliente es exclusivo de OWNER/PLATFORM_ADMIN — ningún rol
+   *  operacional (PENTESTER/QA/ANALYST) lo tiene, aunque sí puedan crear/editar */
+  canDeleteClients(): boolean {
+    const role = this.authService.currentUser()?.role;
+    return role === UserRole.OWNER || role === UserRole.PLATFORM_ADMIN;
   }
 }

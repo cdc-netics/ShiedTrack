@@ -301,12 +301,13 @@ export class ClientDialogComponent {
   private buildClientPayload(): Record<string, unknown> {
     const payload: Record<string, unknown> = {};
 
+    // El formulario representa el estado completo deseado por el usuario, no un
+    // parche disperso: un string vacío significa "bórralo", por lo que se envía
+    // igual (trim) en vez de omitirse, para que campos opcionales como
+    // descripción/código/contacto puedan limpiarse explícitamente.
     for (const [key, value] of Object.entries(this.clientForm.value)) {
       if (typeof value === 'string') {
-        const trimmed = value.trim();
-        if (trimmed) {
-          payload[key] = trimmed;
-        }
+        payload[key] = value.trim();
         continue;
       }
 

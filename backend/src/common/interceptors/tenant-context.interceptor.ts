@@ -34,11 +34,16 @@ export class TenantContextInterceptor implements NestInterceptor {
     }
 
     const isOwner = user.role === "OWNER" || user.role === "PLATFORM_ADMIN";
+    // Debe coincidir exactamente con isOperationalRole en TenantContextGuard (B12) —
+    // esta lista vive duplicada en el interceptor y quedó desactualizada cuando se
+    // agregaron AUDITOR/VIEWER al guard, causando 400 para AUDITOR pese a pasar el guard.
     const isOperationalRole =
       user.role === "PENTESTER" ||
       user.role === "QA" ||
       user.role === "ANALYST" ||
-      user.role === "ADMIN_AREA";
+      user.role === "ADMIN_AREA" ||
+      user.role === "AUDITOR" ||
+      user.role === "VIEWER";
     namespace.set("isOwner", isOwner);
     namespace.set("userId", user.userId || user._id);
 

@@ -18,7 +18,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { HttpClient } from '@angular/common/http';
 import { FindingService } from '../../../core/services/finding.service';
 import { ProjectService } from '../../../core/services/project.service';
-import { Observable, startWith, map, of } from 'rxjs';
+import { Observable, startWith, map, of, firstValueFrom } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { CvssCalculatorComponent } from '../../../shared/components/cvss-calculator/cvss-calculator.component';
 import { CvssResult, formatCvssScore } from '../../../shared/utils/cvss';
@@ -1128,9 +1128,9 @@ export class FindingWizardComponent implements OnInit {
     console.log('📤 Enviando hallazgo:', data);
 
     this.findingService.createFinding(data).subscribe({
-      next: (response) => {
+      next: async (response) => {
         console.log('✅ Hallazgo creado:', response);
-        alert('✅ Hallazgo guardado exitosamente');
+        await this.uploadSelectedEvidences(response._id);
         this.router.navigate(['/findings']);
       },
       error: (error) => {
@@ -1140,5 +1140,53 @@ export class FindingWizardComponent implements OnInit {
         alert(`❌ Error al guardar hallazgo: ${errorMsg}`);
       }
     });
+  }
+
+  // Límite de subida de evidencias — debe coincidir con EVIDENCE_MAX_FILE_SIZE_MB del
+  // backend (default 100MB)
+  private readonly MAX_EVIDENCE_UPLOAD_BYTES = 100 * 1024 * 1024;
+
+  /**
+   * Sube secuencialmente los archivos adjuntados en el paso "Evidencias" del wizard,
+   * una vez que el hallazgo ya fue creado y se conoce su ID. Antes de este fix, los
+   * archivos quedaban seleccionados solo en memoria y nunca se enviaban al backend.
+   */
+  private async uploadSelectedEvidences(findingId: string): Promise<void> {
+    const files = this.selectedFiles();
+    if (!files.length) {
+      alert('✅ Hallazgo guardado exitosamente');
+      return;
+    }
+
+    let uploaded = 0;
+    const failed: string[] = [];
+
+    for (const file of files) {
+      if (file.size > this.MAX_EVIDENCE_UPLOAD_BYTES) {
+        failed.push(`${file.name}: supera el límite de 100MB (usa "Agregar Enlace" desde el detalle del hallazgo)`);
+        continue;
+      }
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      try {
+        await firstValueFrom(
+          this.http.post(`${environment.apiUrl}/evidence/upload?findingId=${findingId}`, formData)
+        );
+        uploaded++;
+      } catch (err: any) {
+        const errorMsg = err?.error?.message || err?.message || 'Error desconocido';
+        failed.push(`${file.name}: ${errorMsg}`);
+      }
+    }
+
+    if (failed.length === 0) {
+      alert(`✅ Hallazgo guardado exitosamente con ${uploaded} evidencia(s)`);
+    } else {
+      alert(
+        `✅ Hallazgo guardado. ${uploaded} evidencia(s) subida(s), ${failed.length} fallida(s):\n${failed.join('\n')}`
+      );
+    }
   }
 }

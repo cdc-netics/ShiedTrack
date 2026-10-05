@@ -37,7 +37,9 @@ import { AuthService } from '../../../core/services/auth.service';
     <div class="template-container">
       <div class="header">
         <h1>🛡️ Plantillas</h1>
-        <button mat-raised-button color="primary" (click)="openTemplateDialog()">
+        <button mat-raised-button color="primary" (click)="openTemplateDialog()"
+                [disabled]="!canManageTemplates()"
+                matTooltip="{{ canManageTemplates() ? '' : 'No tienes permisos para crear plantillas' }}">
           <mat-icon>add</mat-icon>
           Nueva plantilla personal
         </button>
@@ -127,6 +129,7 @@ import { AuthService } from '../../../core/services/auth.service';
                 <mat-icon>edit</mat-icon>
               </button>
               <button mat-icon-button (click)="duplicateTemplate(template)"
+                      [disabled]="!canManageTemplates()"
                       matTooltip="Duplicar plantilla">
                 <mat-icon>content_copy</mat-icon>
               </button>
@@ -385,7 +388,9 @@ export class TemplateListComponent implements OnInit {
   }
 
   openTemplateDialog(template?: any): void {
-    // Abre dialogo de alta/edicion
+    // Abre dialogo de alta/edicion — bloqueo defensivo además del [disabled] del botón
+    if (template ? !this.canEdit(template) : !this.canManageTemplates()) return;
+
     const dialogRef = this.dialog.open(TemplateDialogComponent, {
       width: '700px',
       maxHeight: '90vh',
@@ -400,8 +405,10 @@ export class TemplateListComponent implements OnInit {
   }
 
   duplicateTemplate(template: any): void {
+    if (!this.canManageTemplates()) return;
+
     // Crea una copia local y reutiliza el dialogo de edicion
-    const duplicated = { 
+    const duplicated = {
       ...template, 
       _id: undefined,
       title: `${template.title} (Copia)` 
@@ -438,10 +445,27 @@ export class TemplateListComponent implements OnInit {
     return map[severity] || severity;
   }
 
+  /**
+   * Roles que pueden gestionar CUALQUIER plantilla (crear/editar/eliminar/duplicar) —
+   * igual que el backend en updateTemplate()/deactivateTemplate(): OWNER/PLATFORM_ADMIN
+   * (global), ADMIN_AREA/CLIENT_ADMIN/AREA_ADMIN (tenant admin) y PENTESTER/QA/ANALYST
+   * (grupo operacional) tienen "gestión completa", NO restringida a lo que ellos crearon.
+   */
+  canManageTemplates(): boolean {
+    const currentUser = this.authService.currentUser();
+    if (!currentUser) return false;
+    return [
+      'OWNER', 'PLATFORM_ADMIN', 'ADMIN_AREA', 'CLIENT_ADMIN', 'AREA_ADMIN',
+      'ANALYST', 'PENTESTER', 'QA'
+    ].includes(currentUser.role);
+  }
+
   canEdit(template: any): boolean {
     const currentUser = this.authService.currentUser();
     if (!currentUser) return false;
-    if (currentUser.role === 'OWNER' || currentUser.role === 'PLATFORM_ADMIN') return true;
+    // Roles de gestión completa editan/eliminan/duplican cualquier plantilla, no solo
+    // las propias (igual que el backend). NORMAL_USER/AUDITOR/VIEWER no gestionan nada.
+    if (this.canManageTemplates()) return true;
     const createdById =
       typeof template?.createdBy === 'object' ? template?.createdBy?._id : template?.createdBy;
     return String(createdById || '') === String(currentUser._id || '');

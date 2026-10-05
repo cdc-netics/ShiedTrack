@@ -74,6 +74,7 @@ export class ExportController {
     UserRole.CLIENT_ADMIN,
     UserRole.PLATFORM_ADMIN,
     UserRole.OWNER,
+    UserRole.NORMAL_USER,
   )
   @Throttle({ default: { limit: 10, ttl: 60000 } }) // 10 exports por minuto
   @ApiOperation({ summary: "Exportar proyecto a Excel (ANALYST+)" })

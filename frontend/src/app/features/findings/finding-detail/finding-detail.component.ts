@@ -160,13 +160,15 @@ interface FindingUpdate {
               </div>
               <div class="actions">
                 @if (!editMode()) {
-                  <button mat-raised-button color="primary" (click)="toggleEditMode()">
-                    <mat-icon>edit</mat-icon>
-                    Editar
-                  </button>
-                  <button mat-raised-button color="accent" (click)="openAddUpdateDialog()">
-                    Agregar Seguimiento
-                  </button>
+                  @if (canManageFinding()) {
+                    <button mat-raised-button color="primary" (click)="toggleEditMode()">
+                      <mat-icon>edit</mat-icon>
+                      Editar
+                    </button>
+                    <button mat-raised-button color="accent" (click)="openAddUpdateDialog()">
+                      Agregar Seguimiento
+                    </button>
+                  }
                   @if (finding()!.status !== 'CLOSED' && canCloseFinding()) {
                     <button mat-raised-button color="warn" (click)="openCloseDialog()">
                       <mat-icon>lock</mat-icon>
@@ -200,7 +202,7 @@ interface FindingUpdate {
                   <!-- Severidad y Estado -->
                   <mat-form-field appearance="outline">
                     <mat-label>Severidad</mat-label>
-                    <mat-select formControlName="severity" [disabled]="!editMode()">
+                    <mat-select formControlName="severity">
                       <mat-option value="CRITICAL">CRÍTICA</mat-option>
                       <mat-option value="HIGH">ALTA</mat-option>
                       <mat-option value="MEDIUM">MEDIA</mat-option>
@@ -211,7 +213,7 @@ interface FindingUpdate {
 
                   <mat-form-field appearance="outline">
                     <mat-label>Estado</mat-label>
-                    <mat-select formControlName="status" [disabled]="!editMode()">
+                    <mat-select formControlName="status">
                       <mat-option value="OPEN">Abierto</mat-option>
                       <mat-option value="IN_PROGRESS">En Progreso</mat-option>
                       <mat-option value="RETEST_REQUIRED">Retest Requerido</mat-option>
@@ -472,16 +474,18 @@ interface FindingUpdate {
               <div class="evidences-section">
                 <div class="section-header">
                   <h3><mat-icon>attach_file</mat-icon> Archivos de Evidencia</h3>
-                  <div class="section-header-actions">
-                    <button mat-stroked-button color="primary" (click)="openAddEvidenceLinkDialog()" matTooltip="Para videos u archivos grandes que no entran en el límite de subida">
-                      <mat-icon>link</mat-icon>
-                      Agregar Enlace
-                    </button>
-                    <button mat-raised-button color="primary" (click)="uploadEvidence()">
-                      <mat-icon>upload</mat-icon>
-                      Subir Evidencia
-                    </button>
-                  </div>
+                  @if (canManageFinding()) {
+                    <div class="section-header-actions">
+                      <button mat-stroked-button color="primary" (click)="openAddEvidenceLinkDialog()" matTooltip="Para videos u archivos grandes que no entran en el límite de subida">
+                        <mat-icon>link</mat-icon>
+                        Agregar Enlace
+                      </button>
+                      <button mat-raised-button color="primary" (click)="uploadEvidence()">
+                        <mat-icon>upload</mat-icon>
+                        Subir Evidencia
+                      </button>
+                    </div>
+                  }
                 </div>
                 @if (loadingEvidences()) {
                   <mat-spinner></mat-spinner>
@@ -540,9 +544,11 @@ interface FindingUpdate {
                                   <mat-icon>download</mat-icon>
                                 </button>
                               }
-                              <button mat-icon-button color="warn" (click)="deleteEvidence(evidence._id)" matTooltip="Eliminar">
-                                <mat-icon>delete</mat-icon>
-                              </button>
+                              @if (canManageFinding()) {
+                                <button mat-icon-button color="warn" (click)="deleteEvidence(evidence._id)" matTooltip="Eliminar">
+                                  <mat-icon>delete</mat-icon>
+                                </button>
+                              }
                             </div>
                           </div>
                           <!-- Preview de imagen -->
@@ -577,10 +583,12 @@ interface FindingUpdate {
                   <div class="empty-state">
                     <mat-icon>cloud_upload</mat-icon>
                     <p>No hay evidencias cargadas</p>
-                    <button mat-raised-button color="primary" (click)="uploadEvidence()">
-                      <mat-icon>upload</mat-icon>
-                      Subir Primera Evidencia
-                    </button>
+                    @if (canManageFinding()) {
+                      <button mat-raised-button color="primary" (click)="uploadEvidence()">
+                        <mat-icon>upload</mat-icon>
+                        Subir Primera Evidencia
+                      </button>
+                    }
                   </div>
                 }
               </div>
@@ -593,9 +601,11 @@ interface FindingUpdate {
               <div class="updates-section">
                 <div class="section-header">
                   <h3><mat-icon>track_changes</mat-icon> Timeline de Seguimiento</h3>
-                  <button mat-raised-button color="primary" (click)="openAddUpdateDialog()">
-                    Agregar Seguimiento
-                  </button>
+                  @if (canManageFinding()) {
+                    <button mat-raised-button color="primary" (click)="openAddUpdateDialog()">
+                      Agregar Seguimiento
+                    </button>
+                  }
                 </div>
                 @if (loadingUpdates()) {
                   <mat-spinner></mat-spinner>
@@ -668,9 +678,11 @@ interface FindingUpdate {
                   <div class="empty-state">
                     <mat-icon>track_changes</mat-icon>
                     <p>No hay seguimientos registrados</p>
-                    <button mat-raised-button color="primary" (click)="openAddUpdateDialog()">
-                      Agregar Primer Seguimiento
-                    </button>
+                    @if (canManageFinding()) {
+                      <button mat-raised-button color="primary" (click)="openAddUpdateDialog()">
+                        Agregar Primer Seguimiento
+                      </button>
+                    }
                   </div>
                 }
               </div>
@@ -1515,6 +1527,11 @@ export class FindingDetailComponent implements OnInit {
   private dialog = inject(MatDialog);
   private http = inject(HttpClient);
 
+  // Límite de subida de evidencias — debe coincidir con EVIDENCE_MAX_FILE_SIZE_MB del
+  // backend (default 100MB). Se valida en el cliente para no esperar a que el archivo
+  // se transfiera completo solo para que el servidor lo rechace con 413.
+  private readonly MAX_EVIDENCE_UPLOAD_BYTES = 100 * 1024 * 1024;
+
   // Estado de carga y datos principales
   loading = signal<boolean>(true);
   finding = signal<Finding | null>(null);
@@ -1597,7 +1614,8 @@ export class FindingDetailComponent implements OnInit {
 
   ngOnInit(): void {
     // Carga el hallazgo y recursos asociados al entrar
-    this.editMode.set(this.route.snapshot.data['editMode'] === true);
+    this.editMode.set(this.route.snapshot.data['editMode'] === true && this.canManageFinding());
+    this.applyEditableState();
     this.selectedTabIndex.set(this.route.snapshot.data['tabIndex'] || 0);
     const id = this.route.snapshot.paramMap.get('id');
     if (id) {
@@ -1719,8 +1737,23 @@ export class FindingDetailComponent implements OnInit {
   }
 
   toggleEditMode(): void {
-    // Activa modo edicion
+    // Activa modo edicion — bloqueo defensivo además del [disabled]/@if del botón
+    if (!this.canManageFinding()) return;
     this.editMode.set(true);
+    this.applyEditableState();
+  }
+
+  /**
+   * Habilita/deshabilita los controles de Severidad y Estado según editMode().
+   * No se puede usar [disabled]="!editMode()" en el template para estos dos campos:
+   * al tener formControlName, Reactive Forms toma el control del estado disabled del
+   * FormControl y el binding de plantilla queda ignorado/inconsistente (gotcha conocido
+   * de Angular). Por eso se sincroniza programáticamente cada vez que cambia editMode.
+   */
+  private applyEditableState(): void {
+    const method = this.editMode() ? 'enable' : 'disable';
+    this.findingForm.get('severity')?.[method]({ emitEvent: false });
+    this.findingForm.get('status')?.[method]({ emitEvent: false });
   }
 
   private normalizeReferences(references: Array<string | { label?: string; url?: string }>): { label: string; url: string }[] {
@@ -1738,6 +1771,7 @@ export class FindingDetailComponent implements OnInit {
   cancelEdit(): void {
     // Cancela edicion y restaura valores originales
     this.editMode.set(false);
+    this.applyEditableState();
     const currentFinding = this.finding();
     if (currentFinding) {
       this.tags.set(currentFinding.tags || []);
@@ -1794,6 +1828,7 @@ export class FindingDetailComponent implements OnInit {
           console.log('✅ Hallazgo actualizado:', response);
           this.snackBar.open('Hallazgo actualizado correctamente', 'Cerrar', { duration: 3000 });
           this.editMode.set(false);
+          this.applyEditableState();
           this.loadFinding(this.finding()!._id);
           this.loadUpdates(this.finding()!._id);
         },
@@ -1850,6 +1885,8 @@ export class FindingDetailComponent implements OnInit {
   }
 
   async uploadEvidence(): Promise<void> {
+    if (!this.canManageFinding()) return;
+
     // Carga multiple de evidencias con subida secuencial
     const input = document.createElement('input');
     input.type = 'file';
@@ -1857,8 +1894,8 @@ export class FindingDetailComponent implements OnInit {
     input.accept = '.pdf,.log,.txt,.jpg,.jpeg,.png,.gif,.zip,.rar,.7z,.doc,.docx,.xls,.xlsx,.json,.xml,.csv,.mp4,.webm,.mov';
     
     input.onchange = async (e: any) => {
-      const files = e.target.files;
-      if (!files || files.length === 0) return;
+      const allFiles: File[] = Array.from(e.target.files || []);
+      if (!allFiles.length) return;
 
       const findingId = this.finding()?._id;
       if (!findingId) {
@@ -1866,11 +1903,21 @@ export class FindingDetailComponent implements OnInit {
         return;
       }
 
-      let uploaded = 0;
-      let errors = 0;
-      const errorMessages: string[] = [];
+      // Valida el tamaño ANTES de subir: evita esperar a que se transfieran cientos de
+      // MB solo para que el servidor los rechace al final con 413.
+      const oversized = allFiles.filter(f => f.size > this.MAX_EVIDENCE_UPLOAD_BYTES);
+      const files = allFiles.filter(f => f.size <= this.MAX_EVIDENCE_UPLOAD_BYTES);
 
-      this.snackBar.open(`Subiendo ${files.length} archivo(s)...`, '', { duration: 2000 });
+      let uploaded = 0;
+      let errors = oversized.length;
+      let tooLarge = oversized.length > 0;
+      const errorMessages: string[] = oversized.map(
+        f => `${f.name}: supera el límite de tamaño permitido (100MB)`
+      );
+
+      if (files.length > 0) {
+        this.snackBar.open(`Subiendo ${files.length} archivo(s)...`, '', { duration: 2000 });
+      }
 
       // Subir archivos secuencialmente uno por uno
       for (let i = 0; i < files.length; i++) {
@@ -1886,34 +1933,50 @@ export class FindingDetailComponent implements OnInit {
           console.log(`✅ Evidencia subida: ${file.name}`);
         } catch (err: any) {
           errors++;
-          const errorMsg = err.error?.message || err.message || 'Error desconocido';
-          console.error(`❌ Error subiendo ${file.name}:`, errorMsg, err);
-          errorMessages.push(`${file.name}: ${errorMsg}`);
+          // 413 puede venir sin cuerpo JSON (ej. rechazado directamente por nginx antes
+          // de llegar al backend si supera también su client_max_body_size), así que no
+          // dependemos del texto del error — se arma un mensaje propio y claro.
+          if (err.status === 413) {
+            tooLarge = true;
+            errorMessages.push(`${file.name}: supera el límite de tamaño permitido (100MB)`);
+          } else {
+            const errorMsg = err.error?.message || err.message || 'Error desconocido';
+            console.error(`❌ Error subiendo ${file.name}:`, errorMsg, err);
+            errorMessages.push(`${file.name}: ${errorMsg}`);
+          }
         }
       }
 
       // Mostrar resultado final
       if (errors === 0) {
         this.snackBar.open(
-          `✅ ${uploaded} archivo(s) subido(s) correctamente`, 
-          'Cerrar', 
+          `✅ ${uploaded} archivo(s) subido(s) correctamente`,
+          'Cerrar',
           { duration: 3000 }
         );
+      } else if (tooLarge) {
+        const prefix = uploaded > 0 ? `${uploaded} subido(s). ` : '';
+        const ref = this.snackBar.open(
+          `❌ ${prefix}El archivo supera el límite de 100MB. Para videos u archivos grandes, súbelo a SharePoint/Drive y comparte el enlace.`,
+          'Agregar Enlace',
+          { duration: 10000 }
+        );
+        ref.onAction().subscribe(() => this.openAddEvidenceLinkDialog());
       } else if (uploaded > 0) {
         this.snackBar.open(
-          `⚠️ ${uploaded} subido(s), ${errors} fallido(s). Ver consola para detalles.`, 
-          'Cerrar', 
+          `⚠️ ${uploaded} subido(s), ${errors} fallido(s). Ver consola para detalles.`,
+          'Cerrar',
           { duration: 5000 }
         );
         console.error('Errores de subida:', errorMessages);
       } else {
         this.snackBar.open(
-          `❌ Error al subir archivos: ${errorMessages[0] || 'Error desconocido'}`, 
-          'Cerrar', 
+          `❌ Error al subir archivos: ${errorMessages[0] || 'Error desconocido'}`,
+          'Cerrar',
           { duration: 5000 }
         );
       }
-      
+
       // Recargar lista de evidencias solo si se subió al menos uno
       if (uploaded > 0) {
         console.log('Recargando evidencias...');
@@ -1929,6 +1992,7 @@ export class FindingDetailComponent implements OnInit {
    * pensado para archivos que exceden el límite de subida (ej. videos grandes)
    */
   openAddEvidenceLinkDialog(): void {
+    if (!this.canManageFinding()) return;
     const findingId = this.finding()?._id;
     if (!findingId) return;
 
@@ -2062,6 +2126,8 @@ export class FindingDetailComponent implements OnInit {
   }
 
   deleteEvidence(id: string): void {
+    if (!this.canManageFinding()) return;
+
     // Eliminacion con confirmacion y recarga del listado
     if (confirm('¿Estás seguro de eliminar esta evidencia?')) {
       this.http.delete(`${environment.apiUrl}/evidence/${id}`)
@@ -2193,6 +2259,19 @@ export class FindingDetailComponent implements OnInit {
    * Mismos roles que el backend permite en POST /findings/:id/close y
    * /findings/bulk-close: todos excepto AUDITOR (solo lectura).
    */
+  /** Mismos roles que el backend exige en PUT /findings/:id — AUDITOR/VIEWER quedan fuera */
+  canManageFinding(): boolean {
+    const currentUser = this.authService.currentUser();
+    if (!currentUser) return false;
+
+    return (
+      roleSatisfies(UserRole.OWNER, currentUser.role) ||
+      roleSatisfies(UserRole.ADMIN_AREA, currentUser.role) ||
+      roleSatisfies(UserRole.PENTESTER, currentUser.role) ||
+      roleSatisfies(UserRole.NORMAL_USER, currentUser.role)
+    );
+  }
+
   canCloseFinding(): boolean {
     const currentUser = this.authService.currentUser();
     if (!currentUser) return false;
@@ -2255,6 +2334,8 @@ export class FindingDetailComponent implements OnInit {
    * Abre el diálogo para agregar un seguimiento
    */
   openAddUpdateDialog(): void {
+    if (!this.canManageFinding()) return;
+
     const dialogRef = this.dialog.open(AddUpdateDialogComponent, {
       width: '680px',
       maxWidth: '95vw',
