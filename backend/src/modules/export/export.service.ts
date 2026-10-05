@@ -73,6 +73,26 @@ export class ExportService {
   }
 
   /**
+   * Aplica el populate de clientId/areaId/areaIds a una query de Project, con
+   * skipTenantFilter en cada path poblado cuando corresponda. IMPORTANTE:
+   * `.setOptions({ skipTenantFilter: true })` en la query principal NO se propaga a
+   * las sub-queries que dispara `.populate()` — cada path necesita su propia opción,
+   * o usuarios operacionales (QA/PENTESTER sin activeTenantId en el JWT) reciben 500
+   * ("No hay contexto de tenant activo") al exportar, aunque la query principal ya
+   * tuviera el bypass.
+   */
+  private populateProjectRefs(query: any, currentUser?: any): any {
+    const bypass = this.isGlobalUser(currentUser) || this.isOperationalUser(currentUser);
+    if (bypass) {
+      query.setOptions({ skipTenantFilter: true });
+    }
+    return query
+      .populate({ path: "clientId", options: bypass ? { skipTenantFilter: true } : {} })
+      .populate({ path: "areaId", options: bypass ? { skipTenantFilter: true } : {} })
+      .populate({ path: "areaIds", options: bypass ? { skipTenantFilter: true } : {} });
+  }
+
+  /**
    * Genera reporte PDF de un hallazgo
    */
   async exportFindingPdf(findingId: string, currentUser: any): Promise<Buffer> {
@@ -245,19 +265,19 @@ export class ExportService {
   }
 
   async exportProjectPdf(projectId: string, currentUser: any): Promise<Buffer> {
-    const projectQuery = this.projectModel
-      .findById(projectId)
-      .populate("clientId areaId areaIds");
-    if (this.isGlobalUser(currentUser) || this.isOperationalUser(currentUser)) {
-      projectQuery.setOptions({ skipTenantFilter: true });
-    }
+    const projectQuery = this.populateProjectRefs(
+      this.projectModel.findById(projectId),
+      currentUser,
+    );
     const project = await projectQuery;
     if (!project) throw new NotFoundException("Proyecto no encontrado");
 
     // RBAC (Simplified check)
-    const findings = await this.findingModel
-      .find({ projectId })
-      .sort({ severity: 1 });
+    const findingsQuery = this.findingModel.find({ projectId }).sort({ severity: 1 });
+    if (this.isGlobalUser(currentUser) || this.isOperationalUser(currentUser)) {
+      findingsQuery.setOptions({ skipTenantFilter: true });
+    }
+    const findings = await findingsQuery;
 
     return this.pdfService.generateProjectReport(project, findings);
   }
@@ -271,12 +291,10 @@ export class ExportService {
     projectId: string,
     currentUser: any,
   ): Promise<PassThrough> {
-    const projectQuery = this.projectModel
-      .findById(projectId)
-      .populate("clientId areaId areaIds");
-    if (this.isGlobalUser(currentUser) || this.isOperationalUser(currentUser)) {
-      projectQuery.setOptions({ skipTenantFilter: true });
-    }
+    const projectQuery = this.populateProjectRefs(
+      this.projectModel.findById(projectId),
+      currentUser,
+    );
     const project = await projectQuery;
     if (!project) {
       throw new NotFoundException("Proyecto no encontrado");
@@ -436,7 +454,11 @@ export class ExportService {
     currentUser: any,
   ): Promise<string> {
     // Validación similar a Excel
-    const project = await this.projectModel.findById(projectId);
+    const projectQuery = this.projectModel.findById(projectId);
+    if (this.isGlobalUser(currentUser) || this.isOperationalUser(currentUser)) {
+      projectQuery.setOptions({ skipTenantFilter: true });
+    }
+    const project = await projectQuery;
     if (!project) {
       throw new NotFoundException("Proyecto no encontrado");
     }
@@ -509,10 +531,10 @@ export class ExportService {
    * A. NIVEL PROYECTO - Exportar proyecto a JSON
    */
   async exportProjectToJSON(projectId: string, currentUser: any): Promise<any> {
-    const project = await this.projectModel
-      .findById(projectId)
-      .populate("clientId areaId areaIds")
-      .lean();
+    const project = await this.populateProjectRefs(
+      this.projectModel.findById(projectId),
+      currentUser,
+    ).lean();
     if (!project) {
       throw new NotFoundException("Proyecto no encontrado");
     }
@@ -549,12 +571,10 @@ export class ExportService {
     projectId: string,
     currentUser: any,
   ): Promise<PassThrough> {
-    const projectQuery = this.projectModel
-      .findById(projectId)
-      .populate("clientId areaId areaIds");
-    if (this.isGlobalUser(currentUser) || this.isOperationalUser(currentUser)) {
-      projectQuery.setOptions({ skipTenantFilter: true });
-    }
+    const projectQuery = this.populateProjectRefs(
+      this.projectModel.findById(projectId),
+      currentUser,
+    );
     const project = await projectQuery;
     if (!project) {
       throw new NotFoundException("Proyecto no encontrado");
@@ -584,10 +604,13 @@ export class ExportService {
     archive.append(excelStream, { name: `${project.name}/hallazgos.xlsx` });
 
     // Agregar evidencias (solo de hallazgos vigentes, igual que el Excel del ZIP)
-    const findings = await this.findingModel
+    const zipFindingsQuery = this.findingModel
       .find({ projectId, status: { $ne: FindingStatus.CLOSED } })
-      .select("_id code")
-      .lean();
+      .select("_id code");
+    if (this.isGlobalUser(currentUser) || this.isOperationalUser(currentUser)) {
+      zipFindingsQuery.setOptions({ skipTenantFilter: true });
+    }
+    const findings = await zipFindingsQuery.lean();
     const findingIds = findings.map((f: any) => f._id);
     const evidences = await this.evidenceModel
       .find({ findingId: { $in: findingIds } })

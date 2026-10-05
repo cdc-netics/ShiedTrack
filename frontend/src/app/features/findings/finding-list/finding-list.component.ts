@@ -95,10 +95,12 @@ import { environment } from '../../../../environments/environment';
           <div class="finding-toolbar ui-cluster ui-cluster--between">
             @if (!isClientOnlyView()) {
               <div class="ui-cluster">
-                <button mat-raised-button color="primary" type="button" routerLink="/findings/new">
-                  <mat-icon aria-hidden="true">add</mat-icon>
-                  Nuevo hallazgo
-                </button>
+                @if (canManageFindings()) {
+                  <button mat-raised-button color="primary" type="button" routerLink="/findings/new">
+                    <mat-icon aria-hidden="true">add</mat-icon>
+                    Nuevo hallazgo
+                  </button>
+                }
 
                 @if (canImport()) {
                   <button mat-stroked-button color="primary" type="button" (click)="openImportDialog()"
@@ -108,14 +110,14 @@ import { environment } from '../../../../environments/environment';
                   </button>
                 }
 
-                @if (selection.hasValue()) {
+                @if (canManageFindings() && selection.hasValue()) {
                   <button mat-raised-button color="warn" type="button" (click)="bulkClose()">
                     <mat-icon aria-hidden="true">done_all</mat-icon>
                     Cerrar ({{ selection.selected.length }})
                   </button>
                 }
               </div>
-            } @else if (selection.hasValue()) {
+            } @else if (canManageFindings() && selection.hasValue()) {
               <div class="ui-cluster">
                 <button mat-raised-button color="warn" type="button" (click)="bulkClose()">
                   <mat-icon aria-hidden="true">done_all</mat-icon>
@@ -236,11 +238,15 @@ import { environment } from '../../../../environments/environment';
           <div class="ui-empty-state">
             <mat-icon aria-hidden="true">search_off</mat-icon>
             <p class="ui-empty-state__title">No se encontraron hallazgos</p>
-            <p>Ajusta los filtros o crea un nuevo hallazgo.</p>
-            <button mat-raised-button color="primary" type="button" routerLink="/findings/new">
-              <mat-icon aria-hidden="true">add</mat-icon>
-              Crear hallazgo
-            </button>
+            @if (canManageFindings()) {
+              <p>Ajusta los filtros o crea un nuevo hallazgo.</p>
+              <button mat-raised-button color="primary" type="button" routerLink="/findings/new">
+                <mat-icon aria-hidden="true">add</mat-icon>
+                Crear hallazgo
+              </button>
+            } @else {
+              <p>Ajusta los filtros de búsqueda.</p>
+            }
           </div>
         } @else {
           <div class="ui-table-scroll">
@@ -343,10 +349,12 @@ import { environment } from '../../../../environments/environment';
                         matTooltip="Ver detalles">
                   <mat-icon>visibility</mat-icon>
                 </button>
-                <button mat-icon-button [routerLink]="['/findings', finding._id, 'edit']" (click)="$event.stopPropagation()"
-                        matTooltip="Editar">
-                  <mat-icon>edit</mat-icon>
-                </button>
+                @if (canManageFindings()) {
+                  <button mat-icon-button [routerLink]="['/findings', finding._id, 'edit']" (click)="$event.stopPropagation()"
+                          matTooltip="Editar">
+                    <mat-icon>edit</mat-icon>
+                  </button>
+                }
                 <button mat-icon-button [routerLink]="['/findings', finding._id, 'timeline']" (click)="$event.stopPropagation()"
                         matTooltip="Ver timeline">
                   <mat-icon>history</mat-icon>
@@ -593,6 +601,15 @@ export class FindingListComponent implements OnInit {
     this.selection.select(...this.filteredFindings());
   }
 
+  /** Mismos roles que el backend exige en POST/PUT /findings — AUDITOR/VIEWER quedan fuera */
+  canManageFindings = computed(() => {
+    const role = this.authService.currentUser()?.role;
+    return [
+      'OWNER', 'PLATFORM_ADMIN', 'ADMIN_AREA', 'CLIENT_ADMIN', 'AREA_ADMIN',
+      'ANALYST', 'PENTESTER', 'QA', 'NORMAL_USER'
+    ].includes(role || '');
+  });
+
   canImport = computed(() => {
     const role = this.authService.currentUser()?.role;
     return ['OWNER', 'PLATFORM_ADMIN', 'PENTESTER', 'QA', 'ANALYST'].includes(role || '');
@@ -612,6 +629,8 @@ export class FindingListComponent implements OnInit {
 
   /** Cierra masivamente los hallazgos seleccionados */
   bulkClose() {
+    if (!this.canManageFindings()) return;
+
     const selectedIds = this.selection.selected
       .map(f => f._id || f.id)
       .filter(Boolean);

@@ -91,10 +91,12 @@ import { roleSatisfies } from '../../../shared/utils/rbac';
 
       <section class="ui-cluster ui-cluster--between" aria-label="Filtros y acciones">
         @if (activeTab() === 'active') {
-          <button mat-raised-button color="primary" type="button" routerLink="/projects/new">
-            <mat-icon aria-hidden="true">add</mat-icon>
-            Nuevo proyecto
-          </button>
+          @if (canCreateProject()) {
+            <button mat-raised-button color="primary" type="button" routerLink="/projects/new">
+              <mat-icon aria-hidden="true">add</mat-icon>
+              Nuevo proyecto
+            </button>
+          }
         } @else {
           <p class="archived-hint">
             <mat-icon aria-hidden="true">info</mat-icon>
@@ -142,11 +144,15 @@ import { roleSatisfies } from '../../../shared/utils/rbac';
             } @else {
               <mat-icon aria-hidden="true">folder_off</mat-icon>
               <p class="ui-empty-state__title">No hay proyectos</p>
-              <p>Crea tu primer proyecto para comenzar.</p>
-              <button mat-raised-button color="primary" type="button" routerLink="/projects/new">
-                <mat-icon aria-hidden="true">add</mat-icon>
-                Crear proyecto
-              </button>
+              @if (canCreateProject()) {
+                <p>Crea tu primer proyecto para comenzar.</p>
+                <button mat-raised-button color="primary" type="button" routerLink="/projects/new">
+                  <mat-icon aria-hidden="true">add</mat-icon>
+                  Crear proyecto
+                </button>
+              } @else {
+                <p>No hay proyectos disponibles para tu usuario.</p>
+              }
             }
           </div>
         } @else {
@@ -228,8 +234,8 @@ import { roleSatisfies } from '../../../shared/utils/rbac';
               <th mat-header-cell *matHeaderCellDef>Acciones</th>
               <td mat-cell *matCellDef="let project">
                 <button mat-icon-button [routerLink]="['/projects', project._id]" (click)="$event.stopPropagation()"
-                        matTooltip="Ver/Editar detalles">
-                  <mat-icon>edit</mat-icon>
+                        [matTooltip]="canCreateProject() ? 'Ver/Editar detalles' : 'Ver detalles'">
+                  <mat-icon>{{ canCreateProject() ? 'edit' : 'visibility' }}</mat-icon>
                 </button>
                 @if (canCloseProject(project) && project.projectStatus !== 'CLOSED' && project.projectStatus !== 'ARCHIVED') {
                   <button mat-icon-button (click)="closeProject(project); $event.stopPropagation()"
@@ -527,6 +533,17 @@ export class ProjectListComponent implements OnInit {
     }
 
     this.filteredProjects.set(projects);
+  }
+
+  /** Mismos roles que el backend exige en POST /projects (crear proyecto) */
+  canCreateProject(): boolean {
+    const user = this.authService.currentUser();
+    if (!user) return false;
+    return (
+      roleSatisfies(UserRole.OWNER, user.role) ||
+      roleSatisfies(UserRole.PENTESTER, user.role) ||
+      roleSatisfies(UserRole.ADMIN_AREA, user.role)
+    );
   }
 
   canCloseProject(project: any): boolean {

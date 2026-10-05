@@ -51,6 +51,9 @@ export class FindingController {
   @Roles(
     UserRole.OWNER,
     UserRole.PLATFORM_ADMIN,
+    UserRole.ADMIN_AREA,
+    UserRole.CLIENT_ADMIN,
+    UserRole.AREA_ADMIN,
     UserRole.ANALYST,
     UserRole.PENTESTER,
     UserRole.QA,
@@ -104,6 +107,7 @@ export class FindingController {
   @Roles(
     UserRole.OWNER,
     UserRole.PLATFORM_ADMIN,
+    UserRole.ADMIN_AREA,
     UserRole.CLIENT_ADMIN,
     UserRole.AREA_ADMIN,
     UserRole.ANALYST,

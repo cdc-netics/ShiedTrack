@@ -504,19 +504,25 @@ export class ProjectService {
    * Se ejecuta automáticamente al cerrar un proyecto
    */
   private async closeProjectFindings(projectId: string): Promise<void> {
-    const result = await this.findingModel.updateMany(
-      {
-        projectId,
-        status: { $ne: FindingStatus.CLOSED },
-      },
-      {
-        $set: {
-          status: FindingStatus.CLOSED,
-          closeReason: "CONTRACT_ENDED",
-          closedAt: new Date(),
+    // El acceso al proyecto ya fue validado en update() antes de llamar aquí, por lo
+    // que skipTenantFilter es seguro — el scope está garantizado por projectId. Sin esto,
+    // usuarios operacionales (QA/PENTESTER) sin activeTenantId en el JWT reciben 500
+    // ("No hay contexto de tenant activo") al cerrar un proyecto.
+    const result = await this.findingModel
+      .updateMany(
+        {
+          projectId,
+          status: { $ne: FindingStatus.CLOSED },
         },
-      },
-    );
+        {
+          $set: {
+            status: FindingStatus.CLOSED,
+            closeReason: "CONTRACT_ENDED",
+            closedAt: new Date(),
+          },
+        },
+      )
+      .setOptions({ skipTenantFilter: true });
 
     this.logger.log(
       `${result.modifiedCount} hallazgos cerrados automáticamente para proyecto ${projectId}`,
