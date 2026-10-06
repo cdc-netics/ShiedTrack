@@ -35,7 +35,7 @@ pipeline {
             steps {
                 echo "🔧 Componiendo .env para el ambiente '${AMBIENTE}'..."
                 withCredentials([
-                    string(credentialsId: 'certvault-mongo-password', variable: 'MONGO_INITDB_ROOT_PASSWORD'),
+                    string(credentialsId: 'shieldtrack-mongo-password', variable: 'MONGO_INITDB_ROOT_PASSWORD'),
                     string(credentialsId: 'certvault-jwt-secret', variable: 'JWT_SECRET'),
                     string(credentialsId: 'certvault-admin-password', variable: 'ADMIN_PASSWORD')
                 ]) {
@@ -43,6 +43,7 @@ pipeline {
                         export MONGO_PORT="${MONGO_PORT}"
                         export BACKEND_PORT="${BACKEND_PORT}"
                         export FRONTEND_PORT="${FRONTEND_PORT}"
+                        export PUBLIC_HOST="${QA_HOST}"
                         sh ./deploy/compose-env.sh "$AMBIENTE"
                     '''
                 }
@@ -55,7 +56,11 @@ pipeline {
                 withCredentials([sshUserPrivateKey(credentialsId: 'jenkins-ssh-key', keyFileVariable: 'SSH_KEY', usernameVariable: 'SSH_USER')]) {
                     sh '''
                         echo "🧹 Limpiando deploy anterior..."
-                        ssh -i ${SSH_KEY} -o StrictHostKeyChecking=no ${SSH_USER}@${QA_HOST} "cd ${QA_DEPLOY_DIR} && docker compose down || true" 2>/dev/null || true
+                        # -v: borra tambien los volumenes (incluye el de Mongo). Necesario aqui porque
+                        # Mongo solo aplica MONGO_INITDB_ROOT_PASSWORD en la primera inicializacion del
+                        # volumen; sin -v, un cambio de contraseña en Jenkins quedaria desincronizado
+                        # contra el volumen ya existente. Aceptable en QA, que siempre parte de cero.
+                        ssh -i ${SSH_KEY} -o StrictHostKeyChecking=no ${SSH_USER}@${QA_HOST} "cd ${QA_DEPLOY_DIR} && docker compose down -v || true" 2>/dev/null || true
                         ssh -i ${SSH_KEY} -o StrictHostKeyChecking=no ${SSH_USER}@${QA_HOST} "rm -rf ${QA_DEPLOY_DIR}"
 
                         echo "📤 Copiando código desde Jenkins..."
