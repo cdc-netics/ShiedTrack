@@ -29,6 +29,10 @@ MONGO_PORT=${MONGO_PORT:-27017}
 BACKEND_PORT=${BACKEND_PORT:-3000}
 FRONTEND_PORT=${FRONTEND_PORT:-80}
 
+# PUBLIC_HOST: host/IP real donde se vera el sitio (ej. 10.0.101.70 en QA).
+# Default "localhost" para que el comportamiento en desarrollo local no cambie.
+PUBLIC_HOST=${PUBLIC_HOST:-localhost}
+
 # --- Backend ---
 JWT_SECRET=${JWT_SECRET}
 JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-8h}

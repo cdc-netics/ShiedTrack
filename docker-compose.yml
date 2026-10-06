@@ -49,8 +49,11 @@ services:
       OWNER_SEED_EMAIL: ${OWNER_SEED_EMAIL:-admin@shieldtrack.com}
       OWNER_SEED_PASSWORD: ${OWNER_SEED_PASSWORD:-Admin123!}
       ALLOW_OWNER_RESET: ${ALLOW_OWNER_RESET:-false}
-      FRONTEND_URL: "http://localhost:${FRONTEND_PORT:-80}"
-      CORS_ORIGINS: "http://localhost,http://127.0.0.1,http://localhost:${FRONTEND_PORT:-80},http://localhost:4200,http://127.0.0.1:4200"
+      # PUBLIC_HOST permite declarar el host/IP real donde se sirve el frontend
+      # (ej. un host de QA) ademas de localhost, para que el navegador no choque
+      # con la validacion de CORS en NODE_ENV=production (ver main.ts).
+      FRONTEND_URL: "http://${PUBLIC_HOST:-localhost}:${FRONTEND_PORT:-80}"
+      CORS_ORIGINS: "http://localhost,http://127.0.0.1,http://localhost:${FRONTEND_PORT:-80},http://127.0.0.1:${FRONTEND_PORT:-80},http://localhost:4200,http://127.0.0.1:4200,http://${PUBLIC_HOST:-localhost}:${FRONTEND_PORT:-80}"
       SKIP_LOCAL_MONGO_DIAGNOSTICS: "true"
     volumes:
       # WORKDIR del backend en runtime es /app/backend (ver backend/Dockerfile),
