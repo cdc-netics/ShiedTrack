@@ -4,7 +4,7 @@ pipeline {
       string(name: 'BRANCH', defaultValue: 'development', description: 'Branch a desplegar')
       string(name: 'MONGO_PORT', defaultValue: '27018', description: 'Puerto host para MongoDB')
       string(name: 'BACKEND_PORT', defaultValue: '3001', description: 'Puerto host para el backend (API + Swagger)')
-      string(name: 'FRONTEND_PORT', defaultValue: '8081', description: 'Puerto host para el frontend')
+      string(name: 'FRONTEND_PORT', defaultValue: '8090', description: 'Puerto host para el frontend')
     }
 
     environment {
