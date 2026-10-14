@@ -61,6 +61,29 @@ export class ExportService {
     return normalizeRole(currentUser?.role) === "PENTESTER_QA";
   }
 
+  private isAuditorUser(user?: any): boolean {
+    return user?.role === UserRole.AUDITOR;
+  }
+
+  private validateAuditorProjectAccess(project: any, user: any): void {
+    if (!this.isAuditorUser(user)) return;
+    const tenant = this.getCurrentTenantId(user);
+    const client = project.tenantId?.toString() || project.clientId?._id?.toString();
+    const projects = (user.visibleProjectIds || []).map((id: any) => id.toString());
+    const clients = (user.visibleClientIds || []).map((id: any) => id.toString());
+    const areas = (user.areaIds || []).map((id: any) => id.toString());
+    const projectAreas = [...(project.areaIds || []), project.areaId].filter(Boolean)
+      .map((id: any) => (id._id || id).toString());
+    if ((tenant && tenant !== client) ||
+        (projects.length && !projects.includes(project._id.toString())) ||
+        (areas.length && !areas.some((id: string) => projectAreas.includes(id))) ||
+        (!tenant && user.auditorVisibilityScope === 'PER_CLIENT' && !clients.includes(client)) ||
+        (!tenant && !projects.length && !areas.length &&
+          !(user.auditorVisibilityScope === 'PER_CLIENT' && clients.includes(client)))) {
+      throw new ForbiddenException('No tiene permisos para exportar este proyecto');
+    }
+  }
+
   private isAreaRestrictedUser(currentUser?: any): boolean {
     return [
       UserRole.AREA_ADMIN,
@@ -82,7 +105,7 @@ export class ExportService {
    * tuviera el bypass.
    */
   private populateProjectRefs(query: any, currentUser?: any): any {
-    const bypass = this.isGlobalUser(currentUser) || this.isOperationalUser(currentUser);
+    const bypass = this.isGlobalUser(currentUser) || this.isOperationalUser(currentUser) || this.isAuditorUser(currentUser);
     if (bypass) {
       query.setOptions({ skipTenantFilter: true });
     }
@@ -97,16 +120,29 @@ export class ExportService {
    */
   async exportFindingPdf(findingId: string, currentUser: any): Promise<Buffer> {
     // 1. Fetch the finding
-    const finding = await this.findingModel.findById(findingId);
+    // .lean(): pdfmake muta en el sitio los arrays que recibe (ej. normaliza
+    // items de "ul" a objetos {text:...}); contra un documento Mongoose vivo,
+    // esa escritura dispara el cast del schema ([String] en "references") y
+    // revienta con CastError al pasarle un objeto. .lean() devuelve arrays
+    // planos de JS, inmunes a esa validacion.
+    const finding = await this.findingModel
+      .findById(findingId)
+      .setOptions({ skipTenantFilter: true })
+      .lean();
     if (!finding) {
       throw new NotFoundException("Hallazgo no encontrado");
     }
 
     // 2. Fetch the associated project to check RBAC
     // We need the project to determine the client/tenant for authorization checks.
-    const project = await this.projectModel
-      .findById(finding.projectId)
-      .populate("clientId");
+    // skipTenantFilter: roles operativos (PENTESTER/QA/ANALYST) no tienen un
+    // tenant fijo en el contexto CLS; sin esto, la query revienta con
+    // "No hay contexto de tenant activo" antes de llegar al chequeo de RBAC
+    // que viene abajo (el cual sí permite a estos roles exportar cualquier hallazgo).
+    const project = await this.populateProjectRefs(
+      this.projectModel.findById(finding.projectId).setOptions({ skipTenantFilter: true }),
+      currentUser,
+    );
     if (!project) {
       // This case should ideally not happen if data integrity is maintained,
       // but it's good practice to handle it.
@@ -115,9 +151,11 @@ export class ExportService {
       );
     }
 
+    this.validateAuditorProjectAccess(project, currentUser);
+
     // 3. Implement RBAC checks
     // Allowed roles bypass strict tenant/client checks, but still need to be authenticated.
-    if (!this.isGlobalUser(currentUser)) {
+    if (!this.isGlobalUser(currentUser) && !this.isOperationalUser(currentUser) && !this.isAuditorUser(currentUser)) {
       // For other roles, check if the user belongs to the same tenant/client as the project.
       const userTenantId = (
         currentUser.activeTenantId || currentUser.clientId
@@ -151,6 +189,7 @@ export class ExportService {
     // usa la pestaña Evidencias del frontend
     const evidences = await this.evidenceModel
       .find({ findingId: finding._id })
+      .setOptions({ skipTenantFilter: true })
       .sort({ createdAt: 1 });
 
     // If all checks pass, generate the PDF report
@@ -271,10 +310,11 @@ export class ExportService {
     );
     const project = await projectQuery;
     if (!project) throw new NotFoundException("Proyecto no encontrado");
+    this.validateAuditorProjectAccess(project, currentUser);
 
     // RBAC (Simplified check)
-    const findingsQuery = this.findingModel.find({ projectId }).sort({ severity: 1 });
-    if (this.isGlobalUser(currentUser) || this.isOperationalUser(currentUser)) {
+    const findingsQuery = this.findingModel.find({ projectId }).sort({ severity: 1 }).lean();
+    if (this.isGlobalUser(currentUser) || this.isOperationalUser(currentUser) || this.isAuditorUser(currentUser)) {
       findingsQuery.setOptions({ skipTenantFilter: true });
     }
     const findings = await findingsQuery;
@@ -300,9 +340,11 @@ export class ExportService {
       throw new NotFoundException("Proyecto no encontrado");
     }
 
+    this.validateAuditorProjectAccess(project, currentUser);
+
     // RBAC: Validar que el usuario pertenece al cliente/tenant del proyecto
     // Los usuarios operacionales (PENTESTER/QA/ANALYST) pueden exportar cualquier proyecto
-    if (!this.isGlobalUser(currentUser) && !this.isOperationalUser(currentUser)) {
+    if (!this.isGlobalUser(currentUser) && !this.isOperationalUser(currentUser) && !this.isAuditorUser(currentUser)) {
       const userTenantId = this.getCurrentTenantId(currentUser);
 
       let projectTenantId: string | undefined;
@@ -455,7 +497,7 @@ export class ExportService {
   ): Promise<string> {
     // Validación similar a Excel
     const projectQuery = this.projectModel.findById(projectId);
-    if (this.isGlobalUser(currentUser) || this.isOperationalUser(currentUser)) {
+    if (this.isGlobalUser(currentUser) || this.isOperationalUser(currentUser) || this.isAuditorUser(currentUser)) {
       projectQuery.setOptions({ skipTenantFilter: true });
     }
     const project = await projectQuery;
@@ -580,8 +622,10 @@ export class ExportService {
       throw new NotFoundException("Proyecto no encontrado");
     }
 
+    this.validateAuditorProjectAccess(project, currentUser);
+
     // RBAC: operational users (QA/PENTESTER) can export any project
-    if (!this.isGlobalUser(currentUser) && !this.isOperationalUser(currentUser)) {
+    if (!this.isGlobalUser(currentUser) && !this.isOperationalUser(currentUser) && !this.isAuditorUser(currentUser)) {
       const userTenant = (
         currentUser.activeTenantId || currentUser.clientId
       )?.toString();
@@ -607,13 +651,14 @@ export class ExportService {
     const zipFindingsQuery = this.findingModel
       .find({ projectId, status: { $ne: FindingStatus.CLOSED } })
       .select("_id code");
-    if (this.isGlobalUser(currentUser) || this.isOperationalUser(currentUser)) {
+    if (this.isGlobalUser(currentUser) || this.isOperationalUser(currentUser) || this.isAuditorUser(currentUser)) {
       zipFindingsQuery.setOptions({ skipTenantFilter: true });
     }
     const findings = await zipFindingsQuery.lean();
     const findingIds = findings.map((f: any) => f._id);
     const evidences = await this.evidenceModel
       .find({ findingId: { $in: findingIds } })
+      .setOptions({ skipTenantFilter: true })
       .lean();
 
     for (const evidence of evidences as any[]) {
@@ -654,12 +699,27 @@ export class ExportService {
       }
     }
 
-    const client = await this.clientModel.findById(clientId);
+    const clientQuery = this.clientModel.findById(clientId);
+    if (this.isGlobalUser(currentUser) || this.isOperationalUser(currentUser) || this.isAuditorUser(currentUser)) {
+      clientQuery.setOptions({ skipTenantFilter: true });
+    }
+    const client = await clientQuery;
     if (!client) {
       throw new NotFoundException("Cliente no encontrado");
     }
 
-    const projects = await this.projectModel.find({ clientId }).lean();
+    // Los proyectos se escopan por tenantId (= Client._id), no por el campo
+    // "clientId" (legacy/deprecated, nunca se puebla en proyectos nuevos).
+    // skipTenantFilter: el OWNER exportando un cliente puntual puede no tener
+    // ese tenant como su contexto CLS activo.
+    // Cast explicito: pasar el string del parametro de ruta tal cual a veces
+    // no se auto-castea a ObjectId para este modelo/pipeline de plugins,
+    // dejando el filtro como string y sin matchear nada contra el campo
+    // tenantId (BSON ObjectId) de los proyectos.
+    const projects = await this.projectModel
+      .find({ tenantId: new Types.ObjectId(clientId) })
+      .setOptions({ skipTenantFilter: true })
+      .lean();
 
     this.logger.log(
       `Exportando portfolio del cliente ${client.name} (${projects.length} proyectos)`,
@@ -683,10 +743,12 @@ export class ExportService {
       const projectFindings = await this.findingModel
         .find({ projectId: project._id, status: { $ne: FindingStatus.CLOSED } })
         .select("_id code")
+        .setOptions({ skipTenantFilter: true })
         .lean();
       const projectFindingIds = projectFindings.map((f: any) => f._id);
       const evidences = await this.evidenceModel
         .find({ findingId: { $in: projectFindingIds } })
+        .setOptions({ skipTenantFilter: true })
         .lean();
 
       for (const evidence of evidences as any[]) {
@@ -724,14 +786,20 @@ export class ExportService {
       }
     }
 
-    const client = await this.clientModel.findById(clientId);
+    const clientQuery = this.clientModel.findById(clientId);
+    if (this.isGlobalUser(currentUser) || this.isOperationalUser(currentUser) || this.isAuditorUser(currentUser)) {
+      clientQuery.setOptions({ skipTenantFilter: true });
+    }
+    const client = await clientQuery;
     if (!client) {
       throw new NotFoundException("Cliente no encontrado");
     }
 
-    // Usar client._id en lugar de clientId para asegurar ObjectId correcto
+    // Los proyectos se escopan por tenantId (= Client._id), no por el campo
+    // "clientId" (legacy/deprecated, nunca se puebla en proyectos nuevos).
     const projects = await this.projectModel
-      .find({ clientId: client._id })
+      .find({ tenantId: client._id })
+      .setOptions({ skipTenantFilter: true })
       .select("_id name")
       .lean();
     this.logger.log(
@@ -774,6 +842,7 @@ export class ExportService {
 
     const findings = await this.findingModel
       .find({ projectId: { $in: projectIds }, status: { $ne: FindingStatus.CLOSED } })
+      .setOptions({ skipTenantFilter: true })
       .populate("assignedTo", "firstName lastName")
       .lean();
 

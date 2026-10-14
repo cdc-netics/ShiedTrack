@@ -106,7 +106,6 @@ export class ConfirmDeleteDialogComponent {
               <mat-option value="ADMIN_AREA">Admin Area</mat-option>
               <mat-option value="PENTESTER">Pentester</mat-option>
               <mat-option value="QA">QA</mat-option>
-              <mat-option value="NORMAL_USER">Usuario Normal</mat-option>
               <mat-option value="AUDITOR">Auditor</mat-option>
             </mat-select>
           </mat-form-field>
@@ -151,12 +150,6 @@ export class ConfirmDeleteDialogComponent {
               <button mat-menu-item (click)="createUser('QA')">
                 <mat-icon>fact_check</mat-icon>
                 <span>QA</span>
-              </button>
-            }
-            @if (canCreateRole('NORMAL_USER')) {
-              <button mat-menu-item (click)="createUser('NORMAL_USER')">
-                <mat-icon>person</mat-icon>
-                <span>Usuario Normal</span>
               </button>
             }
             @if (canCreateRole('AUDITOR')) {
@@ -385,7 +378,6 @@ export class UserListImprovedComponent implements OnInit {
     { value: 'ADMIN_AREA', label: 'Admin Area', icon: 'admin_panel_settings' },
     { value: 'PENTESTER', label: 'Pentester', icon: 'bug_report' },
     { value: 'QA', label: 'QA', icon: 'fact_check' },
-    { value: 'NORMAL_USER', label: 'Usuario Normal', icon: 'person' },
     { value: 'AUDITOR', label: 'Auditor', icon: 'visibility' }
   ];
 
@@ -397,7 +389,7 @@ export class UserListImprovedComponent implements OnInit {
       return true;
     }
     if (roleSatisfies(UserRole.ADMIN_AREA, currentRole)) {
-      return role === UserRole.NORMAL_USER || role === UserRole.AUDITOR;
+      return role === UserRole.AUDITOR;
     }
     return false;
   }
@@ -573,7 +565,7 @@ export class UserListImprovedComponent implements OnInit {
     });
   }
 
-  createUser(role = 'NORMAL_USER'): void {
+  createUser(role = 'AUDITOR'): void {
     this.dialog.open(UserDialogComponent, {
       width: '640px',
       data: { role }
@@ -634,7 +626,6 @@ export class UserListImprovedComponent implements OnInit {
       'ADMIN_AREA': 'Admin Area',
       'PENTESTER': 'Pentester',
       'QA': 'QA',
-      'NORMAL_USER': 'Usuario Normal',
       'AUDITOR': 'Auditor'
     };
     return names[role] || role;
@@ -651,7 +642,6 @@ export class UserListImprovedComponent implements OnInit {
       'ADMIN_AREA': 'business_center',
       'PENTESTER': 'bug_report',
       'QA': 'fact_check',
-      'NORMAL_USER': 'person',
       'AUDITOR': 'visibility'
     };
     return icons[role] || 'person';

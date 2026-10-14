@@ -525,7 +525,7 @@ export class AuthService {
 
     // ADMIN_AREA solo puede bloquear usuarios de menor rango
     if (normalizeRole(currentUser?.role) === "ADMIN_AREA") {
-      const allowedTargets = [UserRole.NORMAL_USER, UserRole.AUDITOR, UserRole.VIEWER];
+      const allowedTargets = [UserRole.AUDITOR, UserRole.VIEWER];
       if (!allowedTargets.includes(user.role as UserRole)) {
         throw new ForbiddenException(
           "No tienes permiso para bloquear este tipo de usuario",
@@ -590,7 +590,7 @@ export class AuthService {
 
     // ADMIN_AREA solo puede reactivar usuarios de menor rango
     if (normalizeRole(currentUser?.role) === "ADMIN_AREA") {
-      const allowedTargets = [UserRole.NORMAL_USER, UserRole.AUDITOR, UserRole.VIEWER];
+      const allowedTargets = [UserRole.AUDITOR, UserRole.VIEWER];
       if (!allowedTargets.includes(user.role as UserRole)) {
         throw new ForbiddenException(
           "No tienes permiso para reactivar este tipo de usuario",

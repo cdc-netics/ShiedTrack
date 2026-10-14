@@ -205,12 +205,16 @@ export class ProjectService {
    */
   async create(dto: CreateProjectDto, user: any): Promise<Project> {
     if (!dto.code) {
+      // El codigo de proyecto es unico GLOBALMENTE (indice unico "code_1"), no
+      // por tenant, asi que el conteo para generarlo siempre debe ser global.
+      // Escoparlo al tenant del usuario (como antes, solo para operativos/
+      // auditores sin tenant) hacia que dos tenants distintos generaran el
+      // mismo codigo (ej. ambos calculan "PROJ-2026-004"), chocando contra el
+      // indice unico con un 500.
       const year = new Date().getFullYear();
-      const countQuery = this.projectModel.countDocuments();
-      if (this.shouldBypassTenantFilter(user)) {
-        countQuery.setOptions({ skipTenantFilter: true });
-      }
-      const count = await countQuery;
+      const count = await this.projectModel
+        .countDocuments()
+        .setOptions({ skipTenantFilter: true });
       dto.code = `PROJ-${year}-${String(count + 1).padStart(3, "0")}`;
     }
 

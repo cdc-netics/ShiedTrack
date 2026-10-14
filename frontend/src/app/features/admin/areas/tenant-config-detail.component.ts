@@ -443,6 +443,7 @@ export class TenantConfigDetailComponent implements OnInit {
     this.http.put(`${environment.apiUrl}/areas/${id}`, payload).subscribe({
       next: () => {
         this.snackBar.open('✅ Configuración guardada correctamente', 'Cerrar', { duration: 3000 });
+        this.router.navigate(['/admin/areas']);
       },
       error: (err) => {
         console.error('Error al guardar:', err);

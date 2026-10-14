@@ -37,7 +37,7 @@ pipeline {
                 withCredentials([
                     string(credentialsId: 'shieldtrack-mongo-password', variable: 'MONGO_INITDB_ROOT_PASSWORD'),
                     string(credentialsId: 'certvault-jwt-secret', variable: 'JWT_SECRET'),
-                    string(credentialsId: 'certvault-admin-password', variable: 'ADMIN_PASSWORD')
+                    string(credentialsId: 'shieldtrack-admin-password', variable: 'ADMIN_PASSWORD')
                 ]) {
                     sh '''
                         export MONGO_PORT="${MONGO_PORT}"

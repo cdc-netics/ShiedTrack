@@ -314,7 +314,10 @@ export class ClientService {
 
     if (conditions.length === 0) return;
 
-    const query: any = { $or: conditions };
+    // Solo bloquea contra clientes activos: uno desactivado ("eliminado") no
+    // debe reservar su nombre/codigo para siempre, o nunca se podria recrear
+    // un cliente con ese mismo nombre.
+    const query: any = { $or: conditions, isActive: true };
     if (excludeId) {
       query._id = { $ne: excludeId };
     }

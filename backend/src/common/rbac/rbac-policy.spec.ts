@@ -23,7 +23,7 @@ describe("RBAC Policy", () => {
     expect(canCreateUsers(UserRole.QA)).toBe(false);
     expect(canCreateUsers(UserRole.ADMIN_AREA)).toBe(true);
 
-    expect(canCreateTargetRole(UserRole.ADMIN_AREA, UserRole.NORMAL_USER)).toBe(
+    expect(canCreateTargetRole(UserRole.ADMIN_AREA, UserRole.AUDITOR)).toBe(
       true,
     );
     expect(canCreateTargetRole(UserRole.ADMIN_AREA, UserRole.OWNER)).toBe(false);
