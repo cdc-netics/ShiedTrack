@@ -59,7 +59,6 @@ export class EvidenceController {
     UserRole.ANALYST,
     UserRole.PENTESTER,
     UserRole.QA,
-    UserRole.NORMAL_USER,
   )
   @UseInterceptors(
     FileInterceptor("file", {
@@ -108,7 +107,6 @@ export class EvidenceController {
     UserRole.ANALYST,
     UserRole.PENTESTER,
     UserRole.QA,
-    UserRole.NORMAL_USER,
   )
   @ApiOperation({
     summary: "Registrar evidencia como enlace externo (ej. SharePoint)",
@@ -136,7 +134,6 @@ export class EvidenceController {
     UserRole.PENTESTER,
     UserRole.QA,
     UserRole.VIEWER,
-    UserRole.NORMAL_USER,
     UserRole.AUDITOR,
   )
   @ApiOperation({
@@ -160,7 +157,6 @@ export class EvidenceController {
     UserRole.PENTESTER,
     UserRole.QA,
     UserRole.VIEWER,
-    UserRole.NORMAL_USER,
     UserRole.AUDITOR,
   )
   @Throttle({ default: { limit: 10, ttl: 60000 } }) // SECURITY FIX M2: Rate limiting

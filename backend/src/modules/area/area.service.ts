@@ -28,15 +28,18 @@ export class AreaService {
    */
   private async getNextCorrelativeTenantId(): Promise<Types.ObjectId> {
     try {
-      // Obtenemos el modelo de Tenant dinámicamente desde la conexión
-      const TenantModel = this.areaModel.db.model("Tenant");
-      const activeTenants = await TenantModel.find({ isActive: true }).sort({
-        _id: 1,
-      });
+      // El tenant real en este sistema es el Client (ver CLAUDE.md: "Clients = Tenants
+      // en logica de negocio"). La coleccion "Tenant" es historica y nunca se llena.
+      const ClientModel = this.areaModel.db.model("Client");
+      const activeTenants = await ClientModel.find({ isActive: true })
+        .setOptions({ skipTenantFilter: true })
+        .sort({
+          _id: 1,
+        });
 
       if (activeTenants.length === 0) {
         throw new BadRequestException(
-          "No existen tenants activos para asignación automática.",
+          "No existen clientes activos para asignación automática.",
         );
       }
 

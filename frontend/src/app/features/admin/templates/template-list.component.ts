@@ -464,7 +464,7 @@ export class TemplateListComponent implements OnInit {
     const currentUser = this.authService.currentUser();
     if (!currentUser) return false;
     // Roles de gestión completa editan/eliminan/duplican cualquier plantilla, no solo
-    // las propias (igual que el backend). NORMAL_USER/AUDITOR/VIEWER no gestionan nada.
+    // las propias (igual que el backend). AUDITOR/VIEWER no gestionan nada.
     if (this.canManageTemplates()) return true;
     const createdById =
       typeof template?.createdBy === 'object' ? template?.createdBy?._id : template?.createdBy;

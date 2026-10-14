@@ -74,7 +74,7 @@ export class ExportController {
     UserRole.CLIENT_ADMIN,
     UserRole.PLATFORM_ADMIN,
     UserRole.OWNER,
-    UserRole.NORMAL_USER,
+    UserRole.AUDITOR,
   )
   @Throttle({ default: { limit: 10, ttl: 60000 } }) // 10 exports por minuto
   @ApiOperation({ summary: "Exportar proyecto a Excel (ANALYST+)" })
@@ -155,6 +155,7 @@ export class ExportController {
     UserRole.CLIENT_ADMIN,
     UserRole.PLATFORM_ADMIN,
     UserRole.OWNER,
+    UserRole.AUDITOR,
   )
   @Throttle({ default: { limit: 5, ttl: 60000 } })
   @ApiOperation({
@@ -237,6 +238,7 @@ export class ExportController {
     UserRole.CLIENT_ADMIN,
     UserRole.PLATFORM_ADMIN,
     UserRole.OWNER,
+    UserRole.AUDITOR,
   )
   @ApiOperation({ summary: "Exportar hallazgo a PDF (ANALYST+)" })
   async exportFindingPdf(
@@ -262,6 +264,7 @@ export class ExportController {
     UserRole.CLIENT_ADMIN,
     UserRole.PLATFORM_ADMIN,
     UserRole.OWNER,
+    UserRole.AUDITOR,
   )
   @ApiOperation({ summary: "Exportar proyecto a PDF" })
   async exportProjectPdf(

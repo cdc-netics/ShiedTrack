@@ -39,7 +39,6 @@ enum NewUserRole {
   ADMIN_AREA = "ADMIN_AREA",
   PENTESTER = "PENTESTER",
   QA = "QA",
-  NORMAL_USER = "NORMAL_USER",
   AUDITOR = "AUDITOR",
 }
 
@@ -210,7 +209,7 @@ enum AuditorVisibilityScope {
           <div class="form-section">
             <h3>Asignación de Alcance</h3>
 
-            <!-- CLIENT_ID: Para OWNER, ADMIN_AREA, NORMAL_USER -->
+            <!-- CLIENT_ID: Para OWNER, ADMIN_AREA -->
             @if (showClientField()) {
             <mat-form-field appearance="outline" class="full-width">
               <mat-label>Cliente (Tenant)</mat-label>
@@ -233,7 +232,7 @@ enum AuditorVisibilityScope {
             </mat-form-field>
             }
 
-            <!-- AREA_IDS: Para OWNER, NORMAL_USER -->
+            <!-- AREA_IDS: Para OWNER -->
             @if (showAreaField()) {
             <div class="form-group">
               <label>Áreas Asignadas</label>
@@ -574,7 +573,7 @@ export class UserCreateDynamicComponent implements OnInit {
   showPassword = signal(false);
   showDebugInfo = signal(false); // Cambiar a true para debug
 
-  selectedRole = signal<NewUserRole>(NewUserRole.NORMAL_USER);
+  selectedRole = signal<NewUserRole>(NewUserRole.AUDITOR);
   visibilityScope = signal<AuditorVisibilityScope>(AuditorVisibilityScope.ALL_AREA);
 
   selectedProjects = signal<Set<string>>(new Set());
@@ -610,7 +609,7 @@ export class UserCreateDynamicComponent implements OnInit {
 
     if (creatorRole === NewUserRole.OWNER) return true;
     if (creatorRole === NewUserRole.ADMIN_AREA) {
-      return [NewUserRole.NORMAL_USER, NewUserRole.AUDITOR].includes(targetRole);
+      return targetRole === NewUserRole.AUDITOR;
     }
 
     return false;
@@ -627,7 +626,7 @@ export class UserCreateDynamicComponent implements OnInit {
     }
 
     if (creatorRole === NewUserRole.ADMIN_AREA) {
-      return [NewUserRole.NORMAL_USER, NewUserRole.AUDITOR];
+      return [NewUserRole.AUDITOR];
     }
 
     // Otros roles no pueden crear
@@ -670,10 +669,7 @@ export class UserCreateDynamicComponent implements OnInit {
 
   showAreaField = computed(() => {
     const role = this.selectedRole();
-    return [
-      NewUserRole.OWNER,
-      NewUserRole.NORMAL_USER,
-    ].includes(role);
+    return role === NewUserRole.OWNER;
   });
 
   isClientFieldRequired = computed(() => {
@@ -694,13 +690,11 @@ export class UserCreateDynamicComponent implements OnInit {
       [NewUserRole.OWNER]:
         "Acceso total a la plataforma sin restricciones. Puede crear cualquier tipo de usuario.",
       [NewUserRole.ADMIN_AREA]:
-        "Administrador de un área específica. Gestiona proyectos, clientes, Normal Users y Auditores.",
+        "Administrador de un área específica. Gestiona proyectos, clientes y Auditores.",
       [NewUserRole.PENTESTER]:
         "Profesional transversal. Crea proyectos, hallazgos y evidencia sin estar amarrado a cliente específico.",
       [NewUserRole.QA]:
         "Asegurador de calidad. Mismo nivel de permisos que Pentester.",
-      [NewUserRole.NORMAL_USER]:
-        "Usuario común. Crea hallazgos en proyectos asignados.",
       [NewUserRole.AUDITOR]:
         "Perfil de solo lectura. Visibilidad dinámica decidida por Admin Area.",
     };
@@ -745,7 +739,7 @@ export class UserCreateDynamicComponent implements OnInit {
       firstName: ["", [Validators.required]],
       lastName: ["", [Validators.required]],
       password: this.isEditMode() ? "" : ["", [Validators.required]],
-      role: [NewUserRole.NORMAL_USER, [Validators.required]],
+      role: [NewUserRole.AUDITOR, [Validators.required]],
       clientId: [""],
       areaIds: [[]],
       auditorVisibilityScope: [AuditorVisibilityScope.ALL_AREA],
@@ -909,7 +903,6 @@ export class UserCreateDynamicComponent implements OnInit {
       [NewUserRole.ADMIN_AREA]: "Admin Area",
       [NewUserRole.PENTESTER]: "Pentester",
       [NewUserRole.QA]: "QA",
-      [NewUserRole.NORMAL_USER]: "Normal User",
       [NewUserRole.AUDITOR]: "Auditor",
     };
     return labels[role] || role;
@@ -921,7 +914,6 @@ export class UserCreateDynamicComponent implements OnInit {
       [NewUserRole.ADMIN_AREA]: "Administrador de área",
       [NewUserRole.PENTESTER]: "Profesional pentesting",
       [NewUserRole.QA]: "Asegurador de calidad",
-      [NewUserRole.NORMAL_USER]: "Usuario común",
       [NewUserRole.AUDITOR]: "Solo lectura",
     };
     return descriptions[role] || "";

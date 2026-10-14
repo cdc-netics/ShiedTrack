@@ -15,9 +15,6 @@ export enum UserRole {
   /** Alias del prompt: QA */
   QA = "QA",
 
-  /** Alias del prompt: usuario común */
-  NORMAL_USER = "NORMAL_USER",
-
   /** Alias del prompt: auditor */
   AUDITOR = "AUDITOR",
 

@@ -298,7 +298,7 @@ export class PdfService {
       content: [
         { text: `Reporte de Proyecto: ${project.name}`, style: "header" },
         {
-          text: `Cliente: ${project.clientId.name || "N/A"}`,
+          text: `Cliente: ${project.clientId?.name || "N/A"}`,
           style: "subheader",
         },
         {

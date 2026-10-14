@@ -1827,10 +1827,7 @@ export class FindingDetailComponent implements OnInit {
         next: (response) => {
           console.log('✅ Hallazgo actualizado:', response);
           this.snackBar.open('Hallazgo actualizado correctamente', 'Cerrar', { duration: 3000 });
-          this.editMode.set(false);
-          this.applyEditableState();
-          this.loadFinding(this.finding()!._id);
-          this.loadUpdates(this.finding()!._id);
+          this.router.navigate(['/findings']);
         },
         error: (err) => {
           console.error('❌ Error actualizando hallazgo:', err);
@@ -2267,8 +2264,7 @@ export class FindingDetailComponent implements OnInit {
     return (
       roleSatisfies(UserRole.OWNER, currentUser.role) ||
       roleSatisfies(UserRole.ADMIN_AREA, currentUser.role) ||
-      roleSatisfies(UserRole.PENTESTER, currentUser.role) ||
-      roleSatisfies(UserRole.NORMAL_USER, currentUser.role)
+      roleSatisfies(UserRole.PENTESTER, currentUser.role)
     );
   }
 
@@ -2279,8 +2275,7 @@ export class FindingDetailComponent implements OnInit {
     return (
       roleSatisfies(UserRole.OWNER, currentUser.role) ||
       roleSatisfies(UserRole.ADMIN_AREA, currentUser.role) ||
-      roleSatisfies(UserRole.PENTESTER, currentUser.role) ||
-      roleSatisfies(UserRole.NORMAL_USER, currentUser.role)
+      roleSatisfies(UserRole.PENTESTER, currentUser.role)
     );
   }
 

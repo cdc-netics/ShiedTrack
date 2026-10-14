@@ -581,6 +581,10 @@ export class FindingListComponent implements OnInit {
   projects = signal<any[]>([]);
   
   filteredFindings = signal<any[]>([]);
+  // Hallazgos dentro del alcance de cliente/proyecto, antes de aplicar
+  // severidad/estado: lo usan las tarjetas de resumen para no colapsar a 0
+  // cuando el usuario hace clic en un filtro rapido de severidad.
+  scopedFindings = signal<any[]>([]);
 
   private CLIENTS_URL = `${environment.apiUrl}/clients`;
 
@@ -606,7 +610,7 @@ export class FindingListComponent implements OnInit {
     const role = this.authService.currentUser()?.role;
     return [
       'OWNER', 'PLATFORM_ADMIN', 'ADMIN_AREA', 'CLIENT_ADMIN', 'AREA_ADMIN',
-      'ANALYST', 'PENTESTER', 'QA', 'NORMAL_USER'
+      'ANALYST', 'PENTESTER', 'QA'
     ].includes(role || '');
   });
 
@@ -747,14 +751,6 @@ export class FindingListComponent implements OnInit {
       });
     }
     
-    if (this.severityFilter()) {
-      findings = findings.filter(f => f.severity === this.severityFilter());
-    }
-    
-    if (this.statusFilter()) {
-      findings = findings.filter(f => f.status === this.statusFilter());
-    }
-
     if (this.projectFilter()) {
       findings = findings.filter(f => {
         const pId = typeof f.projectId === 'string' ? f.projectId : f.projectId?._id;
@@ -770,7 +766,20 @@ export class FindingListComponent implements OnInit {
         return clientProjectIds.includes(pId);
       });
     }
-    
+
+    // Alcance (busqueda + cliente/proyecto) antes de severidad/estado: es lo
+    // que deben contar las tarjetas de resumen, sin verse afectadas por el
+    // quick-filter de severidad que el propio usuario dispara al hacer clic.
+    this.scopedFindings.set(findings);
+
+    if (this.severityFilter()) {
+      findings = findings.filter(f => f.severity === this.severityFilter());
+    }
+
+    if (this.statusFilter()) {
+      findings = findings.filter(f => f.status === this.statusFilter());
+    }
+
     this.filteredFindings.set(findings);
     console.log(`🔍 Filtros aplicados: ${findings.length} hallazgos mostrados de ${this.findingService.findings().length} totales`);
   }
@@ -850,8 +859,10 @@ export class FindingListComponent implements OnInit {
   }
 
   getCountBySeverity(severity: string): number {
-    // Recuento rapido para tarjetas de resumen
-    return this.findingService.findings().filter(f => f.severity === severity).length;
+    // Recuento rapido para tarjetas de resumen: debe reflejar el filtro de
+    // cliente/proyecto activo (scopedFindings), no el total global ni quedar
+    // atrapado por el propio quick-filter de severidad.
+    return this.scopedFindings().filter(f => f.severity === severity).length;
   }
 
   quickFilterBySeverity(severity: string): void {

@@ -8,7 +8,6 @@ const ROLE_ALIAS_GROUPS: Record<string, UserRole[]> = {
   OWNER: [UserRole.OWNER, UserRole.PLATFORM_ADMIN],
   ADMIN_AREA: [UserRole.ADMIN_AREA, UserRole.CLIENT_ADMIN, UserRole.AREA_ADMIN],
   PENTESTER_QA: [UserRole.PENTESTER, UserRole.QA, UserRole.ANALYST],
-  NORMAL_USER: [UserRole.NORMAL_USER],
   AUDITOR: [UserRole.AUDITOR, UserRole.VIEWER],
 };
 

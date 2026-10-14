@@ -57,7 +57,6 @@ export class FindingController {
     UserRole.ANALYST,
     UserRole.PENTESTER,
     UserRole.QA,
-    UserRole.NORMAL_USER,
   )
   @ApiOperation({ summary: "Crear un nuevo hallazgo" })
   async create(@Body() dto: CreateFindingDto, @CurrentUser() user: any) {
@@ -113,7 +112,6 @@ export class FindingController {
     UserRole.ANALYST,
     UserRole.PENTESTER,
     UserRole.QA,
-    UserRole.NORMAL_USER,
   )
   @ApiOperation({ summary: "Actualizar hallazgo" })
   async update(
@@ -133,7 +131,6 @@ export class FindingController {
     UserRole.ANALYST,
     UserRole.PENTESTER,
     UserRole.QA,
-    UserRole.NORMAL_USER,
   )
   @ApiOperation({ summary: "Cerrar un hallazgo con motivo específico" })
   async close(
@@ -153,7 +150,6 @@ export class FindingController {
     UserRole.ANALYST,
     UserRole.PENTESTER,
     UserRole.QA,
-    UserRole.NORMAL_USER,
   )
   @ApiOperation({ summary: "Cerrar múltiples hallazgos" })
   async bulkClose(
@@ -177,7 +173,6 @@ export class FindingController {
     UserRole.ANALYST,
     UserRole.PENTESTER,
     UserRole.QA,
-    UserRole.NORMAL_USER,
   )
   @ApiOperation({ summary: "Agregar actualización al timeline de hallazgo" })
   async createUpdate(

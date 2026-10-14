@@ -239,16 +239,8 @@ import { roleSatisfies } from '../../../shared/utils/rbac';
                 </button>
                 @if (canCloseProject(project) && project.projectStatus !== 'CLOSED' && project.projectStatus !== 'ARCHIVED') {
                   <button mat-icon-button (click)="closeProject(project); $event.stopPropagation()"
-                          matTooltip="Cerrar proyecto"
-                          color="warn">
-                    <mat-icon>lock</mat-icon>
-                  </button>
-                }
-                @if (currentUserRole === 'OWNER') {
-                  <button mat-icon-button (click)="deleteProject(project); $event.stopPropagation()"
-                          matTooltip="Eliminar proyecto permanentemente"
-                          color="warn">
-                    <mat-icon>delete_forever</mat-icon>
+                          matTooltip="Cerrar proyecto">
+                    <mat-icon class="open-icon">lock_open</mat-icon>
                   </button>
                 }
                 @if (project.projectStatus === 'CLOSED') {
@@ -256,6 +248,13 @@ import { roleSatisfies } from '../../../shared/utils/rbac';
                           matTooltip="Proyecto cerrado — clic para reabrir"
                           class="reopen-btn">
                     <mat-icon class="closed-icon">lock</mat-icon>
+                  </button>
+                }
+                @if (currentUserRole === 'OWNER') {
+                  <button mat-icon-button (click)="deleteProject(project); $event.stopPropagation()"
+                          matTooltip="Eliminar proyecto permanentemente"
+                          color="warn">
+                    <mat-icon>delete_forever</mat-icon>
                   </button>
                 }
                 @if (canCloseProject(project) && project.projectStatus === 'ARCHIVED') {
@@ -430,6 +429,11 @@ import { roleSatisfies } from '../../../shared/utils/rbac';
 
     .closed-icon {
       color: #f44336;
+      font-size: 20px;
+    }
+
+    .open-icon {
+      color: #4caf50;
       font-size: 20px;
     }
   `]

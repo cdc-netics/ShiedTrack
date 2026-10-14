@@ -24,7 +24,6 @@ const ROLE_ALIAS_GROUPS: Record<string, UserRole[]> = {
     UserRole.AREA_ADMIN,
   ],
   PENTESTER_QA: [UserRole.PENTESTER, UserRole.QA, UserRole.ANALYST],
-  NORMAL_USER: [UserRole.NORMAL_USER],
   AUDITOR: [UserRole.AUDITOR, UserRole.VIEWER],
 };
 
@@ -48,11 +47,6 @@ const SYSTEM_PERMISSION_MATRIX: Record<
     findings: ["create", "read", "update"],
     evidence: ["create", "read", "update"],
   },
-  NORMAL_USER: {
-    projects: ["read"],
-    findings: ["create", "read", "update"],
-    evidence: ["create", "read", "update"],
-  },
   AUDITOR: {
     clients: ["read"],
     projects: ["read"],
@@ -63,9 +57,8 @@ const SYSTEM_PERMISSION_MATRIX: Record<
 
 const CREATOR_ALLOWED_TARGET_ROLES: Record<string, UserRole[]> = {
   OWNER: Object.values(UserRole),
-  ADMIN_AREA: [UserRole.NORMAL_USER, UserRole.AUDITOR, UserRole.VIEWER],
+  ADMIN_AREA: [UserRole.AUDITOR, UserRole.VIEWER],
   PENTESTER_QA: [],
-  NORMAL_USER: [],
   AUDITOR: [],
 };
 
