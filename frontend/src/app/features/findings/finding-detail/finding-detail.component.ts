@@ -2309,10 +2309,7 @@ export class FindingDetailComponent implements OnInit {
       .subscribe({
         next: (updatedFinding: any) => {
           this.snackBar.open('Hallazgo cerrado correctamente', 'Cerrar', { duration: 3000 });
-          // Actualizar el finding con los nuevos datos
-          this.finding.set(updatedFinding);
-          // Recargar el finding completo
-          this.loadFinding(findingId);
+          this.router.navigate(['/findings']);
         },
         error: (err) => {
           console.error('Error cerrando hallazgo:', err);

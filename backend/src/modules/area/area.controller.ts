@@ -34,8 +34,8 @@ export class AreaController {
   @Post()
   @Roles(UserRole.OWNER, UserRole.PLATFORM_ADMIN, UserRole.CLIENT_ADMIN)
   @ApiOperation({ summary: "Crear una nueva área" })
-  async create(@Body() dto: CreateAreaDto) {
-    return this.areaService.create(dto);
+  async create(@Body() dto: CreateAreaDto, @CurrentUser() user: any) {
+    return this.areaService.create(dto, user);
   }
 
   @Get()

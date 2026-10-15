@@ -8,7 +8,7 @@ import {
 } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { InjectModel } from "@nestjs/mongoose";
-import { Model } from "mongoose";
+import { Model, Types } from "mongoose";
 import * as bcrypt from "bcryptjs";
 import * as crypto from "crypto";
 import * as speakeasy from "speakeasy";
@@ -403,6 +403,13 @@ export class AuthService {
     }
 
     const updateData: Record<string, any> = { ...rest };
+    if (dto.clientId && dto.clientId !== targetUser.clientId?.toString()) {
+      updateData.activeTenantId = new Types.ObjectId(dto.clientId);
+      updateData.tenantIds = [new Types.ObjectId(dto.clientId)];
+      updateData.visibleProjectIds = dto.visibleProjectIds || [];
+      updateData.visibleClientIds = dto.visibleClientIds || [];
+      updateData.areaIds = areaIds || [];
+    }
 
     if (email && email !== targetUser.email) {
       const existingUser = await this.userModel.findOne({
@@ -427,9 +434,9 @@ export class AuthService {
       throw new BadRequestException("Usuario no encontrado");
     }
 
-    if (areaIds) {
+    if (areaIds || updateData.tenantIds) {
       try {
-        await this.userAreaService.replaceUserAreas(userId, areaIds, userId);
+        await this.userAreaService.replaceUserAreas(userId, areaIds || [], currentUser.userId);
       } catch (error) {
         this.logger.error(
           `Error actualizando áreas para usuario ${userId}: ${error.message}`,

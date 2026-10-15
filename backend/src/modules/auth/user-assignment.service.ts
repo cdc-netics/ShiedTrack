@@ -63,6 +63,7 @@ export class UserAssignmentService {
     );
 
     let validatedProjectIds: string[] = [];
+    let validatedClientIds: Types.ObjectId[] = [];
 
     if (assignmentIds.projectIds && assignmentIds.projectIds.length > 0) {
       const projects = await this.projectModel
@@ -107,7 +108,7 @@ export class UserAssignmentService {
 
       const areaIdsFromClients = await this.areaModel
         .find({
-          clientId: { $in: clients.map((c) => c._id) },
+          $or: [{ tenantId: { $in: clients.map((c) => c._id) } }, { clientId: { $in: clients.map((c) => c._id) } }],
         })
         .select("_id")
         .exec();
@@ -116,6 +117,7 @@ export class UserAssignmentService {
         finalAreaIds.add(area._id.toString()),
       );
 
+      validatedClientIds = clients.map(c => c._id as Types.ObjectId);
       result.assigned.clients = clients.map((c) => ({
         _id: c._id,
         name: c.name,
@@ -130,6 +132,12 @@ export class UserAssignmentService {
 
     await this.userModel.findByIdAndUpdate(userId, {
       $set: {
+        ...(assignmentIds.clientIds !== undefined ? {
+          clientId: validatedClientIds[0] || null,
+          activeTenantId: validatedClientIds[0] || null,
+          tenantIds: validatedClientIds,
+          visibleClientIds: validatedClientIds,
+        } : {}),
         visibleProjectIds: validatedProjectIds.map(
           (id) => new Types.ObjectId(id),
         ),
@@ -158,14 +166,14 @@ export class UserAssignmentService {
     for (const assignment of userAreas) {
       const area = assignment.areaId as any;
       if (area) {
-        const clientId = area.clientId?.toString();
+        const clientId = (area.tenantId || area.clientId)?.toString();
         if (!clientId) continue;
         if (!areasByClient[clientId]) areasByClient[clientId] = [];
         areasByClient[clientId].push({ _id: area._id, name: area.name });
       }
     }
 
-    const clientIds = Object.keys(areasByClient);
+    const clientIds = Array.from(new Set([...Object.keys(areasByClient), ...(user.tenantIds || []).map(id => id.toString()), ...(user.clientId ? [user.clientId.toString()] : [])]));
     const clients = await this.clientModel
       .find({ _id: { $in: clientIds.map((id) => new Types.ObjectId(id)) } })
       .select("_id name displayName")

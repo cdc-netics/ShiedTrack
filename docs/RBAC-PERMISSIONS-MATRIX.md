@@ -15,9 +15,9 @@ Documento único y resumido para entender el modelo de permisos, sin duplicar gu
 
 | Entidad | OWNER | ADMIN_AREA | PENTESTER / QA | AUDITOR |
 | --- | --- | --- | --- | --- |
-| Usuarios | CRUD total | Crear/ver usuarios de su área | No | No |
-| Clientes | CRUD total | Ver/editar los de su área | Solo lectura contextual | Solo lectura por alcance |
-| Proyectos | CRUD total | CRUD en su área | Crear/leer/editar propios | Leer por alcance |
+| Usuarios | CRUD total y reasignación | Crear/ver/editar; desactivar AUDITOR/VIEWER | No | No |
+| Clientes | CRUD total | Ver/editar los de su área | Crear/leer/editar y desactivar | Solo lectura por alcance |
+| Proyectos | CRUD total | Crear/leer/editar en su alcance; sin hard delete | Crear/leer/editar y eliminar dentro del acceso permitido | Leer y descargar por alcance |
 | Hallazgos | CRUD total | Leer/actualizar estado | Crear/leer/editar propios | Solo lectura |
 | Evidencia | CRUD total | Leer en su área | Crear/leer/editar propios | Solo lectura |
 
@@ -31,7 +31,7 @@ Documento único y resumido para entender el modelo de permisos, sin duplicar gu
 
 ## Formulario dinámico
 
-- Si el rol es PENTESTER o QA: se ocultan campos de vínculo a cliente.
+- En edición de usuarios por administradores autorizados, el selector de cliente permite reasignar PENTESTER/QA. El cambio actualiza el tenant activo y limpia restricciones anteriores. El formulario de creación dinámica puede conservar un flujo transversal distinto.
 - Si el rol es AUDITOR: se muestra bloque de visibilidad dinámica con selectores múltiples de Proyectos (`visibleProjectIds`) o Clientes (`visibleClientIds`) en tiempo real según el alcance (`PER_PROJECT` o `PER_CLIENT`).
 - Si el rol es OWNER: el formulario no debe forzar restricciones artificiales.
 
@@ -64,3 +64,10 @@ Esta guía queda suficiente si alguien puede responder rápido estas 4 preguntas
 Si hace falta más detalle, se consulta el código, no otro documento largo.
 
 - AUDITOR puede descargar PDF de proyectos y hallazgos, Excel del proyecto y ZIP con evidencias dentro de su cliente, proyectos y áreas asignados. Las descargas son operaciones de lectura y no habilitan edición ni backups del sistema.
+
+- PENTESTER/QA/ANALYST pueden eliminar proyectos y desactivar clientes. La eliminación física de clientes sigue reservada al OWNER.
+- ADMIN_AREA elimina auditores mediante la ruta de eliminación lógica; la eliminación física de usuarios sigue reservada al OWNER.
+
+## Seguimiento de los cambios QA
+
+Los permisos del grupo PENTESTER/QA también aplican al alias ANALYST. La desactivación de clientes no equivale a borrado físico. El botón de eliminación del ADMIN_AREA usa la ruta soft para auditores; la lista puede conservarlos como desactivados. Registro verificable y pendientes en [QA-CORRECTIONS-2026-10.md](QA-CORRECTIONS-2026-10.md).

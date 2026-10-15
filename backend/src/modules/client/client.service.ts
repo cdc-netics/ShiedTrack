@@ -252,21 +252,18 @@ export class ClientService {
    */
   async deactivate(id: string, currentUser?: any): Promise<Client> {
     // Validar acceso si se proporciona usuario
-    // Eliminar/desactivar clientes es exclusivo de OWNER/PLATFORM_ADMIN — ningún rol
-    // operacional (PENTESTER/QA/ANALYST) ni administrativo de tenant debe tener este
-    // permiso, a diferencia de crear/editar que sí comparten.
     if (currentUser) {
       this.validateClientAccess(
         id,
         currentUser,
-        [UserRole.OWNER, UserRole.PLATFORM_ADMIN],
+        [UserRole.OWNER, UserRole.PLATFORM_ADMIN, UserRole.PENTESTER],
       );
     }
 
     const client = await this.clientModel.findByIdAndUpdate(
       id,
       { isActive: false },
-      { new: true },
+      { new: true, skipTenantFilter: true },
     );
 
     if (!client) {
