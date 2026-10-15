@@ -36,6 +36,7 @@ const SYSTEM_PERMISSION_MATRIX: Record<
     "*": ["*"],
   },
   ADMIN_AREA: {
+    areas: ["create", "read", "update", "delete"],
     users: ["create", "read", "update", "assign"],
     clients: ["read", "update", "assign"],
     projects: ["create", "read", "update", "assign"],

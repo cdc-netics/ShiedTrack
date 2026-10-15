@@ -25,6 +25,7 @@ import {
   UserRole,
   ServiceArchitecture,
 } from "../../common/enums";
+import { assignedQaClientId, assertQaClientAccess } from "../../common/rbac/qa-client-scope";
 import { normalizeRole, roleSatisfies } from "../../common/rbac/rbac-policy";
 import { Project } from "../project/schemas/project.schema";
 import { SystemConfig } from "../system-config/schemas/system-config.schema";
@@ -416,6 +417,8 @@ export class FindingService {
       dto.projectId,
       currentUser,
     );
+
+    assertQaClientAccess(currentUser, this.resolveProjectTenantId(project));
 
     // El tenantId del hallazgo SIEMPRE se deriva del proyecto, nunca del contexto
     // del usuario: un OWNER/PLATFORM_ADMIN con un tenant activo distinto al del
@@ -990,6 +993,14 @@ export class FindingService {
           continue;
         }
 
+        if (assignedQaClientId(currentUser)) {
+          const clientName = (this.cell(row, "Cliente") || "Sin cliente").trim();
+          const client = await this.clientModel.findById(assignedQaClientId(currentUser)).setOptions({ skipTenantFilter: true });
+          if (!client || client.name.trim().toLowerCase() !== clientName.toLowerCase()) {
+            throw new ForbiddenException("QA solo puede importar hallazgos para su cliente asignado");
+          }
+        }
+
         if (dryRun) {
           creados++;
           continue;
@@ -1102,6 +1113,8 @@ export class FindingService {
     let client = await this.clientModel
       .findOne({ name: new RegExp(`^${escapedName}$`, "i") })
       .setOptions({ skipTenantFilter: true });
+
+    assertQaClientAccess(currentUser, client?._id);
 
     if (!client) {
       client = new this.clientModel({ name: clientName, isActive: true });

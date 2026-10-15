@@ -10,6 +10,7 @@ import { Project } from "./schemas/project.schema";
 import { Finding } from "../finding/schemas/finding.schema";
 import { CreateProjectDto, UpdateProjectDto } from "./dto/project.dto";
 import { ProjectStatus, FindingStatus, UserRole } from "../../common/enums";
+import { assignedQaClientId, assertQaClientAccess } from "../../common/rbac/qa-client-scope";
 import { normalizeRole, roleSatisfies } from "../../common/rbac/rbac-policy";
 
 /**
@@ -204,6 +205,13 @@ export class ProjectService {
    * CONSISTENCIA: fuerza tenantId === clientId
    */
   async create(dto: CreateProjectDto, user: any): Promise<Project> {
+    const assignedClient = assignedQaClientId(user);
+    if (assignedClient) {
+      if (dto.clientId) assertQaClientAccess(user, dto.clientId);
+      if (dto.tenantId) assertQaClientAccess(user, dto.tenantId);
+      dto.clientId = assignedClient;
+      dto.tenantId = assignedClient;
+    }
     if (!dto.code) {
       // El codigo de proyecto es unico GLOBALMENTE (indice unico "code_1"), no
       // por tenant, asi que el conteo para generarlo siempre debe ser global.
