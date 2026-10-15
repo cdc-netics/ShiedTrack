@@ -15,6 +15,7 @@ Documento único y resumido para entender el modelo de permisos, sin duplicar gu
 
 | Entidad | OWNER | ADMIN_AREA | PENTESTER / QA | AUDITOR |
 | --- | --- | --- | --- | --- |
+| Áreas | CRUD total | Crear/leer/editar en su alcance | Crear/leer/editar, desactivar/reactivar y eliminar | Sin escritura |
 | Usuarios | CRUD total y reasignación | Crear/ver/editar; desactivar AUDITOR/VIEWER | No | No |
 | Clientes | CRUD total | Ver/editar los de su área | Crear/leer/editar y desactivar | Solo lectura por alcance |
 | Proyectos | CRUD total | Crear/leer/editar en su alcance; sin hard delete | Crear/leer/editar y eliminar dentro del acceso permitido | Leer y descargar por alcance |
@@ -71,3 +72,7 @@ Si hace falta más detalle, se consulta el código, no otro documento largo.
 ## Seguimiento de los cambios QA
 
 Los permisos del grupo PENTESTER/QA también aplican al alias ANALYST. La desactivación de clientes no equivale a borrado físico. El botón de eliminación del ADMIN_AREA usa la ruta soft para auditores; la lista puede conservarlos como desactivados. Registro verificable y pendientes en [QA-CORRECTIONS-2026-10.md](QA-CORRECTIONS-2026-10.md).
+
+## Gestión de áreas por pentester (QA-202610-11)
+
+El grupo operacional PENTESTER/QA/ANALYST accede al menú Áreas y sus acciones CRUD. El cliente fijo limita las operaciones a su tenant; sin cliente fijo se permite consulta transversal y se elige cliente al crear. El borrado permanente afecta al área, sin eliminación automática de proyectos o asignaciones. No amplía permisos de Usuarios ni backups.

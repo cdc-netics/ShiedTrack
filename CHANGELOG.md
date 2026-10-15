@@ -7,6 +7,18 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 ## [Unreleased]
 
+### Gestión completa de áreas para pentester (2026-10-15)
+
+#### QA-202610-11 — Acceso y permisos CRUD de Áreas
+
+- **FEAT (Frontend — navegación):** enlace Áreas visible para PENTESTER/QA/ANALYST, independiente de los permisos de Usuarios y del centro administrativo. Botón de borrado habilitado.
+- **FEAT (Backend — permisos):** creación, edición, configuración, desactivación y borrado permanente de áreas habilitados al grupo operacional; matriz RBAC incorpora el recurso areas.
+- **FIX (Backend — contexto):** detalle y modificaciones permiten operar sin tenant fijo; con tenant asignado se aplica filtro explícito del cliente.
+- **UX (Áreas):** la confirmación informa que borrar el área no elimina automáticamente proyectos ni asignaciones asociados.
+- **Pruebas:** 45 pruebas aprobadas en cuatro suites, incluidas 10 nuevas de area-permissions.spec.ts; TypeScript y build frontend development aprobados. Jest ejecutado sobre salida compilada con TypeScript; temporales retirados. Despliegue y aceptación en QA pendientes.
+
+---
+
 ### Correcciones QA por rol y recuperación de contraseña (2026-10-15)
 
 #### QA-202610-01 — PENTESTER: exportación de clientes ZIP/CSV

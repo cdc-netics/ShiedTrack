@@ -16,6 +16,7 @@ Este documento contiene únicamente los problemas, mejoras y funcionalidades que
 
 | ID | Estado | Sección | Tarea | Notas |
 | --- | --- | --- | --- | --- |
+| QA-202610-11 | ⚠️ Pendiente de validación QA | Permisos - Áreas | Gestión completa de áreas para PENTESTER | Menú, creación, edición, configuración, desactivación y borrado permanente habilitados al grupo operacional. Respeta cliente fijo; sin tenant fijo consulta transversal. Implementado 2026-10-15. |
 | QA-202610-01 | ⚠️ Pendiente de validación QA | Bugs - QA por roles | PENTESTER: exportación de clientes ZIP/CSV | Implementado. Consulta del cliente con bypass de tenant para roles globales/operacionales; proyectos filtrados por tenantId del cliente. [Evidencia y aceptación](docs/QA-CORRECTIONS-2026-10.md) (2026-10-15). |
 | QA-202610-02 | ⚠️ Pendiente de validación QA | Bugs - QA por roles | PDF de hallazgos importados por CSV | Implementado. Hallazgo lean para evitar mutaciones de pdfmake sobre arrays Mongoose; populate y evidencias con contexto adecuado y autorización operacional. [Evidencia y aceptación](docs/QA-CORRECTIONS-2026-10.md) (2026-10-15). |
 | QA-202610-03 | ⚠️ Pendiente de validación QA | Bugs - QA por roles | AUDITOR: descargas PDF, Excel y ZIP | Implementado. Permiso en cuatro rutas y validación del cliente, proyectos visibles y áreas asignadas; sin permisos de edición ni backups. [Evidencia y aceptación](docs/QA-CORRECTIONS-2026-10.md) (2026-10-15). |
@@ -57,6 +58,15 @@ Este documento contiene únicamente los problemas, mejoras y funcionalidades que
 ---
 
 ## 📋 Detalle de Tareas Backlog Activo
+
+### **QA-202610-11 — Gestión completa de áreas para PENTESTER**
+
+- **Estado:** ⚠️ Pendiente de validación QA — implementado (2026-10-15).
+- **Descripción original:** permitir que pentester ingrese al apartado Áreas y pueda crear, editar y borrar.
+- **Lo resuelto:** acceso de menú independiente de Usuarios; permisos en POST, PUT y DELETE de áreas; consulta de detalle y modificaciones operan sin tenant fijo. El grupo PENTESTER/QA/ANALYST comparte los permisos por la política de alias existente. Con cliente fijo se mantiene el alcance por tenant.
+- **Límites:** no habilita gestión de usuarios ni backups. Borrar un área no elimina automáticamente sus proyectos ni asignaciones; se informa en la confirmación.
+- **Archivos modificados:** area.controller.ts, area.service.ts, rbac-policy.ts, main-layout.component.ts/html y area-list.component.ts. Pruebas en backend/src/modules/area/area-permissions.spec.ts.
+- **Criterio de cierre:** pentester puede entrar desde el menú, crear área con cliente explícito si falta tenant, editar/configurar, desactivar/reactivar y eliminar tras confirmar; un auditor no puede ejecutar escrituras por API. Repetir con y sin cliente fijo.
 
 ### **QA-202610-01 — PENTESTER: exportación de clientes ZIP/CSV**
 

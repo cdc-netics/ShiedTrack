@@ -51,6 +51,11 @@ export class MainLayoutComponent implements OnInit, AfterViewInit {
     return roleSatisfies(UserRole.CLIENT_ADMIN, this.authService.currentUser()?.role);
   }
 
+  canManageAreas(): boolean {
+    const role = this.authService.currentUser()?.role;
+    return roleSatisfies(UserRole.CLIENT_ADMIN, role) || roleSatisfies(UserRole.PENTESTER, role);
+  }
+
   canManageUsers(): boolean {
     return roleSatisfies(UserRole.CLIENT_ADMIN, this.authService.currentUser()?.role);
   }

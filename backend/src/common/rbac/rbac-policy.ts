@@ -9,6 +9,7 @@ export type RbacAction =
   | "*";
 
 export type RbacResource =
+  | "areas"
   | "users"
   | "clients"
   | "projects"
@@ -42,6 +43,7 @@ const SYSTEM_PERMISSION_MATRIX: Record<
     evidence: ["read"],
   },
   PENTESTER_QA: {
+    areas: ["create", "read", "update", "delete"],
     clients: ["create", "read", "update", "assign", "delete"],
     projects: ["create", "read", "update", "assign", "delete"],
     findings: ["create", "read", "update"],
