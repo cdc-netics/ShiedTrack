@@ -19,6 +19,8 @@ import { HttpClient } from '@angular/common/http';
 import { FindingService } from '../../../core/services/finding.service';
 import { ProjectService } from '../../../core/services/project.service';
 import { Observable, startWith, map, of, firstValueFrom } from 'rxjs';
+import { AuthService } from '../../../core/services/auth.service';
+import { assignedQaClientId } from '../../../shared/utils/rbac';
 import { environment } from '../../../../environments/environment';
 import { CvssCalculatorComponent } from '../../../shared/components/cvss-calculator/cvss-calculator.component';
 import { CvssResult, formatCvssScore } from '../../../shared/utils/cvss';
@@ -109,7 +111,7 @@ interface Template {
                   <mat-form-field appearance="outline">
                     <mat-label>Cliente *</mat-label>
                     <input matInput
-                           formControlName="clientName"
+                           formControlName="clientName" [readonly]="hasAssignedQaClient()"
                            [matAutocomplete]="clientAuto"
                            #clientTrigger="matAutocompleteTrigger"
                            (focus)="onClientInputFocus(clientTrigger)"
@@ -564,7 +566,7 @@ export class FindingWizardComponent implements OnInit {
   showCreateClient = computed(() => {
     const search = this.clientSearchSignal();
     const filtered = this.filteredClients();
-    return search.length > 0 && filtered.length === 0;
+    return !assignedQaClientId(this.authService.currentUser()) && search.length > 0 && filtered.length === 0;
   });
 
   // Proyectos: reactivos a clientIdSignal y projectService.projects()
@@ -617,6 +619,7 @@ export class FindingWizardComponent implements OnInit {
   showCvssCalculator = signal(true);
 
   private http = inject(HttpClient);
+  private authService = inject(AuthService);
   private readonly templateApi = `${environment.apiUrl}/templates`;
 
   ngOnInit(): void {
@@ -707,11 +710,18 @@ export class FindingWizardComponent implements OnInit {
     });
   }
 
+  hasAssignedQaClient(): boolean {
+    return !!assignedQaClientId(this.authService.currentUser());
+  }
+
   loadClients(): void {
     // Carga clientes para el autocomplete
     this.http.get<any[]>(`${environment.apiUrl}/clients`).subscribe({
       next: (clients) => {
-        this.clients.set(clients);
+        const assigned = assignedQaClientId(this.authService.currentUser());
+        this.clients.set(assigned ? clients.filter(client => client._id === assigned) : clients);
+        const client = assigned ? this.clients()[0] : undefined;
+        if (client) this.selectClient(client);
       },
       error: (err) => console.error('Error loading clients:', err)
     });
@@ -797,6 +807,8 @@ export class FindingWizardComponent implements OnInit {
   }
 
   selectClient(client: any): void {
+    const assigned = assignedQaClientId(this.authService.currentUser());
+    if (assigned && client._id !== assigned) return;
     // Normaliza la seleccion cuando se elige "crear nuevo"
     if (client._id === 'new') {
       this.basicForm.patchValue({

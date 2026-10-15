@@ -19,7 +19,7 @@ import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../environments/environment';
 import { AuthService } from '../../../core/services/auth.service';
 import { UserRole } from '../../../shared/enums';
-import { roleSatisfies } from '../../../shared/utils/rbac';
+import { assignedQaClientId, roleSatisfies } from '../../../shared/utils/rbac';
 
 @Component({
   standalone: true,
@@ -428,7 +428,11 @@ export class ProjectDetailComponent implements OnInit {
 
   loadClients(): void {
     this.http.get<any[]>(this.CLIENT_API_URL).subscribe({
-      next: (data) => this.clients.set(data),
+      next: (data) => {
+        const assigned = assignedQaClientId(this.authService.currentUser());
+        this.clients.set(assigned ? data.filter(client => client._id === assigned) : data);
+        if (assigned && !this.isEditMode()) this.projectForm.patchValue({ clientId: assigned });
+      },
       error: (err) => console.error('Error al cargar clientes:', err)
     });
   }

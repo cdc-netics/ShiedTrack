@@ -7,6 +7,21 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 ## [Unreleased]
 
+### Correcciones puntuales de Áreas y creación por QA (2026-10-15)
+
+#### QA-202610-12 — ADMIN_AREA: carga y gestión completa de Áreas
+
+- **FIX (Backend / Frontend):** ADMIN_AREA y sus alias administrativos pueden listar, crear, configurar, editar, desactivar/reactivar y borrar áreas dentro de su alcance. Se aplica scope explícito sin depender de CLS para operaciones administrativas y se resuelve el nombre del cliente después de los hooks de aislamiento, conservando tenantId como ObjectId durante la consulta.
+
+#### QA-202610-13 — QA asignado: creación limitada a su cliente
+
+- **FIX (Backend / Frontend):** Solo para el rol exacto QA con clientId o activeTenantId asignado: formularios limitan el cliente de proyectos/hallazgos; backend rechaza otro clientId o tenantId antes de crear proyecto y valida el cliente del proyecto al crear hallazgo. CSV/XLSX aplica la restricción por fila, también en dry-run y antes de crear clientes o proyectos. El cliente asignado tiene prioridad sobre otro contexto activo. QA sin asignación, PENTESTER y los demás roles conservan sus reglas.
+
+- **Alcance:** cambios limitados a gestión de Áreas de ADMIN_AREA y creación por QA con cliente fijo. Aceptación en QA pendiente del despliegue.
+- **Validación:** 65 pruebas aprobadas en cinco suites, TypeScript y build frontend development aprobados. Pruebas sobre salida compilada; sin prueba integrada contra el ambiente QA.
+
+---
+
 ### Gestión completa de áreas para pentester (2026-10-15)
 
 #### QA-202610-11 — Acceso y permisos CRUD de Áreas

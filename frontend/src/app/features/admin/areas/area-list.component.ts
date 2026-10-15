@@ -307,7 +307,7 @@ export class AreaListComponent implements OnInit {
   }
 
   canDeleteArea(): boolean {
-    return this.isOwner() || roleSatisfies(UserRole.PENTESTER, this.authService.currentUser()?.role);
+    return this.isOwner() || roleSatisfies(UserRole.PENTESTER, this.authService.currentUser()?.role) || roleSatisfies(UserRole.ADMIN_AREA, this.authService.currentUser()?.role);
   }
 
   ngOnInit(): void {

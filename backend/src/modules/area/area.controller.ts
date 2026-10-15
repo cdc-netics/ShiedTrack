@@ -70,14 +70,14 @@ export class AreaController {
   }
 
   @Delete(":id")
-  @Roles(UserRole.OWNER, UserRole.PLATFORM_ADMIN, UserRole.PENTESTER)
+  @Roles(UserRole.OWNER, UserRole.PLATFORM_ADMIN, UserRole.PENTESTER, UserRole.ADMIN_AREA)
   @ApiOperation({ summary: "Desactivar área" })
   async deactivate(@Param("id") id: string, @CurrentUser() user: any) {
     return this.areaService.deactivate(id, user);
   }
 
   @Delete(":id/hard")
-  @Roles(UserRole.OWNER, UserRole.PENTESTER)
+  @Roles(UserRole.OWNER, UserRole.PENTESTER, UserRole.ADMIN_AREA)
   @ApiOperation({ summary: "Eliminar área permanentemente" })
   async hardDelete(@Param("id") id: string, @CurrentUser() user: any) {
     await this.areaService.hardDelete(id, user);
