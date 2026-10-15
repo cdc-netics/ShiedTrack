@@ -298,6 +298,7 @@ export class UserDialogComponent {
 
     // Listen to clientId changes to reload areas
     this.userForm.get('clientId')?.valueChanges.subscribe(clientId => {
+      this.userForm.patchValue({ areaIds: [], visibleProjectIds: [] });
       if (clientId) {
         this.loadAreas(clientId);
       } else {
@@ -313,7 +314,7 @@ export class UserDialogComponent {
       
       this.showAreaSelect.set(needsAreas);
       this.showAuditorScope.set(isAuditor);
-      this.showClientSelect.set(!hideClientForTransversal && canManageClients);
+      this.showClientSelect.set(canManageClients);
       
       // Si el rol necesita tenants, cargarlos automáticamente
       if (needsAreas) {
@@ -458,7 +459,7 @@ export class UserDialogComponent {
       userData.clientId = clientId;
     }
 
-    if (Array.isArray(areaIds) && areaIds.length > 0) {
+    if (Array.isArray(areaIds)) {
       userData.areaIds = areaIds;
     }
 

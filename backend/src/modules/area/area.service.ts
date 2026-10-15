@@ -44,7 +44,7 @@ export class AreaService {
       }
 
       // Contamos áreas totales para determinar el índice del tenant
-      const totalAreas = await this.areaModel.countDocuments();
+      const totalAreas = await this.areaModel.countDocuments().setOptions({ skipTenantFilter: true });
       const nextTenant = activeTenants[totalAreas % activeTenants.length];
 
       this.logger.debug(
@@ -60,11 +60,11 @@ export class AreaService {
   /**
    * Crea una nueva área
    */
-  async create(dto: CreateAreaDto): Promise<Area> {
+  async create(dto: CreateAreaDto, currentUser?: any): Promise<Area> {
     // DEBUG: Verificar contexto CLS
     const namespace = getNamespace("tenant-context");
-    const contextTenantId = namespace?.get("tenantId");
-    const isOwner = namespace?.get("isOwner");
+    const contextTenantId = currentUser?.activeTenantId || currentUser?.clientId || namespace?.get("tenantId");
+    const isOwner = roleSatisfies(UserRole.OWNER, currentUser?.role) || namespace?.get("isOwner");
     const userId = namespace?.get("userId");
 
     this.logger.log(
@@ -72,6 +72,9 @@ export class AreaService {
     );
     this.logger.log(`Intentando crear área: ${JSON.stringify(dto)}`);
 
+    if (contextTenantId && dto.tenantId && dto.tenantId !== contextTenantId.toString() && !roleSatisfies(UserRole.OWNER, currentUser?.role)) {
+      throw new BadRequestException('El cliente no coincide con el asignado al usuario');
+    }
     let finalTenantId = dto.tenantId || contextTenantId;
 
     // Lógica Correlativa: Si no hay tenant y el usuario es OWNER, auto-poblar
@@ -93,7 +96,8 @@ export class AreaService {
       // Generar código automáticamente: AREA-001, AREA-002, etc.
       // El filtrado por tenant se aplica vía plugin/CLS para la búsqueda del último código
       const lastArea = await this.areaModel
-        .findOne({})
+        .findOne({ tenantId: new Types.ObjectId(finalTenantId) })
+        .setOptions({ skipTenantFilter: true })
         .sort({ createdAt: -1 })
         .exec();
 
@@ -151,8 +155,12 @@ export class AreaService {
     const isGlobalUser = roleSatisfies(UserRole.OWNER, currentUser?.role);
     const isOperationalUser =
       normalizeRole(currentUser?.role) === "PENTESTER_QA";
-    const skipTenantFilter = isOperationalUser && !scopedTenantId;
+    const isAreaAdmin = normalizeRole(currentUser?.role) === "ADMIN_AREA";
+    const skipTenantFilter = (isOperationalUser || isAreaAdmin || isGlobalUser) && !scopedTenantId;
 
+    if (!isGlobalUser && scopedTenantId && clientId && clientId !== scopedTenantId.toString()) {
+      throw new BadRequestException('El cliente no coincide con el asignado al usuario');
+    }
     if (clientId) {
       query.$or = [
         { tenantId: new Types.ObjectId(clientId) },

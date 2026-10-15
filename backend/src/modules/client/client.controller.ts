@@ -83,7 +83,7 @@ export class ClientController {
   }
 
   @Delete(":id")
-  @Roles(UserRole.OWNER, UserRole.PLATFORM_ADMIN)
+  @Roles(UserRole.OWNER, UserRole.PLATFORM_ADMIN, UserRole.PENTESTER)
   @ApiOperation({
     summary: "Desactivar cliente (soft delete)",
     description: "SEC-RBAC-003: Validar tenant scope",

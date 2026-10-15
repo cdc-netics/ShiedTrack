@@ -35,7 +35,7 @@ import { roleSatisfies } from '../../../shared/utils/rbac';
     </h2>
     <mat-dialog-content>
       <p>¿Estás seguro de que deseas eliminar al usuario <strong>{{ data.email }}</strong>?</p>
-      <p style="color: #d32f2f; font-size: 13px;">Esta acción es permanente y no se puede deshacer.</p>
+      <p style="color: #d32f2f; font-size: 13px;">El usuario perderá el acceso al sistema.</p>
     </mat-dialog-content>
     <mat-dialog-actions align="end">
       <button mat-button mat-dialog-close>Cancelar</button>
@@ -488,7 +488,8 @@ export class UserListImprovedComponent implements OnInit {
       data: { email: user.email }
     }).afterClosed().subscribe(confirmed => {
       if (!confirmed) return;
-      this.http.delete(`${environment.apiUrl}/auth/users/${userId}`).subscribe({
+      const suffix = roleSatisfies(UserRole.OWNER, this.authService.currentUser()?.role) ? '' : '/soft';
+      this.http.delete(`${environment.apiUrl}/auth/users/${userId}${suffix}`).subscribe({
         next: () => {
           this.snackBar.open('Usuario eliminado correctamente', 'Cerrar', { duration: 3000 });
           this.loadUsers();

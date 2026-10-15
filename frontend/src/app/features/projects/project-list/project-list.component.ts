@@ -250,7 +250,7 @@ import { roleSatisfies } from '../../../shared/utils/rbac';
                     <mat-icon class="closed-icon">lock</mat-icon>
                   </button>
                 }
-                @if (currentUserRole === 'OWNER') {
+                @if (canDeleteProject()) {
                   <button mat-icon-button (click)="deleteProject(project); $event.stopPropagation()"
                           matTooltip="Eliminar proyecto permanentemente"
                           color="warn">
@@ -650,7 +650,12 @@ export class ProjectListComponent implements OnInit {
     });
   }
 
+  canDeleteProject(): boolean {
+    return roleSatisfies(UserRole.OWNER, this.currentUserRole) || roleSatisfies(UserRole.PENTESTER, this.currentUserRole);
+  }
+
   deleteProject(project: any): void {
+    if (!this.canDeleteProject()) return;
     // Flujo de eliminacion con doble confirmacion si hay hallazgos
     const findingsCount = project.findingsCount || 0;
     const message = findingsCount > 0

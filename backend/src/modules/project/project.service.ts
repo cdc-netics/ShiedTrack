@@ -572,17 +572,17 @@ export class ProjectService {
     const project = await this.findProjectOrFailWithAccess(id, currentUser);
 
     const findingsCount = await this.findingModel.countDocuments({
-      projectId: id,
-    });
+      projectId: project._id,
+    }).setOptions({ skipTenantFilter: true });
 
     if (findingsCount > 0) {
-      await this.findingModel.deleteMany({ projectId: id });
+      await this.findingModel.deleteMany({ projectId: project._id }).setOptions({ skipTenantFilter: true });
       this.logger.warn(
         `${findingsCount} hallazgos eliminados del proyecto ${id}`,
       );
     }
 
-    await this.projectModel.findByIdAndDelete(id);
+    await this.projectModel.findByIdAndDelete(id).setOptions({ skipTenantFilter: true });
 
     this.logger.warn(
       `Proyecto ELIMINADO permanentemente: ${project.name} (ID: ${id}) con ${findingsCount} hallazgos`,

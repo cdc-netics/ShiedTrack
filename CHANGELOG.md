@@ -7,11 +7,68 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 ## [Unreleased]
 
+### Correcciones QA por rol y recuperación de contraseña (2026-10-15)
+
+#### QA-202610-01 — PENTESTER: exportación de clientes ZIP/CSV
+
+- **FIX (Backend / Frontend):** Consulta del cliente con bypass de tenant para roles globales/operacionales; proyectos filtrados por tenantId del cliente.
+
+#### QA-202610-02 — PDF de hallazgos importados por CSV
+
+- **FIX (Backend / Frontend):** Hallazgo lean para evitar mutaciones de pdfmake sobre arrays Mongoose; populate y evidencias con contexto adecuado y autorización operacional.
+
+#### QA-202610-03 — AUDITOR: descargas PDF, Excel y ZIP
+
+- **FIX (Backend / Frontend):** Permiso en cuatro rutas y validación del cliente, proyectos visibles y áreas asignadas; sin permisos de edición ni backups.
+
+#### QA-202610-04 — ADMIN: error 400 al guardar color de marca
+
+- **FIX (Backend / Frontend):** El frontend envía solo appName, faviconUrl, logoUrl, primaryColor y secondaryColor; omite metadatos devueltos por GET. Se conserva validación hexadecimal.
+
+#### QA-202610-05 — ADMIN: reasignación de usuarios a otro cliente
+
+- **FIX (Backend / Frontend):** Sincronización de clientId, activeTenantId y tenantIds; limpieza de restricciones previas al cambiar cliente. Asignaciones centralizadas persisten clientes aunque no tengan áreas y consultan áreas por tenantId o clientId legacy.
+
+#### QA-202610-06 — ADMIN_AREA: carga y creación de áreas con error 500
+
+- **FIX (Backend / Frontend):** Listado sin tenant fijo con opción explícita de consulta; cliente seleccionado al crear cuando no hay contexto fijo; búsqueda del código dentro del tenant destino y rechazo de cliente distinto para administrador con tenant.
+
+#### QA-202610-07 — Todos los roles habilitados: PDF del proyecto con cero hallazgos
+
+- **FIX (Backend / Frontend):** Consulta por project._id (ObjectId), exclusión de CLOSED y skipTenantFilter explícito; mantiene arrays lean. Regresión con 17 hallazgos para OWNER, ADMIN_AREA, PENTESTER y AUDITOR.
+
+#### QA-202610-08 — ADMIN_AREA: eliminación de auditores
+
+- **FIX (Backend / Frontend):** El botón usa DELETE /auth/users/:id/soft para administradores de área; OWNER/PLATFORM_ADMIN conserva la ruta de eliminación física. No se amplían permisos de hard delete.
+
+#### QA-202610-09 — PENTESTER: borrar proyectos y clientes
+
+- **FIX (Backend / Frontend):** Botón y ruta hard delete de proyectos habilitados al grupo operacional; consultas de borrado tras validar acceso al proyecto. Clientes usan desactivación, sin habilitar eliminación física. Matriz RBAC actualizada.
+
+#### QA-202610-10 — PENTESTER: navegación después de cerrar hallazgo
+
+- **FIX (Backend / Frontend):** Después del cierre exitoso se navega a /findings; ante error se conserva el detalle y se muestra el mensaje.
+
+#### M16 — Recuperación de contraseña por correo (self-service) — corregida
+
+- **Estado:** ✅ Completado — función corregida, registrada según lo informado por el usuario el 2026-10-15. Sustituye el estado histórico de pre-configuración.
+- **FIX (Autenticación):** solicitud desde el login, código de seis dígitos por correo, validación de código y expiración, guardado seguro de una nueva contraseña con validación de fortaleza y acceso con ella.
+- **Archivos de referencia:** backend/src/modules/auth/auth.service.ts, backend/src/modules/auth/auth.controller.ts, backend/src/modules/auth/dto/auth.dto.ts y frontend/src/app/features/auth/login/login.component.ts.
+- **Validación:** esta actualización es documental; no ejecutó una nueva prueba SMTP, de recuperación ni de login. Las 35 pruebas del ciclo QA no cubren M16.
+
+#### Validación del ciclo QA
+
+- **Pruebas:** 35 aprobadas; TypeScript sin errores y build frontend development aprobado.
+- **Pendiente:** despliegue y aceptación remota de los diez hallazgos QA.
+- **Referencias:** [issues oficiales](ISSUES.md) y [registro de cambios, archivos y aceptación](docs/QA-CORRECTIONS-2026-10.md).
+
+---
+
 ### Endurecimiento de recuperación de contraseña — validación de fortaleza en backend (2026-09-29)
 
-#### M16 — Recuperación de contraseña por correo (self-service) — pre-configuración de función
+#### M16 — Recuperación de contraseña por correo (self-service) — estado histórico de pre-configuración
 
-- **Estado:** el flujo (botón "¿Olvidaste tu contraseña?" → código por correo → nueva contraseña → login) ya estaba completamente implementado en código antes de esta sesión (`AuthService.forgotPassword()`/`resetPasswordWithCode()`, endpoints `@Public()`, diálogo de 2 pasos en `login.component.ts`). Queda en **pre-configuración de función**: falta terminar la configuración SMTP real del ambiente antes de poder usarse en producción.
+- **Estado:** el flujo (botón "¿Olvidaste tu contraseña?" → código por correo → nueva contraseña → login) ya estaba completamente implementado en código antes de esta sesión (`AuthService.forgotPassword()`/`resetPasswordWithCode()`, endpoints `@Public()`, diálogo de 2 pasos en `login.component.ts`). En esa fecha quedó en **pre-configuración de función** por SMTP pendiente. Estado actualizado a **corregida** el 2026-10-15; esta nota se conserva como historial.
 - **FIX (Backend — auth dto):** el frontend ya validaba la fortaleza de la contraseña (mayúscula + número + carácter especial) antes de enviar, pero el backend solo exigía `MinLength(6)`, permitiendo contraseñas débiles si se llamaba la API directamente. Agregado un decorador compartido `IsStrongPassword()` en `auth.dto.ts`, aplicado a `RegisterUserDto.password`, `ResetPasswordDto.newPassword`, `UpdateUserDto.password` y `UpdateProfileDto.newPassword`.
 - **FIX (Backend — auth dto):** la primera versión usaba 3 `@Matches` separados en el mismo campo; class-validator agrupa los errores por nombre de validador ("matches"), por lo que se pisaban entre sí y solo sobrevivía el último mensaje. Combinados en un único regex con lookaheads y un solo mensaje.
 - **FEAT (Backend + Frontend — caracteres especiales ampliados):** a pedido del usuario, se cambió de una lista fija (`-`, `.`, `*`) a aceptar cualquier carácter que no sea letra, número ni espacio, sincronizado entre `auth.dto.ts` (backend) e `isStrongSuggestedPassword()` en `login.component.ts` (frontend).

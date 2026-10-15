@@ -42,8 +42,8 @@ const SYSTEM_PERMISSION_MATRIX: Record<
     evidence: ["read"],
   },
   PENTESTER_QA: {
-    clients: ["create", "read", "update", "assign"],
-    projects: ["create", "read", "update", "assign"],
+    clients: ["create", "read", "update", "assign", "delete"],
+    projects: ["create", "read", "update", "assign", "delete"],
     findings: ["create", "read", "update"],
     evidence: ["create", "read", "update"],
   },

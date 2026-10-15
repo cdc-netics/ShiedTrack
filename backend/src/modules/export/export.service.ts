@@ -313,7 +313,7 @@ export class ExportService {
     this.validateAuditorProjectAccess(project, currentUser);
 
     // RBAC (Simplified check)
-    const findingsQuery = this.findingModel.find({ projectId }).sort({ severity: 1 }).lean();
+    const findingsQuery = this.findingModel.find({ projectId: project._id, status: { $ne: FindingStatus.CLOSED } }).setOptions({ skipTenantFilter: true }).sort({ severity: 1 }).lean();
     if (this.isGlobalUser(currentUser) || this.isOperationalUser(currentUser) || this.isAuditorUser(currentUser)) {
       findingsQuery.setOptions({ skipTenantFilter: true });
     }

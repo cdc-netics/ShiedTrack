@@ -38,3 +38,7 @@ Este archivo es el indice maestro de documentacion. Si hay duplicados o contradi
 ## Nota de orden
 
 La documentacion operativa (`SETUP` y `TROUBLESHOOTING`) se mantiene dentro de `docs/` para evitar dispersion en la raiz del repositorio.
+
+## Correcciones QA de octubre de 2026
+
+[Registro de cambios, archivos, evidencia local y aceptación pendiente](QA-CORRECTIONS-2026-10.md). Los estados se mantienen en [ISSUES.md](../ISSUES.md) y el historial en [CHANGELOG.md](../CHANGELOG.md).

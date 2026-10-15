@@ -19,6 +19,7 @@ import { ClientDialogComponent } from '../client-dialog/client-dialog.component'
 import { environment } from '../../../../environments/environment';
 import { AuthService } from '../../../core/services/auth.service';
 import { UserRole } from '../../../shared/enums';
+import { roleSatisfies } from '../../../shared/utils/rbac';
 
 @Component({
   standalone: true,
@@ -546,10 +547,8 @@ export class ClientListComponent implements OnInit {
     );
   }
 
-  /** Eliminar/desactivar cliente es exclusivo de OWNER/PLATFORM_ADMIN — ningún rol
-   *  operacional (PENTESTER/QA/ANALYST) lo tiene, aunque sí puedan crear/editar */
   canDeleteClients(): boolean {
     const role = this.authService.currentUser()?.role;
-    return role === UserRole.OWNER || role === UserRole.PLATFORM_ADMIN;
+    return roleSatisfies(UserRole.OWNER, role) || roleSatisfies(UserRole.PENTESTER, role);
   }
 }
