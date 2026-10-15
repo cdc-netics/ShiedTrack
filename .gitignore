@@ -28,6 +28,7 @@ Skills/
 
 # Claude Code
 CLAUDE.md
+.claude/
 
 # IDE
 .idea/
@@ -92,4 +93,3 @@ INSTRUCCIONES-INICIO.md
 # Local MongoDB Data
 data/
 data/db/
-CLAUDE.md
