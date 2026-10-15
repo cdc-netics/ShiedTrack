@@ -18,8 +18,10 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { HttpClient } from '@angular/common/http';
 import { FindingService } from '../../../core/services/finding.service';
 import { ProjectService } from '../../../core/services/project.service';
-import { Observable, startWith, map, of } from 'rxjs';
+import { Observable, startWith, map, of, firstValueFrom } from 'rxjs';
 import { environment } from '../../../../environments/environment';
+import { CvssCalculatorComponent } from '../../../shared/components/cvss-calculator/cvss-calculator.component';
+import { CvssResult, formatCvssScore } from '../../../shared/utils/cvss';
 
 interface Template {
   id: string | number;
@@ -51,7 +53,8 @@ interface Template {
         MatAutocompleteModule,
         MatProgressSpinnerModule,
         MatDividerModule,
-        MatTooltipModule
+        MatTooltipModule,
+        CvssCalculatorComponent
     ],
     template: `
     <div class="wizard-container">
@@ -171,26 +174,12 @@ interface Template {
                   </mat-form-field>
                 </div>
 
-                <div class="form-row">
-                  <mat-form-field appearance="outline" class="code-readonly-hint">
-                    <mat-label>Código operativo</mat-label>
-                    <input matInput readonly value="Se asigna al guardar (servidor)">
-                    <mat-icon matPrefix class="code-icon">lock</mat-icon>
-                    <mat-hint>Correlativo único generado en el backend; no se envía desde el navegador.</mat-hint>
-                  </mat-form-field>
-
-                  <mat-form-field appearance="outline" [class.severity-border]="basicForm.get('severity')?.value">
-                    <mat-label>Severidad *</mat-label>
-                    <mat-select formControlName="severity" required>
-                      <mat-option value="CRITICAL">🔴 Crítica</mat-option>
-                      <mat-option value="HIGH">🟠 Alta</mat-option>
-                      <mat-option value="MEDIUM">🟡 Media</mat-option>
-                      <mat-option value="LOW">🔵 Baja</mat-option>
-                      <mat-option value="INFO">⚪ Informativa</mat-option>
-                    </mat-select>
-                    <mat-error>La severidad es requerida</mat-error>
-                  </mat-form-field>
-                </div>
+                <mat-form-field appearance="outline" class="code-readonly-hint full-width">
+                  <mat-label>Código operativo</mat-label>
+                  <input matInput readonly value="Se asigna al guardar (servidor)">
+                  <mat-icon matPrefix class="code-icon">lock</mat-icon>
+                  <mat-hint>Correlativo único generado en el backend; no se envía desde el navegador.</mat-hint>
+                </mat-form-field>
 
                 <mat-form-field appearance="outline" class="full-width">
                   <mat-label>Título *</mat-label>
@@ -232,32 +221,58 @@ interface Template {
             <mat-step [stepControl]="technicalForm">
               <ng-template matStepLabel>Información Técnica</ng-template>
               <form [formGroup]="technicalForm" class="wizard-form">
-                <div class="form-row">
-                  <mat-form-field appearance="outline">
-                    <mat-label>CVSS Score</mat-label>
-                    <input matInput type="number" formControlName="cvssScore" min="0" max="10" step="0.1">
-                    <mat-hint>0.0 - 10.0</mat-hint>
-                  </mat-form-field>
+                <div class="cvss-section">
+                  <div class="cvss-section-header">
+                    <h3><mat-icon>calculate</mat-icon> Puntuación CVSS</h3>
+                    <button type="button" mat-button color="primary" class="cvss-toggle"
+                            (click)="showCvssCalculator.set(!showCvssCalculator())">
+                      {{ showCvssCalculator() ? 'Ingresar puntaje manualmente' : 'Calcular con CVSS 3.1' }}
+                    </button>
+                  </div>
 
-                  <mat-form-field appearance="outline">
-                    <mat-label>CVE ID</mat-label>
-                    <input matInput formControlName="cveId" placeholder="CVE-2024-12345">
-                    <mat-hint>Formato: CVE-YYYY-NNNNN</mat-hint>
-                  </mat-form-field>
+                  @if (showCvssCalculator()) {
+                    <app-cvss-calculator (resultChange)="onCvssCalculated($event)"></app-cvss-calculator>
+                  }
 
-                  <mat-form-field appearance="outline">
-                    <mat-label>CWE-ID</mat-label>
-                    <input matInput formControlName="cweId" placeholder="CWE-89">
-                  </mat-form-field>
+                  <div class="form-row">
+                    <mat-form-field appearance="outline">
+                      <mat-label>CVSS Score</mat-label>
+                      <input matInput type="number" formControlName="cvssScore" min="0" max="10" step="0.1">
+                      <mat-hint>{{ showCvssCalculator() ? 'Completado por la calculadora — editable' : '0.0 - 10.0' }}</mat-hint>
+                    </mat-form-field>
 
-                  <mat-form-field appearance="outline">
-                    <mat-label>Origen de Detección</mat-label>
-                    <input matInput formControlName="detectionSource" placeholder="IP o URL">
-                  </mat-form-field>
+                    <mat-form-field appearance="outline">
+                      <mat-label>CVE ID</mat-label>
+                      <input matInput formControlName="cveId" placeholder="CVE-2024-12345">
+                      <mat-hint>Formato: CVE-YYYY-NNNNN</mat-hint>
+                    </mat-form-field>
+
+                    <mat-form-field appearance="outline">
+                      <mat-label>CWE-ID</mat-label>
+                      <input matInput formControlName="cweId" placeholder="CWE-89">
+                    </mat-form-field>
+
+                    <mat-form-field appearance="outline">
+                      <mat-label>Origen de Detección</mat-label>
+                      <input matInput formControlName="detectionSource" placeholder="IP o URL">
+                    </mat-form-field>
+                  </div>
                 </div>
 
                 <div class="risk-section">
                   <div class="form-row">
+                    <mat-form-field appearance="outline" [class.severity-border]="technicalForm.get('severity')?.value">
+                      <mat-label>Severidad *</mat-label>
+                      <mat-select formControlName="severity" required>
+                        <mat-option value="CRITICAL">🔴 Crítica</mat-option>
+                        <mat-option value="HIGH">🟠 Alta</mat-option>
+                        <mat-option value="MEDIUM">🟡 Media</mat-option>
+                        <mat-option value="LOW">🔵 Baja</mat-option>
+                        <mat-option value="INFO">⚪ Informativa</mat-option>
+                      </mat-select>
+                      <mat-error>La severidad es requerida</mat-error>
+                    </mat-form-field>
+
                     <mat-form-field appearance="outline">
                       <mat-label>Riesgo de Negocio</mat-label>
                       <mat-select formControlName="businessRisk">
@@ -459,6 +474,11 @@ interface Template {
     .template-option { display: flex; justify-content: space-between; width: 100%; }
     .section-divider { margin: 24px 0; }
     .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+    .cvss-section { background: #f8f9fb; border: 1px solid #e0e0e0; border-radius: 8px; padding: 16px; margin-bottom: 24px; }
+    .cvss-section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+    .cvss-section-header h3 { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 16px; color: #424242; }
+    .cvss-section-header h3 mat-icon { color: #1976d2; }
+    .cvss-toggle { margin-bottom: 8px; }
     .full-width { grid-column: 1 / -1; width: 100%; }
     .code-icon { color: #ff9800; }
     .severity-border { border-left: 4px solid #f44336; padding-left: 8px; }
@@ -592,7 +612,10 @@ export class FindingWizardComponent implements OnInit {
   // Activos afectados
   affectedAssets = signal<string[]>([]);
   newAsset = '';
-  
+
+  // Calculadora CVSS 3.1 (abierta por defecto como método principal de cálculo)
+  showCvssCalculator = signal(true);
+
   private http = inject(HttpClient);
   private readonly templateApi = `${environment.apiUrl}/templates`;
 
@@ -641,16 +664,17 @@ export class FindingWizardComponent implements OnInit {
       projectId: [''],
       title: ['', Validators.required],
       description: ['', Validators.required],
-      severity: ['', Validators.required],
       detectionSource: ['']
     });
 
     this.technicalForm = this.fb.group({
       cvssScore: [''],
+      cvssVector: [''],
       cveId: [''],
       detectionSource: [''],
       cweId: [''],
-      businessRisk: [''], 
+      severity: ['', Validators.required],
+      businessRisk: [''],
       riskJustification: [''],
       affectedAsset: [''],
       recommendation: [''],
@@ -658,6 +682,17 @@ export class FindingWizardComponent implements OnInit {
       implications: [''],
       controls: [[]],
       references: [[]]
+    });
+  }
+
+  onCvssCalculated(result: CvssResult): void {
+    // El select de severidad de este wizard usa 'INFO' (no el valor canónico 'INFORMATIONAL' del enum backend)
+    const severity = result.severity === 'INFORMATIONAL' ? 'INFO' : result.severity;
+    this.technicalForm.patchValue({
+      cvssScore: formatCvssScore(result.score),
+      cvssVector: result.vector,
+      severity,
+      businessRisk: severity
     });
   }
 
@@ -786,13 +821,14 @@ export class FindingWizardComponent implements OnInit {
     // Copia datos de la plantilla a los formularios
     this.basicForm.patchValue({
       title: selectedTemplate.name,
-      description: selectedTemplate.description,
-      severity: selectedTemplate.severity
+      description: selectedTemplate.description
     });
     this.technicalForm.patchValue({
-      cvssScore: selectedTemplate.cvssScore,
+      cvssScore: formatCvssScore(selectedTemplate.cvssScore),
       cweId: selectedTemplate.cweId,
-      recommendation: selectedTemplate.recommendation
+      recommendation: selectedTemplate.recommendation,
+      severity: selectedTemplate.severity,
+      businessRisk: selectedTemplate.severity
     });
     this.templateSearch = '';
   }
@@ -1062,16 +1098,17 @@ export class FindingWizardComponent implements OnInit {
     const technicalData = this.technicalForm.value;
     
     // Generar internal_code basado en severidad y timestamp
-    const severityPrefix = basicData.severity.substring(0, 3).toUpperCase();
+    const severityPrefix = technicalData.severity.substring(0, 3).toUpperCase();
     const internalCode = `${severityPrefix}-${Date.now().toString().slice(-6)}`;
-    
+
     const data = {
       internal_code: internalCode,
       title: basicData.title,
       description: basicData.description,
-      severity: basicData.severity,
+      severity: technicalData.severity,
       projectId: basicData.projectId,
       cvssScore: technicalData.cvssScore ? Number(technicalData.cvssScore) : undefined,
+      cvssVector: technicalData.cvssVector || undefined,
       cve_id: technicalData.cveId || undefined,
       cweId: technicalData.cweId || undefined,
       businessRisk: technicalData.businessRisk || undefined,
@@ -1091,9 +1128,9 @@ export class FindingWizardComponent implements OnInit {
     console.log('📤 Enviando hallazgo:', data);
 
     this.findingService.createFinding(data).subscribe({
-      next: (response) => {
+      next: async (response) => {
         console.log('✅ Hallazgo creado:', response);
-        alert('✅ Hallazgo guardado exitosamente');
+        await this.uploadSelectedEvidences(response._id);
         this.router.navigate(['/findings']);
       },
       error: (error) => {
@@ -1103,5 +1140,53 @@ export class FindingWizardComponent implements OnInit {
         alert(`❌ Error al guardar hallazgo: ${errorMsg}`);
       }
     });
+  }
+
+  // Límite de subida de evidencias — debe coincidir con EVIDENCE_MAX_FILE_SIZE_MB del
+  // backend (default 100MB)
+  private readonly MAX_EVIDENCE_UPLOAD_BYTES = 100 * 1024 * 1024;
+
+  /**
+   * Sube secuencialmente los archivos adjuntados en el paso "Evidencias" del wizard,
+   * una vez que el hallazgo ya fue creado y se conoce su ID. Antes de este fix, los
+   * archivos quedaban seleccionados solo en memoria y nunca se enviaban al backend.
+   */
+  private async uploadSelectedEvidences(findingId: string): Promise<void> {
+    const files = this.selectedFiles();
+    if (!files.length) {
+      alert('✅ Hallazgo guardado exitosamente');
+      return;
+    }
+
+    let uploaded = 0;
+    const failed: string[] = [];
+
+    for (const file of files) {
+      if (file.size > this.MAX_EVIDENCE_UPLOAD_BYTES) {
+        failed.push(`${file.name}: supera el límite de 100MB (usa "Agregar Enlace" desde el detalle del hallazgo)`);
+        continue;
+      }
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      try {
+        await firstValueFrom(
+          this.http.post(`${environment.apiUrl}/evidence/upload?findingId=${findingId}`, formData)
+        );
+        uploaded++;
+      } catch (err: any) {
+        const errorMsg = err?.error?.message || err?.message || 'Error desconocido';
+        failed.push(`${file.name}: ${errorMsg}`);
+      }
+    }
+
+    if (failed.length === 0) {
+      alert(`✅ Hallazgo guardado exitosamente con ${uploaded} evidencia(s)`);
+    } else {
+      alert(
+        `✅ Hallazgo guardado. ${uploaded} evidencia(s) subida(s), ${failed.length} fallida(s):\n${failed.join('\n')}`
+      );
+    }
   }
 }

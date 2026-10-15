@@ -205,12 +205,16 @@ export class ProjectService {
    */
   async create(dto: CreateProjectDto, user: any): Promise<Project> {
     if (!dto.code) {
+      // El codigo de proyecto es unico GLOBALMENTE (indice unico "code_1"), no
+      // por tenant, asi que el conteo para generarlo siempre debe ser global.
+      // Escoparlo al tenant del usuario (como antes, solo para operativos/
+      // auditores sin tenant) hacia que dos tenants distintos generaran el
+      // mismo codigo (ej. ambos calculan "PROJ-2026-004"), chocando contra el
+      // indice unico con un 500.
       const year = new Date().getFullYear();
-      const countQuery = this.projectModel.countDocuments();
-      if (this.shouldBypassTenantFilter(user)) {
-        countQuery.setOptions({ skipTenantFilter: true });
-      }
-      const count = await countQuery;
+      const count = await this.projectModel
+        .countDocuments()
+        .setOptions({ skipTenantFilter: true });
       dto.code = `PROJ-${year}-${String(count + 1).padStart(3, "0")}`;
     }
 
@@ -504,19 +508,25 @@ export class ProjectService {
    * Se ejecuta automáticamente al cerrar un proyecto
    */
   private async closeProjectFindings(projectId: string): Promise<void> {
-    const result = await this.findingModel.updateMany(
-      {
-        projectId,
-        status: { $ne: FindingStatus.CLOSED },
-      },
-      {
-        $set: {
-          status: FindingStatus.CLOSED,
-          closeReason: "CONTRACT_ENDED",
-          closedAt: new Date(),
+    // El acceso al proyecto ya fue validado en update() antes de llamar aquí, por lo
+    // que skipTenantFilter es seguro — el scope está garantizado por projectId. Sin esto,
+    // usuarios operacionales (QA/PENTESTER) sin activeTenantId en el JWT reciben 500
+    // ("No hay contexto de tenant activo") al cerrar un proyecto.
+    const result = await this.findingModel
+      .updateMany(
+        {
+          projectId,
+          status: { $ne: FindingStatus.CLOSED },
         },
-      },
-    );
+        {
+          $set: {
+            status: FindingStatus.CLOSED,
+            closeReason: "CONTRACT_ENDED",
+            closedAt: new Date(),
+          },
+        },
+      )
+      .setOptions({ skipTenantFilter: true });
 
     this.logger.log(
       `${result.modifiedCount} hallazgos cerrados automáticamente para proyecto ${projectId}`,
@@ -562,17 +572,17 @@ export class ProjectService {
     const project = await this.findProjectOrFailWithAccess(id, currentUser);
 
     const findingsCount = await this.findingModel.countDocuments({
-      projectId: id,
-    });
+      projectId: project._id,
+    }).setOptions({ skipTenantFilter: true });
 
     if (findingsCount > 0) {
-      await this.findingModel.deleteMany({ projectId: id });
+      await this.findingModel.deleteMany({ projectId: project._id }).setOptions({ skipTenantFilter: true });
       this.logger.warn(
         `${findingsCount} hallazgos eliminados del proyecto ${id}`,
       );
     }
 
-    await this.projectModel.findByIdAndDelete(id);
+    await this.projectModel.findByIdAndDelete(id).setOptions({ skipTenantFilter: true });
 
     this.logger.warn(
       `Proyecto ELIMINADO permanentemente: ${project.name} (ID: ${id}) con ${findingsCount} hallazgos`,

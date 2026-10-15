@@ -230,3 +230,39 @@ newman run docs/ShieldTrack-P0-Tests.postman_collection.json ...
 ---
 
 **Última actualización:** 2026-05-04
+
+## Regresión de ciclos QA de octubre de 2026
+
+La [matriz QA-202610-01 a QA-202610-10](QA-CORRECTIONS-2026-10.md#aceptación-pendiente-en-qa) contiene los casos manuales por rol. El último resultado local fue de 35 pruebas aprobadas; el despliegue y la aceptación remota siguen pendientes.
+
+Desde backend, con dependencias ya instaladas:
+
+~~~powershell
+pnpm exec tsc --noEmit
+pnpm exec jest --runInBand --runTestsByPath src/modules/export/qa-regressions.spec.ts src/modules/export/export.service.spec.ts src/common/rbac/rbac-policy.spec.ts
+~~~
+
+Desde frontend: pnpm exec ng build --configuration development. Estos comandos permiten repetir las comprobaciones; la ejecución final registrada de Jest utilizó JavaScript compilado completo debido a demoras de ts-jest. Ver la evidencia y límites en el registro enlazado. Las pruebas con modelos simulados no requieren MongoDB; los casos manuales sí requieren el stack desplegado. No publicar cachés de Jest ni salidas temporales de compilación como código fuente.
+
+## Recuperación de contraseña (M16)
+
+**Estado:** función corregida, registrada el 2026-10-15. No se ejecutó una nueva prueba de correo en esta actualización.
+
+1. Solicitar recuperación desde el login con un usuario activo y comprobar entrega del código con SMTP válido.
+2. Rechazar un código incorrecto o expirado y una contraseña débil.
+3. Restablecer con código válido y contraseña fuerte; comprobar acceso con la nueva contraseña.
+4. Comprobar que el código utilizado no se reutiliza y que la contraseña anterior deja de funcionar.
+
+Las 35 pruebas del ciclo QA no cubren M16. Ver [issue oficial](../ISSUES.md).
+
+## QA-202610-11 — Áreas para pentester
+
+1. Verificar acceso a Áreas desde el menú con PENTESTER, sin habilitar Usuarios.
+2. Crear un área, editar nombre/prefijo/configuración, desactivar y reactivar. Sin tenant fijo, seleccionar explícitamente el cliente de creación.
+3. Eliminar un área de prueba con confirmación; verificar que no se promete ni ejecuta eliminación de sus proyectos o asignaciones.
+4. Con tenant fijo, intentar editar/borrar un área de otro cliente y verificar rechazo o recurso no encontrado.
+5. Como AUDITOR, intentar POST/PUT/DELETE directamente y verificar 403.
+
+Suite automática: backend/src/modules/area/area-permissions.spec.ts. Validación remota después del despliegue pendiente.
+
+Resultado local (2026-10-15): 45 pruebas aprobadas en cuatro suites (10 nuevas de Áreas), compilación TypeScript y build frontend development aprobados. Jest se ejecutó sobre JavaScript compilado con TypeScript; se retiraron la configuración y salida temporales.

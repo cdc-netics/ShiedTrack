@@ -22,26 +22,40 @@ export class AreaService {
 
   constructor(@InjectModel(Area.name) private areaModel: Model<Area>) {}
 
+  private applyAreaScope(query: any, user?: any): any {
+    const operational = normalizeRole(user?.role) === "PENTESTER_QA";
+    const tenantId = user?.activeTenantId || user?.clientId;
+    if (roleSatisfies(UserRole.OWNER, user?.role) || (operational && !tenantId)) {
+      query.setOptions({ skipTenantFilter: true });
+    } else if (operational && tenantId) {
+      query.setOptions({ skipTenantFilter: true }).where({ tenantId });
+    }
+    return query;
+  }
+
   /**
    * Obtiene el siguiente TenantId de forma correlativa (Round-Robin)
    * Útil para balancear la carga de datos entre tenants durante pruebas o migraciones.
    */
   private async getNextCorrelativeTenantId(): Promise<Types.ObjectId> {
     try {
-      // Obtenemos el modelo de Tenant dinámicamente desde la conexión
-      const TenantModel = this.areaModel.db.model("Tenant");
-      const activeTenants = await TenantModel.find({ isActive: true }).sort({
-        _id: 1,
-      });
+      // El tenant real en este sistema es el Client (ver CLAUDE.md: "Clients = Tenants
+      // en logica de negocio"). La coleccion "Tenant" es historica y nunca se llena.
+      const ClientModel = this.areaModel.db.model("Client");
+      const activeTenants = await ClientModel.find({ isActive: true })
+        .setOptions({ skipTenantFilter: true })
+        .sort({
+          _id: 1,
+        });
 
       if (activeTenants.length === 0) {
         throw new BadRequestException(
-          "No existen tenants activos para asignación automática.",
+          "No existen clientes activos para asignación automática.",
         );
       }
 
       // Contamos áreas totales para determinar el índice del tenant
-      const totalAreas = await this.areaModel.countDocuments();
+      const totalAreas = await this.areaModel.countDocuments().setOptions({ skipTenantFilter: true });
       const nextTenant = activeTenants[totalAreas % activeTenants.length];
 
       this.logger.debug(
@@ -57,11 +71,11 @@ export class AreaService {
   /**
    * Crea una nueva área
    */
-  async create(dto: CreateAreaDto): Promise<Area> {
+  async create(dto: CreateAreaDto, currentUser?: any): Promise<Area> {
     // DEBUG: Verificar contexto CLS
     const namespace = getNamespace("tenant-context");
-    const contextTenantId = namespace?.get("tenantId");
-    const isOwner = namespace?.get("isOwner");
+    const contextTenantId = currentUser?.activeTenantId || currentUser?.clientId || namespace?.get("tenantId");
+    const isOwner = roleSatisfies(UserRole.OWNER, currentUser?.role) || namespace?.get("isOwner");
     const userId = namespace?.get("userId");
 
     this.logger.log(
@@ -69,6 +83,9 @@ export class AreaService {
     );
     this.logger.log(`Intentando crear área: ${JSON.stringify(dto)}`);
 
+    if (contextTenantId && dto.tenantId && dto.tenantId !== contextTenantId.toString() && !roleSatisfies(UserRole.OWNER, currentUser?.role)) {
+      throw new BadRequestException('El cliente no coincide con el asignado al usuario');
+    }
     let finalTenantId = dto.tenantId || contextTenantId;
 
     // Lógica Correlativa: Si no hay tenant y el usuario es OWNER, auto-poblar
@@ -90,7 +107,8 @@ export class AreaService {
       // Generar código automáticamente: AREA-001, AREA-002, etc.
       // El filtrado por tenant se aplica vía plugin/CLS para la búsqueda del último código
       const lastArea = await this.areaModel
-        .findOne({})
+        .findOne({ tenantId: new Types.ObjectId(finalTenantId) })
+        .setOptions({ skipTenantFilter: true })
         .sort({ createdAt: -1 })
         .exec();
 
@@ -148,8 +166,12 @@ export class AreaService {
     const isGlobalUser = roleSatisfies(UserRole.OWNER, currentUser?.role);
     const isOperationalUser =
       normalizeRole(currentUser?.role) === "PENTESTER_QA";
-    const skipTenantFilter = isOperationalUser && !scopedTenantId;
+    const isAreaAdmin = normalizeRole(currentUser?.role) === "ADMIN_AREA";
+    const skipTenantFilter = (isOperationalUser || isAreaAdmin || isGlobalUser) && !scopedTenantId;
 
+    if (!isGlobalUser && scopedTenantId && clientId && clientId !== scopedTenantId.toString()) {
+      throw new BadRequestException('El cliente no coincide con el asignado al usuario');
+    }
     if (clientId) {
       query.$or = [
         { tenantId: new Types.ObjectId(clientId) },
@@ -231,8 +253,8 @@ export class AreaService {
   /**
    * Busca área por ID
    */
-  async findById(id: string): Promise<Area> {
-    const area = await this.areaModel.findById(id).populate("clientId");
+  async findById(id: string, currentUser?: any): Promise<Area> {
+    const area = await this.applyAreaScope(this.areaModel.findById(id), currentUser).populate("clientId");
     if (!area) {
       throw new NotFoundException(`Área con ID ${id} no encontrada`);
     }
@@ -242,8 +264,8 @@ export class AreaService {
   /**
    * Actualiza un área
    */
-  async update(id: string, dto: UpdateAreaDto): Promise<Area> {
-    const area = await this.areaModel.findByIdAndUpdate(id, dto, { new: true });
+  async update(id: string, dto: UpdateAreaDto, currentUser?: any): Promise<Area> {
+    const area = await this.applyAreaScope(this.areaModel.findByIdAndUpdate(id, dto, { new: true }), currentUser);
 
     if (!area) {
       throw new NotFoundException(`Área con ID ${id} no encontrada`);
@@ -256,12 +278,12 @@ export class AreaService {
   /**
    * Soft delete - Desactiva un área
    */
-  async deactivate(id: string): Promise<Area> {
-    const area = await this.areaModel.findByIdAndUpdate(
+  async deactivate(id: string, currentUser?: any): Promise<Area> {
+    const area = await this.applyAreaScope(this.areaModel.findByIdAndUpdate(
       id,
       { isActive: false },
       { new: true },
-    );
+    ), currentUser);
 
     if (!area) {
       throw new NotFoundException(`Área con ID ${id} no encontrada`);
@@ -274,8 +296,8 @@ export class AreaService {
   /**
    * Hard delete - Solo OWNER
    */
-  async hardDelete(id: string): Promise<void> {
-    const result = await this.areaModel.findByIdAndDelete(id);
+  async hardDelete(id: string, currentUser?: any): Promise<void> {
+    const result = await this.applyAreaScope(this.areaModel.findByIdAndDelete(id), currentUser);
 
     if (!result) {
       throw new NotFoundException(`Área con ID ${id} no encontrada`);

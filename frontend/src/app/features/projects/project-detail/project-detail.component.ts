@@ -19,6 +19,7 @@ import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../environments/environment';
 import { AuthService } from '../../../core/services/auth.service';
 import { UserRole } from '../../../shared/enums';
+import { roleSatisfies } from '../../../shared/utils/rbac';
 
 @Component({
   standalone: true,
@@ -49,13 +50,22 @@ import { UserRole } from '../../../shared/enums';
         </button>
         <h1>
           @if (isEditMode()) {
-            📝 Editar Proyecto
+            @if (canChangeStatus()) {
+              📝 Editar Proyecto
+            } @else {
+              👁️ Ver Proyecto
+            }
           } @else {
             ➕ Nuevo Proyecto
           }
         </h1>
         <div class="header-actions">
           @if (isEditMode()) {
+            <button mat-raised-button color="primary" class="view-findings-btn"
+                    matTooltip="Ver solo los hallazgos de este proyecto" (click)="viewFindings()">
+              <mat-icon>bug_report</mat-icon>
+              Ver Hallazgos
+            </button>
             <button mat-icon-button color="primary" matTooltip="Descargar Reporte PDF" (click)="downloadPdf()">
               <mat-icon>picture_as_pdf</mat-icon>
             </button>
@@ -228,19 +238,23 @@ import { UserRole } from '../../../shared/enums';
                       </mat-select>
                     </mat-form-field>
 
-                    <button mat-icon-button color="warn" type="button"
-                            (click)="removeTeamMember($index)"
-                            [disabled]="teamMembers.length === 1">
-                      <mat-icon>delete</mat-icon>
-                    </button>
+                    @if (canChangeStatus()) {
+                      <button mat-icon-button color="warn" type="button"
+                              (click)="removeTeamMember($index)"
+                              [disabled]="teamMembers.length === 1">
+                        <mat-icon>delete</mat-icon>
+                      </button>
+                    }
                   </div>
                 }
               </div>
 
-              <button mat-stroked-button type="button" (click)="addTeamMember()">
-                <mat-icon>add</mat-icon>
-                Agregar Miembro
-              </button>
+              @if (canChangeStatus()) {
+                <button mat-stroked-button type="button" (click)="addTeamMember()">
+                  <mat-icon>add</mat-icon>
+                  Agregar Miembro
+                </button>
+              }
             </mat-card-content>
           </mat-card>
 
@@ -269,12 +283,14 @@ import { UserRole } from '../../../shared/enums';
           <!-- ACCIONES -->
           <div class="actions">
             <button mat-button type="button" routerLink="/projects">
-              Cancelar
+              {{ canChangeStatus() ? 'Cancelar' : 'Volver' }}
             </button>
-            <button mat-raised-button color="primary" type="submit" [disabled]="projectForm.invalid || saving()">
-              <mat-icon>{{ saving() ? 'hourglass_empty' : 'save' }}</mat-icon>
-              {{ saving() ? 'Guardando...' : 'Guardar Proyecto' }}
-            </button>
+            @if (canChangeStatus()) {
+              <button mat-raised-button color="primary" type="submit" [disabled]="projectForm.invalid || saving()">
+                <mat-icon>{{ saving() ? 'hourglass_empty' : 'save' }}</mat-icon>
+                {{ saving() ? 'Guardando...' : 'Guardar Proyecto' }}
+              </button>
+            }
           </div>
         </form>
       }
@@ -284,6 +300,8 @@ import { UserRole } from '../../../shared/enums';
     .project-detail-container { padding: 0; max-width: 1200px; margin: 0 auto; }
     .header { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; }
     .header h1 { margin: 0; font-size: 28px; font-weight: 500; }
+    .header-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+    .view-findings-btn mat-icon { margin-right: 6px; }
     .section-card { margin-bottom: 24px; }
     mat-card-header { margin-bottom: 16px; }
     mat-card-title { display: flex; align-items: center; gap: 8px; font-size: 18px; }
@@ -364,6 +382,22 @@ export class ProjectDetailComponent implements OnInit {
     this.loadAreas();
 
     const id = this.route.snapshot.paramMap.get('id');
+    const creating = !id || id === 'new';
+
+    // Mismos roles que el backend exige en POST/PUT/PATCH /projects — un usuario sin
+    // ese permiso no debería ni llegar a un formulario de creación funcional.
+    if (creating && !this.canChangeStatus()) {
+      alert('⚠️ No tienes permisos para crear proyectos.');
+      this.router.navigate(['/projects']);
+      return;
+    }
+
+    // Al ver un proyecto existente sin permiso de edición, el formulario queda de solo
+    // lectura en vez de dejar que el usuario lo llene y recién se entere del 403 al guardar.
+    if (!creating && !this.canChangeStatus()) {
+      this.projectForm.disable();
+    }
+
     if (id && id !== 'new') {
       this.isEditMode.set(true);
       this.projectId.set(id);
@@ -433,6 +467,12 @@ export class ProjectDetailComponent implements OnInit {
           this.addTeamMember();
         }
 
+        // Los FormGroup recién agregados al FormArray no heredan el estado disabled
+        // del padre — hay que re-aplicarlo tras poblar los miembros del equipo.
+        if (!this.canChangeStatus()) {
+          this.projectForm.disable();
+        }
+
         this.loading.set(false);
       },
       error: (err) => {
@@ -462,9 +502,12 @@ export class ProjectDetailComponent implements OnInit {
   canChangeStatus(): boolean {
     const user = this.authService.currentUser();
     if (!user) return false;
-    if (user.role === UserRole.OWNER) return true;
-    if (user.role === UserRole.CLIENT_ADMIN || user.role === UserRole.AREA_ADMIN) return true;
-    return false;
+    // Mismos roles que backend permite en PUT/PATCH /projects/:id
+    return (
+      roleSatisfies(UserRole.OWNER, user.role) ||
+      roleSatisfies(UserRole.ADMIN_AREA, user.role) ||
+      roleSatisfies(UserRole.PENTESTER, user.role)
+    );
   }
 
   downloadPdf() {
@@ -477,6 +520,17 @@ export class ProjectDetailComponent implements OnInit {
     if (!this.projectId()) return;
     const token = this.authService.getToken();
     window.open(`${environment.apiUrl}/export/project/${this.projectId()}/zip?token=${token}`, '_blank');
+  }
+
+  viewFindings(): void {
+    if (!this.projectId()) return;
+    const clientId = this.normalizeId(this.projectForm.get('clientId')?.value);
+    this.router.navigate(['/findings'], {
+      queryParams: {
+        projectId: this.projectId(),
+        ...(clientId ? { clientId } : {}),
+      },
+    });
   }
 
 saveProject(): void {

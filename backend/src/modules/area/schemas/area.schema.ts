@@ -53,8 +53,10 @@ export class Area extends Document {
 
   // Timestamps automáticos: createdAt, updatedAt
 
-  // Multi-tenant: referencia al tenant
-  @Prop({ type: Types.ObjectId, ref: "Tenant", required: true, index: true })
+  // Multi-tenant: referencia al tenant. El tenant real es el Client (ver
+  // CLAUDE.md: "Clients = Tenants en logica de negocio"); la coleccion
+  // "Tenant" es historica y nunca se llena, asi que el ref debe apuntar a Client.
+  @Prop({ type: Types.ObjectId, ref: "Client", required: true, index: true })
   tenantId: Types.ObjectId;
 }
 

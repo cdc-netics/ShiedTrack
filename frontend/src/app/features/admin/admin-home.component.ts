@@ -4,6 +4,8 @@ import { RouterLink } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { AuthService } from '../../core/services/auth.service';
+import { UserRole } from '../../shared/enums';
+import { roleSatisfies } from '../../shared/utils/rbac';
 
 @Component({
   standalone: true,
@@ -74,18 +76,10 @@ export class AdminHomeComponent {
   public authService = inject(AuthService);
 
   canAccessNotifications(): boolean {
-    const role = this.authService.currentUser()?.role;
-    return role === 'OWNER' || role === 'PLATFORM_ADMIN' || role === 'CLIENT_ADMIN';
+    return roleSatisfies(UserRole.CLIENT_ADMIN, this.authService.currentUser()?.role);
   }
 
   canManageUsers(): boolean {
-    const role = this.authService.currentUser()?.role;
-    return (
-      role === 'OWNER' ||
-      role === 'PLATFORM_ADMIN' ||
-      role === 'ADMIN_AREA' ||
-      role === 'CLIENT_ADMIN' ||
-      role === 'AREA_ADMIN'
-    );
+    return roleSatisfies(UserRole.CLIENT_ADMIN, this.authService.currentUser()?.role);
   }
 }

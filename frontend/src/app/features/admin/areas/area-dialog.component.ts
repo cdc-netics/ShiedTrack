@@ -28,7 +28,16 @@ import { environment } from '../../../../environments/environment';
     <h2 mat-dialog-title>{{ data.area ? 'Editar' : 'Crear' }} Área</h2>
     <mat-dialog-content>
       <form [formGroup]="areaForm">
-        <!-- Cliente eliminado: el tenant se determina automáticamente por contexto -->
+        @if (!data.area && !data.clientId) {
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Cliente</mat-label>
+            <mat-select formControlName="tenantId">
+              @for (client of clients; track client._id) {
+                <mat-option [value]="client._id">{{ client.name }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+        }
 
         <mat-form-field appearance="outline" class="full-width">
           <mat-label>Nombre del Área</mat-label>
@@ -106,6 +115,7 @@ export class AreaDialogComponent implements OnInit {
   ) {
     // Configura validaciones base
     this.areaForm = this.fb.group({
+      tenantId: [data.clientId || '', data.area ? [] : [Validators.required]],
       name: ['', [Validators.required, Validators.minLength(3)]],
       description: [''],
       findingCodePrefix: ['', [Validators.pattern('^[A-Z0-9-]{2,10}$')]]
@@ -113,6 +123,12 @@ export class AreaDialogComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    if (!this.data.area && !this.data.clientId) {
+      this.http.get<any[]>(environment.apiUrl + '/clients').subscribe({
+        next: clients => this.clients = clients,
+        error: err => this.snackBar.open(err.error?.message || 'Error al cargar clientes', 'Cerrar', { duration: 3000 })
+      });
+    }
     // Si no viene clientId, cargar lista de clientes
     // El tenant se toma desde el contexto (JWT/header); no se requiere cargar clientes.
 
@@ -131,9 +147,8 @@ export class AreaDialogComponent implements OnInit {
     // Persiste cambios en backend y cierra el dialogo
     if (!this.areaForm.valid) return;
 
-    const areaData = {
-      ...this.areaForm.value
-    };
+    const { tenantId, ...fields } = this.areaForm.value;
+    const areaData = this.data.area ? fields : { ...fields, tenantId };
 
     const request = this.data.area
       ? this.http.put(`${environment.apiUrl}/areas/${this.data.area._id}`, areaData)

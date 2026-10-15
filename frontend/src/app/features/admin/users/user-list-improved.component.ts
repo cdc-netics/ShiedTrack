@@ -21,6 +21,8 @@ import { environment } from '../../../../environments/environment';
 import { AuthService } from '../../../core/services/auth.service';
 import { UserAssignmentDialogComponent } from './user-assignment-dialog.component';
 import { UserDialogComponent } from './user-dialog.component';
+import { UserRole } from '../../../shared/enums';
+import { roleSatisfies } from '../../../shared/utils/rbac';
 
 @Component({
   standalone: true,
@@ -33,7 +35,7 @@ import { UserDialogComponent } from './user-dialog.component';
     </h2>
     <mat-dialog-content>
       <p>¿Estás seguro de que deseas eliminar al usuario <strong>{{ data.email }}</strong>?</p>
-      <p style="color: #d32f2f; font-size: 13px;">Esta acción es permanente y no se puede deshacer.</p>
+      <p style="color: #d32f2f; font-size: 13px;">El usuario perderá el acceso al sistema.</p>
     </mat-dialog-content>
     <mat-dialog-actions align="end">
       <button mat-button mat-dialog-close>Cancelar</button>
@@ -104,7 +106,6 @@ export class ConfirmDeleteDialogComponent {
               <mat-option value="ADMIN_AREA">Admin Area</mat-option>
               <mat-option value="PENTESTER">Pentester</mat-option>
               <mat-option value="QA">QA</mat-option>
-              <mat-option value="NORMAL_USER">Usuario Normal</mat-option>
               <mat-option value="AUDITOR">Auditor</mat-option>
             </mat-select>
           </mat-form-field>
@@ -149,12 +150,6 @@ export class ConfirmDeleteDialogComponent {
               <button mat-menu-item (click)="createUser('QA')">
                 <mat-icon>fact_check</mat-icon>
                 <span>QA</span>
-              </button>
-            }
-            @if (canCreateRole('NORMAL_USER')) {
-              <button mat-menu-item (click)="createUser('NORMAL_USER')">
-                <mat-icon>person</mat-icon>
-                <span>Usuario Normal</span>
               </button>
             }
             @if (canCreateRole('AUDITOR')) {
@@ -383,7 +378,6 @@ export class UserListImprovedComponent implements OnInit {
     { value: 'ADMIN_AREA', label: 'Admin Area', icon: 'admin_panel_settings' },
     { value: 'PENTESTER', label: 'Pentester', icon: 'bug_report' },
     { value: 'QA', label: 'QA', icon: 'fact_check' },
-    { value: 'NORMAL_USER', label: 'Usuario Normal', icon: 'person' },
     { value: 'AUDITOR', label: 'Auditor', icon: 'visibility' }
   ];
 
@@ -391,11 +385,13 @@ export class UserListImprovedComponent implements OnInit {
 
   canCreateRole(role: string): boolean {
     const currentRole = this.authService.currentUser()?.role;
-    const adminAreaRoles = ['ADMIN_AREA', 'CLIENT_ADMIN', 'AREA_ADMIN'];
-    if (adminAreaRoles.includes(currentRole ?? '')) {
-      return ['NORMAL_USER', 'AUDITOR'].includes(role);
+    if (roleSatisfies(UserRole.OWNER, currentRole)) {
+      return true;
     }
-    return true;
+    if (roleSatisfies(UserRole.ADMIN_AREA, currentRole)) {
+      return role === UserRole.AUDITOR;
+    }
+    return false;
   }
 
   users = signal<User[]>([]);
@@ -492,7 +488,8 @@ export class UserListImprovedComponent implements OnInit {
       data: { email: user.email }
     }).afterClosed().subscribe(confirmed => {
       if (!confirmed) return;
-      this.http.delete(`${environment.apiUrl}/auth/users/${userId}`).subscribe({
+      const suffix = roleSatisfies(UserRole.OWNER, this.authService.currentUser()?.role) ? '' : '/soft';
+      this.http.delete(`${environment.apiUrl}/auth/users/${userId}${suffix}`).subscribe({
         next: () => {
           this.snackBar.open('Usuario eliminado correctamente', 'Cerrar', { duration: 3000 });
           this.loadUsers();
@@ -569,7 +566,7 @@ export class UserListImprovedComponent implements OnInit {
     });
   }
 
-  createUser(role = 'NORMAL_USER'): void {
+  createUser(role = 'AUDITOR'): void {
     this.dialog.open(UserDialogComponent, {
       width: '640px',
       data: { role }
@@ -630,7 +627,6 @@ export class UserListImprovedComponent implements OnInit {
       'ADMIN_AREA': 'Admin Area',
       'PENTESTER': 'Pentester',
       'QA': 'QA',
-      'NORMAL_USER': 'Usuario Normal',
       'AUDITOR': 'Auditor'
     };
     return names[role] || role;
@@ -647,7 +643,6 @@ export class UserListImprovedComponent implements OnInit {
       'ADMIN_AREA': 'business_center',
       'PENTESTER': 'bug_report',
       'QA': 'fact_check',
-      'NORMAL_USER': 'person',
       'AUDITOR': 'visibility'
     };
     return icons[role] || 'person';

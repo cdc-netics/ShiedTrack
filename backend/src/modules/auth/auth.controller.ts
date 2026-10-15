@@ -27,6 +27,8 @@ import {
   UpdateUserAssignmentsDto,
   UpdateUserDto,
   UpdateProfileDto,
+  ForgotPasswordDto,
+  ResetPasswordDto,
 } from "./dto/auth.dto";
 import { JwtAuthGuard } from "./guards/jwt-auth.guard";
 import { RolesGuard } from "./guards/roles.guard";
@@ -99,6 +101,28 @@ export class AuthController {
       hasPassword: !!dto.password,
     });
     return this.authService.login(dto);
+  }
+
+  @Post("forgot-password")
+  @ApiOperation({
+    summary: "Solicitar código de recuperación de contraseña por email",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Mensaje genérico (no revela si el correo existe)",
+  })
+  async forgotPassword(@Body() dto: ForgotPasswordDto) {
+    return this.authService.forgotPassword(dto);
+  }
+
+  @Post("reset-password")
+  @ApiOperation({
+    summary: "Restablecer contraseña con el código enviado por email",
+  })
+  @ApiResponse({ status: 200, description: "Contraseña actualizada" })
+  @ApiResponse({ status: 400, description: "Código inválido o expirado" })
+  async resetPassword(@Body() dto: ResetPasswordDto) {
+    return this.authService.resetPasswordWithCode(dto);
   }
 
   @Post("mfa/setup")

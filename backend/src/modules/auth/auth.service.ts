@@ -8,7 +8,7 @@ import {
 } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { InjectModel } from "@nestjs/mongoose";
-import { Model } from "mongoose";
+import { Model, Types } from "mongoose";
 import * as bcrypt from "bcryptjs";
 import * as crypto from "crypto";
 import * as speakeasy from "speakeasy";
@@ -20,6 +20,8 @@ import {
   EnableMfaDto,
   UpdateUserDto,
   UpdateProfileDto,
+  ForgotPasswordDto,
+  ResetPasswordDto,
 } from "./dto/auth.dto";
 import { UserRole } from "../../common/enums";
 import {
@@ -401,6 +403,13 @@ export class AuthService {
     }
 
     const updateData: Record<string, any> = { ...rest };
+    if (dto.clientId && dto.clientId !== targetUser.clientId?.toString()) {
+      updateData.activeTenantId = new Types.ObjectId(dto.clientId);
+      updateData.tenantIds = [new Types.ObjectId(dto.clientId)];
+      updateData.visibleProjectIds = dto.visibleProjectIds || [];
+      updateData.visibleClientIds = dto.visibleClientIds || [];
+      updateData.areaIds = areaIds || [];
+    }
 
     if (email && email !== targetUser.email) {
       const existingUser = await this.userModel.findOne({
@@ -425,9 +434,9 @@ export class AuthService {
       throw new BadRequestException("Usuario no encontrado");
     }
 
-    if (areaIds) {
+    if (areaIds || updateData.tenantIds) {
       try {
-        await this.userAreaService.replaceUserAreas(userId, areaIds, userId);
+        await this.userAreaService.replaceUserAreas(userId, areaIds || [], currentUser.userId);
       } catch (error) {
         this.logger.error(
           `Error actualizando áreas para usuario ${userId}: ${error.message}`,
@@ -523,7 +532,7 @@ export class AuthService {
 
     // ADMIN_AREA solo puede bloquear usuarios de menor rango
     if (normalizeRole(currentUser?.role) === "ADMIN_AREA") {
-      const allowedTargets = [UserRole.NORMAL_USER, UserRole.AUDITOR, UserRole.VIEWER];
+      const allowedTargets = [UserRole.AUDITOR, UserRole.VIEWER];
       if (!allowedTargets.includes(user.role as UserRole)) {
         throw new ForbiddenException(
           "No tienes permiso para bloquear este tipo de usuario",
@@ -588,7 +597,7 @@ export class AuthService {
 
     // ADMIN_AREA solo puede reactivar usuarios de menor rango
     if (normalizeRole(currentUser?.role) === "ADMIN_AREA") {
-      const allowedTargets = [UserRole.NORMAL_USER, UserRole.AUDITOR, UserRole.VIEWER];
+      const allowedTargets = [UserRole.AUDITOR, UserRole.VIEWER];
       if (!allowedTargets.includes(user.role as UserRole)) {
         throw new ForbiddenException(
           "No tienes permiso para reactivar este tipo de usuario",
@@ -664,6 +673,113 @@ export class AuthService {
 
   private generateTemporaryPassword(): string {
     return `Temp-${crypto.randomBytes(4).toString("hex")}`;
+  }
+
+  private readonly PASSWORD_RESET_CODE_TTL_MS = 15 * 60 * 1000;
+  private readonly PASSWORD_RESET_RESEND_COOLDOWN_MS = 60 * 1000;
+
+  /**
+   * Autoservicio de recuperación de contraseña: envía un código de 6 dígitos
+   * al correo si (y solo si) existe una cuenta activa con ese email.
+   * Responde siempre el mismo mensaje genérico para no revelar si el
+   * correo está o no registrado en la plataforma (anti-enumeración).
+   */
+  async forgotPassword(
+    dto: ForgotPasswordDto,
+  ): Promise<{ message: string }> {
+    const genericResponse = {
+      message:
+        "Si el correo está registrado, recibirás un código de verificación en unos minutos.",
+    };
+
+    const user = await this.userModel.findOne({ email: dto.email });
+    if (!user || user.isDeleted || !user.isActive) {
+      return genericResponse;
+    }
+
+    const now = new Date();
+    if (
+      user.passwordResetRequestedAt &&
+      now.getTime() - user.passwordResetRequestedAt.getTime() <
+        this.PASSWORD_RESET_RESEND_COOLDOWN_MS
+    ) {
+      // Ya se envió un código hace muy poco: no reenviar ni reiniciar el TTL
+      return genericResponse;
+    }
+
+    const code = crypto.randomInt(100000, 1000000).toString();
+    user.passwordResetCodeHash = await bcrypt.hash(code, 10);
+    user.passwordResetCodeExpiresAt = new Date(
+      now.getTime() + this.PASSWORD_RESET_CODE_TTL_MS,
+    );
+    user.passwordResetRequestedAt = now;
+    await user.save();
+
+    const fullName = `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim();
+    await this.emailService.sendEmail({
+      to: user.email,
+      subject: "ShieldTrack - Código de recuperación de contraseña",
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #1976d2;">Recuperación de contraseña</h2>
+          <p>Hola <strong>${fullName || "usuario"}</strong>,</p>
+          <p>Recibimos una solicitud para restablecer tu contraseña en ShieldTrack.</p>
+          <div style="background: #e3f2fd; padding: 20px; border-left: 4px solid #1976d2; margin: 20px 0; text-align: center;">
+            <p style="margin: 0 0 8px;">Tu código de verificación es:</p>
+            <p style="font-size: 30px; font-weight: 700; letter-spacing: 6px; margin: 0;">${code}</p>
+          </div>
+          <p>Este código expira en 15 minutos. Si no solicitaste este cambio, puedes ignorar este mensaje.</p>
+        </div>
+      `,
+    });
+
+    this.logger.log(`Código de recuperación de contraseña enviado a ${user.email}`);
+    return genericResponse;
+  }
+
+  /**
+   * Completa la recuperación de contraseña validando el código de 6 dígitos
+   * enviado por forgotPassword().
+   */
+  async resetPasswordWithCode(
+    dto: ResetPasswordDto,
+  ): Promise<{ message: string }> {
+    const invalidCodeError = new BadRequestException(
+      "Código inválido o expirado",
+    );
+
+    const user = await this.userModel.findOne({ email: dto.email });
+    if (
+      !user ||
+      user.isDeleted ||
+      !user.isActive ||
+      !user.passwordResetCodeHash ||
+      !user.passwordResetCodeExpiresAt
+    ) {
+      throw invalidCodeError;
+    }
+
+    if (user.passwordResetCodeExpiresAt.getTime() < Date.now()) {
+      throw invalidCodeError;
+    }
+
+    const isCodeValid = await bcrypt.compare(
+      dto.code,
+      user.passwordResetCodeHash,
+    );
+    if (!isCodeValid) {
+      throw invalidCodeError;
+    }
+
+    user.password = await bcrypt.hash(dto.newPassword, 10);
+    user.forcePasswordChange = false;
+    user.passwordResetCodeHash = undefined;
+    user.passwordResetCodeExpiresAt = undefined;
+    user.passwordResetRequestedAt = undefined;
+    await user.save();
+
+    this.logger.log(`Contraseña restablecida vía código de recuperación para ${user.email}`);
+    return { message: "Contraseña actualizada correctamente" };
   }
 
   /**

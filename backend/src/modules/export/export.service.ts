@@ -61,6 +61,29 @@ export class ExportService {
     return normalizeRole(currentUser?.role) === "PENTESTER_QA";
   }
 
+  private isAuditorUser(user?: any): boolean {
+    return user?.role === UserRole.AUDITOR;
+  }
+
+  private validateAuditorProjectAccess(project: any, user: any): void {
+    if (!this.isAuditorUser(user)) return;
+    const tenant = this.getCurrentTenantId(user);
+    const client = project.tenantId?.toString() || project.clientId?._id?.toString();
+    const projects = (user.visibleProjectIds || []).map((id: any) => id.toString());
+    const clients = (user.visibleClientIds || []).map((id: any) => id.toString());
+    const areas = (user.areaIds || []).map((id: any) => id.toString());
+    const projectAreas = [...(project.areaIds || []), project.areaId].filter(Boolean)
+      .map((id: any) => (id._id || id).toString());
+    if ((tenant && tenant !== client) ||
+        (projects.length && !projects.includes(project._id.toString())) ||
+        (areas.length && !areas.some((id: string) => projectAreas.includes(id))) ||
+        (!tenant && user.auditorVisibilityScope === 'PER_CLIENT' && !clients.includes(client)) ||
+        (!tenant && !projects.length && !areas.length &&
+          !(user.auditorVisibilityScope === 'PER_CLIENT' && clients.includes(client)))) {
+      throw new ForbiddenException('No tiene permisos para exportar este proyecto');
+    }
+  }
+
   private isAreaRestrictedUser(currentUser?: any): boolean {
     return [
       UserRole.AREA_ADMIN,
@@ -73,20 +96,53 @@ export class ExportService {
   }
 
   /**
+   * Aplica el populate de clientId/areaId/areaIds a una query de Project, con
+   * skipTenantFilter en cada path poblado cuando corresponda. IMPORTANTE:
+   * `.setOptions({ skipTenantFilter: true })` en la query principal NO se propaga a
+   * las sub-queries que dispara `.populate()` — cada path necesita su propia opción,
+   * o usuarios operacionales (QA/PENTESTER sin activeTenantId en el JWT) reciben 500
+   * ("No hay contexto de tenant activo") al exportar, aunque la query principal ya
+   * tuviera el bypass.
+   */
+  private populateProjectRefs(query: any, currentUser?: any): any {
+    const bypass = this.isGlobalUser(currentUser) || this.isOperationalUser(currentUser) || this.isAuditorUser(currentUser);
+    if (bypass) {
+      query.setOptions({ skipTenantFilter: true });
+    }
+    return query
+      .populate({ path: "clientId", options: bypass ? { skipTenantFilter: true } : {} })
+      .populate({ path: "areaId", options: bypass ? { skipTenantFilter: true } : {} })
+      .populate({ path: "areaIds", options: bypass ? { skipTenantFilter: true } : {} });
+  }
+
+  /**
    * Genera reporte PDF de un hallazgo
    */
   async exportFindingPdf(findingId: string, currentUser: any): Promise<Buffer> {
     // 1. Fetch the finding
-    const finding = await this.findingModel.findById(findingId);
+    // .lean(): pdfmake muta en el sitio los arrays que recibe (ej. normaliza
+    // items de "ul" a objetos {text:...}); contra un documento Mongoose vivo,
+    // esa escritura dispara el cast del schema ([String] en "references") y
+    // revienta con CastError al pasarle un objeto. .lean() devuelve arrays
+    // planos de JS, inmunes a esa validacion.
+    const finding = await this.findingModel
+      .findById(findingId)
+      .setOptions({ skipTenantFilter: true })
+      .lean();
     if (!finding) {
       throw new NotFoundException("Hallazgo no encontrado");
     }
 
     // 2. Fetch the associated project to check RBAC
     // We need the project to determine the client/tenant for authorization checks.
-    const project = await this.projectModel
-      .findById(finding.projectId)
-      .populate("clientId");
+    // skipTenantFilter: roles operativos (PENTESTER/QA/ANALYST) no tienen un
+    // tenant fijo en el contexto CLS; sin esto, la query revienta con
+    // "No hay contexto de tenant activo" antes de llegar al chequeo de RBAC
+    // que viene abajo (el cual sí permite a estos roles exportar cualquier hallazgo).
+    const project = await this.populateProjectRefs(
+      this.projectModel.findById(finding.projectId).setOptions({ skipTenantFilter: true }),
+      currentUser,
+    );
     if (!project) {
       // This case should ideally not happen if data integrity is maintained,
       // but it's good practice to handle it.
@@ -95,9 +151,11 @@ export class ExportService {
       );
     }
 
+    this.validateAuditorProjectAccess(project, currentUser);
+
     // 3. Implement RBAC checks
     // Allowed roles bypass strict tenant/client checks, but still need to be authenticated.
-    if (!this.isGlobalUser(currentUser)) {
+    if (!this.isGlobalUser(currentUser) && !this.isOperationalUser(currentUser) && !this.isAuditorUser(currentUser)) {
       // For other roles, check if the user belongs to the same tenant/client as the project.
       const userTenantId = (
         currentUser.activeTenantId || currentUser.clientId
@@ -127,8 +185,15 @@ export class ExportService {
       }
     }
 
+    // 4. Evidencias asociadas, en el mismo orden de numeración (#1 = más antigua) que
+    // usa la pestaña Evidencias del frontend
+    const evidences = await this.evidenceModel
+      .find({ findingId: finding._id })
+      .setOptions({ skipTenantFilter: true })
+      .sort({ createdAt: 1 });
+
     // If all checks pass, generate the PDF report
-    return this.pdfService.generateFindingReport(finding);
+    return this.pdfService.generateFindingReport(finding, evidences, project);
   }
 
   /**
@@ -150,8 +215,10 @@ export class ExportService {
 
     // 2. Aplicar filtros opcionales
     if (filters.projectId) query.projectId = this.toObjectId(filters.projectId);
-    if (filters.status) query.status = filters.status;
     if (filters.severity) query.severity = filters.severity;
+    // Por defecto solo se exportan hallazgos vigentes (no cerrados); si se pide
+    // un estado explícito (incluido CLOSED) se respeta tal cual.
+    query.status = filters.status || { $ne: FindingStatus.CLOSED };
 
     // Si es un rol restringido (AREA_ADMIN, ANALYST), solo ve sus áreas
     if (this.isAreaRestrictedUser(currentUser) && currentUser.areaIds?.length > 0) {
@@ -237,19 +304,20 @@ export class ExportService {
   }
 
   async exportProjectPdf(projectId: string, currentUser: any): Promise<Buffer> {
-    const projectQuery = this.projectModel
-      .findById(projectId)
-      .populate("clientId areaId areaIds");
-    if (this.isGlobalUser(currentUser) || this.isOperationalUser(currentUser)) {
-      projectQuery.setOptions({ skipTenantFilter: true });
-    }
+    const projectQuery = this.populateProjectRefs(
+      this.projectModel.findById(projectId),
+      currentUser,
+    );
     const project = await projectQuery;
     if (!project) throw new NotFoundException("Proyecto no encontrado");
+    this.validateAuditorProjectAccess(project, currentUser);
 
     // RBAC (Simplified check)
-    const findings = await this.findingModel
-      .find({ projectId })
-      .sort({ severity: 1 });
+    const findingsQuery = this.findingModel.find({ projectId: project._id, status: { $ne: FindingStatus.CLOSED } }).setOptions({ skipTenantFilter: true }).sort({ severity: 1 }).lean();
+    if (this.isGlobalUser(currentUser) || this.isOperationalUser(currentUser) || this.isAuditorUser(currentUser)) {
+      findingsQuery.setOptions({ skipTenantFilter: true });
+    }
+    const findings = await findingsQuery;
 
     return this.pdfService.generateProjectReport(project, findings);
   }
@@ -263,20 +331,20 @@ export class ExportService {
     projectId: string,
     currentUser: any,
   ): Promise<PassThrough> {
-    const projectQuery = this.projectModel
-      .findById(projectId)
-      .populate("clientId areaId areaIds");
-    if (this.isGlobalUser(currentUser) || this.isOperationalUser(currentUser)) {
-      projectQuery.setOptions({ skipTenantFilter: true });
-    }
+    const projectQuery = this.populateProjectRefs(
+      this.projectModel.findById(projectId),
+      currentUser,
+    );
     const project = await projectQuery;
     if (!project) {
       throw new NotFoundException("Proyecto no encontrado");
     }
 
+    this.validateAuditorProjectAccess(project, currentUser);
+
     // RBAC: Validar que el usuario pertenece al cliente/tenant del proyecto
     // Los usuarios operacionales (PENTESTER/QA/ANALYST) pueden exportar cualquier proyecto
-    if (!this.isGlobalUser(currentUser) && !this.isOperationalUser(currentUser)) {
+    if (!this.isGlobalUser(currentUser) && !this.isOperationalUser(currentUser) && !this.isAuditorUser(currentUser)) {
       const userTenantId = this.getCurrentTenantId(currentUser);
 
       let projectTenantId: string | undefined;
@@ -297,7 +365,8 @@ export class ExportService {
     // Obtener hallazgos del proyecto
     // IMPORTANT: Usar project._id en lugar del string para que la query funcione con lean()
     const findings = await this.findingModel
-      .find({ projectId: project._id })
+      .find({ projectId: project._id, status: { $ne: FindingStatus.CLOSED } })
+      .setOptions({ skipTenantFilter: true })
       .populate("assignedTo", "firstName lastName")
       .populate("createdBy", "firstName lastName")
       .lean();
@@ -427,7 +496,11 @@ export class ExportService {
     currentUser: any,
   ): Promise<string> {
     // Validación similar a Excel
-    const project = await this.projectModel.findById(projectId);
+    const projectQuery = this.projectModel.findById(projectId);
+    if (this.isGlobalUser(currentUser) || this.isOperationalUser(currentUser) || this.isAuditorUser(currentUser)) {
+      projectQuery.setOptions({ skipTenantFilter: true });
+    }
+    const project = await projectQuery;
     if (!project) {
       throw new NotFoundException("Proyecto no encontrado");
     }
@@ -435,7 +508,8 @@ export class ExportService {
     // IMPORTANT: Mongoose no convierte automáticamente string a ObjectId con lean()
     // Debemos convertirlo explícitamente
     const findings = await this.findingModel
-      .find({ projectId: project._id })
+      .find({ projectId: project._id, status: { $ne: FindingStatus.CLOSED } })
+      .setOptions({ skipTenantFilter: true })
       .populate("assignedTo", "firstName lastName")
       .lean();
 
@@ -499,16 +573,17 @@ export class ExportService {
    * A. NIVEL PROYECTO - Exportar proyecto a JSON
    */
   async exportProjectToJSON(projectId: string, currentUser: any): Promise<any> {
-    const project = await this.projectModel
-      .findById(projectId)
-      .populate("clientId areaId areaIds")
-      .lean();
+    const project = await this.populateProjectRefs(
+      this.projectModel.findById(projectId),
+      currentUser,
+    ).lean();
     if (!project) {
       throw new NotFoundException("Proyecto no encontrado");
     }
 
     const findings = await this.findingModel
-      .find({ projectId })
+      .find({ projectId, status: { $ne: FindingStatus.CLOSED } })
+      .setOptions({ skipTenantFilter: true })
       .populate("assignedTo createdBy")
       .lean();
 
@@ -538,19 +613,19 @@ export class ExportService {
     projectId: string,
     currentUser: any,
   ): Promise<PassThrough> {
-    const projectQuery = this.projectModel
-      .findById(projectId)
-      .populate("clientId areaId areaIds");
-    if (this.isGlobalUser(currentUser) || this.isOperationalUser(currentUser)) {
-      projectQuery.setOptions({ skipTenantFilter: true });
-    }
+    const projectQuery = this.populateProjectRefs(
+      this.projectModel.findById(projectId),
+      currentUser,
+    );
     const project = await projectQuery;
     if (!project) {
       throw new NotFoundException("Proyecto no encontrado");
     }
 
+    this.validateAuditorProjectAccess(project, currentUser);
+
     // RBAC: operational users (QA/PENTESTER) can export any project
-    if (!this.isGlobalUser(currentUser) && !this.isOperationalUser(currentUser)) {
+    if (!this.isGlobalUser(currentUser) && !this.isOperationalUser(currentUser) && !this.isAuditorUser(currentUser)) {
       const userTenant = (
         currentUser.activeTenantId || currentUser.clientId
       )?.toString();
@@ -572,14 +647,18 @@ export class ExportService {
     const excelStream = await this.exportProjectToExcel(projectId, currentUser);
     archive.append(excelStream, { name: `${project.name}/hallazgos.xlsx` });
 
-    // Agregar evidencias
-    const findings = await this.findingModel
-      .find({ projectId })
-      .select("_id code")
-      .lean();
+    // Agregar evidencias (solo de hallazgos vigentes, igual que el Excel del ZIP)
+    const zipFindingsQuery = this.findingModel
+      .find({ projectId, status: { $ne: FindingStatus.CLOSED } })
+      .select("_id code");
+    if (this.isGlobalUser(currentUser) || this.isOperationalUser(currentUser) || this.isAuditorUser(currentUser)) {
+      zipFindingsQuery.setOptions({ skipTenantFilter: true });
+    }
+    const findings = await zipFindingsQuery.lean();
     const findingIds = findings.map((f: any) => f._id);
     const evidences = await this.evidenceModel
       .find({ findingId: { $in: findingIds } })
+      .setOptions({ skipTenantFilter: true })
       .lean();
 
     for (const evidence of evidences as any[]) {
@@ -620,12 +699,27 @@ export class ExportService {
       }
     }
 
-    const client = await this.clientModel.findById(clientId);
+    const clientQuery = this.clientModel.findById(clientId);
+    if (this.isGlobalUser(currentUser) || this.isOperationalUser(currentUser) || this.isAuditorUser(currentUser)) {
+      clientQuery.setOptions({ skipTenantFilter: true });
+    }
+    const client = await clientQuery;
     if (!client) {
       throw new NotFoundException("Cliente no encontrado");
     }
 
-    const projects = await this.projectModel.find({ clientId }).lean();
+    // Los proyectos se escopan por tenantId (= Client._id), no por el campo
+    // "clientId" (legacy/deprecated, nunca se puebla en proyectos nuevos).
+    // skipTenantFilter: el OWNER exportando un cliente puntual puede no tener
+    // ese tenant como su contexto CLS activo.
+    // Cast explicito: pasar el string del parametro de ruta tal cual a veces
+    // no se auto-castea a ObjectId para este modelo/pipeline de plugins,
+    // dejando el filtro como string y sin matchear nada contra el campo
+    // tenantId (BSON ObjectId) de los proyectos.
+    const projects = await this.projectModel
+      .find({ tenantId: new Types.ObjectId(clientId) })
+      .setOptions({ skipTenantFilter: true })
+      .lean();
 
     this.logger.log(
       `Exportando portfolio del cliente ${client.name} (${projects.length} proyectos)`,
@@ -645,14 +739,16 @@ export class ExportService {
         name: `${client.name}/${project.name}/findings.xlsx`,
       });
 
-      // Agregar evidencias si existen
+      // Agregar evidencias si existen (solo de hallazgos vigentes)
       const projectFindings = await this.findingModel
-        .find({ projectId: project._id })
+        .find({ projectId: project._id, status: { $ne: FindingStatus.CLOSED } })
         .select("_id code")
+        .setOptions({ skipTenantFilter: true })
         .lean();
       const projectFindingIds = projectFindings.map((f: any) => f._id);
       const evidences = await this.evidenceModel
         .find({ findingId: { $in: projectFindingIds } })
+        .setOptions({ skipTenantFilter: true })
         .lean();
 
       for (const evidence of evidences as any[]) {
@@ -690,14 +786,20 @@ export class ExportService {
       }
     }
 
-    const client = await this.clientModel.findById(clientId);
+    const clientQuery = this.clientModel.findById(clientId);
+    if (this.isGlobalUser(currentUser) || this.isOperationalUser(currentUser) || this.isAuditorUser(currentUser)) {
+      clientQuery.setOptions({ skipTenantFilter: true });
+    }
+    const client = await clientQuery;
     if (!client) {
       throw new NotFoundException("Cliente no encontrado");
     }
 
-    // Usar client._id en lugar de clientId para asegurar ObjectId correcto
+    // Los proyectos se escopan por tenantId (= Client._id), no por el campo
+    // "clientId" (legacy/deprecated, nunca se puebla en proyectos nuevos).
     const projects = await this.projectModel
-      .find({ clientId: client._id })
+      .find({ tenantId: client._id })
+      .setOptions({ skipTenantFilter: true })
       .select("_id name")
       .lean();
     this.logger.log(
@@ -739,7 +841,8 @@ export class ExportService {
     this.logger.log(`🔍 Buscando hallazgos en ${projectIds.length} proyectos`);
 
     const findings = await this.findingModel
-      .find({ projectId: { $in: projectIds } })
+      .find({ projectId: { $in: projectIds }, status: { $ne: FindingStatus.CLOSED } })
+      .setOptions({ skipTenantFilter: true })
       .populate("assignedTo", "firstName lastName")
       .lean();
 

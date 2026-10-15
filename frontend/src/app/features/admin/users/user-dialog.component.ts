@@ -13,6 +13,8 @@ import { MatChipsModule } from '@angular/material/chips';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../environments/environment';
 import { AuthService } from '../../../core/services/auth.service';
+import { UserRole } from '../../../shared/enums';
+import { roleSatisfies } from '../../../shared/utils/rbac';
 
 @Component({
   selector: 'app-user-dialog',
@@ -242,20 +244,18 @@ export class UserDialogComponent {
   private PROJECTS_URL = `${environment.apiUrl}/projects`;
 
   constructor(@Inject(MAT_DIALOG_DATA) public data: any) {
-    console.log('[UserDialog] Constructor - Datos recibidos:', this.data);
     // Define modo edicion si viene _id y arma el formulario
     this.isEditMode = !!data?._id;
 
     const currentUser = this.authService.currentUser();
-    console.log('[UserDialog] Constructor - Usuario actual:', currentUser);
     const currentUserRole = currentUser?.role as string;
     
     this.userForm = this.fb.group({
       firstName: [data?.firstName || '', Validators.required],
       lastName: [data?.lastName || '', Validators.required],
       email: [data?.email || '', [Validators.required, Validators.email]],
-      password: ['', this.isEditMode ? [] : [Validators.required, Validators.minLength((currentUserRole === 'OWNER' || currentUserRole === 'PLATFORM_ADMIN') ? 1 : 6)]],
-      role: [data?.role || 'NORMAL_USER', Validators.required],
+      password: ['', this.isEditMode ? [] : [Validators.required, Validators.minLength(roleSatisfies(UserRole.OWNER, currentUserRole) ? 1 : 6)]],
+      role: [data?.role || 'AUDITOR', Validators.required],
       clientId: [data?.clientId || null],
       areaIds: [data?.areaIds || []],
       auditorVisibilityScope: [data?.auditorVisibilityScope || 'ALL_AREA'],
@@ -264,27 +264,24 @@ export class UserDialogComponent {
     });
 
     // Determine if we should show client select
-    const canManageClients = ['OWNER', 'PLATFORM_ADMIN', 'ADMIN_AREA', 'CLIENT_ADMIN', 'AREA_ADMIN'].includes(currentUserRole);
+    const canManageClients = roleSatisfies(UserRole.ADMIN_AREA, currentUserRole);
     this.showClientSelect.set(canManageClients);
-    console.log(`[UserDialog] Constructor - Puede gestionar clientes: ${canManageClients}`);
 
-    if (currentUserRole === 'OWNER' || currentUserRole === 'PLATFORM_ADMIN') {
+    if (roleSatisfies(UserRole.OWNER, currentUserRole)) {
       this.roleOptions = [
         { value: 'OWNER', label: 'OWNER' },
         { value: 'ADMIN_AREA', label: 'ADMIN_AREA' },
         { value: 'PENTESTER', label: 'PENTESTER' },
         { value: 'QA', label: 'QA' },
-        { value: 'NORMAL_USER', label: 'NORMAL_USER' },
         { value: 'AUDITOR', label: 'AUDITOR' }
       ];
-    } else if (['ADMIN_AREA', 'CLIENT_ADMIN', 'AREA_ADMIN'].includes(currentUserRole)) {
+    } else if (roleSatisfies(UserRole.ADMIN_AREA, currentUserRole)) {
       this.roleOptions = [
-        { value: 'NORMAL_USER', label: 'NORMAL_USER' },
         { value: 'AUDITOR', label: 'AUDITOR' }
       ];
     } else {
       this.roleOptions = [
-        { value: 'NORMAL_USER', label: 'NORMAL_USER' }
+        { value: 'AUDITOR', label: 'AUDITOR' }
       ];
     }
 
@@ -296,36 +293,32 @@ export class UserDialogComponent {
     if (canManageClients) {
       this.loadClients();
     } else if (currentUser?.clientId) {
-      console.log(`[UserDialog] Constructor - Forzando clientId del usuario actual: ${currentUser.clientId}`);
       this.userForm.patchValue({ clientId: currentUser.clientId });
     }
 
     // Listen to clientId changes to reload areas
     this.userForm.get('clientId')?.valueChanges.subscribe(clientId => {
-      console.log(`[UserDialog] clientId del formulario cambió a: ${clientId}`);
+      this.userForm.patchValue({ areaIds: [], visibleProjectIds: [] });
       if (clientId) {
         this.loadAreas(clientId);
       } else {
-        console.log('[UserDialog] clientId es nulo, limpiando áreas.');
         this.areas.set([]);
       }
     });
 
     // Mostrar selector de tenants según el rol
     this.userForm.get('role')?.valueChanges.subscribe(role => {
-      console.log(`[UserDialog] Rol del formulario cambió a: ${role}`);
       const needsAreas = ['ADMIN_AREA'].includes(role);
       const isAuditor = role === 'AUDITOR';
       const hideClientForTransversal = ['PENTESTER', 'QA'].includes(role);
       
       this.showAreaSelect.set(needsAreas);
       this.showAuditorScope.set(isAuditor);
-      this.showClientSelect.set(!hideClientForTransversal && canManageClients);
+      this.showClientSelect.set(canManageClients);
       
       // Si el rol necesita tenants, cargarlos automáticamente
       if (needsAreas) {
         const clientId = this.userForm.get('clientId')?.value || currentUser?.clientId;
-        console.log(`[UserDialog] El rol necesita áreas. Intentando cargar áreas para clientId: ${clientId}`);
         if (clientId) {
           this.loadAreas(clientId);
         }
@@ -343,7 +336,7 @@ export class UserDialogComponent {
     // Configurar validacion dinamica de Cliente
     const updateClientValidator = (role: string) => {
       const clientControl = this.userForm.get('clientId');
-      const isClientOptional = ['OWNER', 'PLATFORM_ADMIN', 'PENTESTER', 'QA', 'NORMAL_USER'].includes(role);
+      const isClientOptional = ['OWNER', 'PLATFORM_ADMIN', 'PENTESTER', 'QA'].includes(role);
       
       if (isClientOptional) {
         clientControl?.clearValidators();
@@ -391,7 +384,6 @@ export class UserDialogComponent {
     // Cargar áreas si el rol las necesita
     if (needsAreasOnInit) {
       const initialClientId = this.userForm.get('clientId')?.value || currentUser?.clientId;
-      console.log(`[UserDialog] Carga inicial de áreas. ClientId determinado: ${initialClientId}`);
       if (initialClientId) {
         this.loadAreas(initialClientId);
       }
@@ -424,18 +416,13 @@ export class UserDialogComponent {
   }
 
   loadAreas(clientId?: string): void {
-    console.log(`[UserDialog] loadAreas fue llamado con clientId: ${clientId}`);
-    
     let url = `${this.AREAS_URL}?includeInactive=false`;
     if (clientId) {
       url += `&clientId=${clientId}`;
     }
-    
-    console.log('[UserDialog] Cargando áreas desde:', url);
-      
+
     this.http.get<any[]>(url).subscribe({
       next: (areas) => {
-        console.log('[UserDialog] Áreas cargadas:', areas);
         this.areas.set(areas);
       },
       error: (err) => {
@@ -472,7 +459,7 @@ export class UserDialogComponent {
       userData.clientId = clientId;
     }
 
-    if (Array.isArray(areaIds) && areaIds.length > 0) {
+    if (Array.isArray(areaIds)) {
       userData.areaIds = areaIds;
     }
 

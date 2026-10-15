@@ -52,7 +52,9 @@ export class BrandingService {
    * Actualiza la configuración de branding
    */
   updateBranding(branding: Partial<SystemBranding>): Observable<SystemBranding> {
-    return this.http.put<SystemBranding>(this.apiUrl, branding).pipe(
+    const { appName, faviconUrl, logoUrl, primaryColor, secondaryColor } = branding;
+    const payload = { appName, faviconUrl, logoUrl, primaryColor, secondaryColor };
+    return this.http.put<SystemBranding>(this.apiUrl, payload).pipe(
       tap((updated) => {
         this.brandingSubject.next(updated);
         this.applyBranding(updated);

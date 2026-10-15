@@ -7,6 +7,190 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 ## [Unreleased]
 
+### Gestión completa de áreas para pentester (2026-10-15)
+
+#### QA-202610-11 — Acceso y permisos CRUD de Áreas
+
+- **FEAT (Frontend — navegación):** enlace Áreas visible para PENTESTER/QA/ANALYST, independiente de los permisos de Usuarios y del centro administrativo. Botón de borrado habilitado.
+- **FEAT (Backend — permisos):** creación, edición, configuración, desactivación y borrado permanente de áreas habilitados al grupo operacional; matriz RBAC incorpora el recurso areas.
+- **FIX (Backend — contexto):** detalle y modificaciones permiten operar sin tenant fijo; con tenant asignado se aplica filtro explícito del cliente.
+- **UX (Áreas):** la confirmación informa que borrar el área no elimina automáticamente proyectos ni asignaciones asociados.
+- **Pruebas:** 45 pruebas aprobadas en cuatro suites, incluidas 10 nuevas de area-permissions.spec.ts; TypeScript y build frontend development aprobados. Jest ejecutado sobre salida compilada con TypeScript; temporales retirados. Despliegue y aceptación en QA pendientes.
+
+---
+
+### Correcciones QA por rol y recuperación de contraseña (2026-10-15)
+
+#### QA-202610-01 — PENTESTER: exportación de clientes ZIP/CSV
+
+- **FIX (Backend / Frontend):** Consulta del cliente con bypass de tenant para roles globales/operacionales; proyectos filtrados por tenantId del cliente.
+
+#### QA-202610-02 — PDF de hallazgos importados por CSV
+
+- **FIX (Backend / Frontend):** Hallazgo lean para evitar mutaciones de pdfmake sobre arrays Mongoose; populate y evidencias con contexto adecuado y autorización operacional.
+
+#### QA-202610-03 — AUDITOR: descargas PDF, Excel y ZIP
+
+- **FIX (Backend / Frontend):** Permiso en cuatro rutas y validación del cliente, proyectos visibles y áreas asignadas; sin permisos de edición ni backups.
+
+#### QA-202610-04 — ADMIN: error 400 al guardar color de marca
+
+- **FIX (Backend / Frontend):** El frontend envía solo appName, faviconUrl, logoUrl, primaryColor y secondaryColor; omite metadatos devueltos por GET. Se conserva validación hexadecimal.
+
+#### QA-202610-05 — ADMIN: reasignación de usuarios a otro cliente
+
+- **FIX (Backend / Frontend):** Sincronización de clientId, activeTenantId y tenantIds; limpieza de restricciones previas al cambiar cliente. Asignaciones centralizadas persisten clientes aunque no tengan áreas y consultan áreas por tenantId o clientId legacy.
+
+#### QA-202610-06 — ADMIN_AREA: carga y creación de áreas con error 500
+
+- **FIX (Backend / Frontend):** Listado sin tenant fijo con opción explícita de consulta; cliente seleccionado al crear cuando no hay contexto fijo; búsqueda del código dentro del tenant destino y rechazo de cliente distinto para administrador con tenant.
+
+#### QA-202610-07 — Todos los roles habilitados: PDF del proyecto con cero hallazgos
+
+- **FIX (Backend / Frontend):** Consulta por project._id (ObjectId), exclusión de CLOSED y skipTenantFilter explícito; mantiene arrays lean. Regresión con 17 hallazgos para OWNER, ADMIN_AREA, PENTESTER y AUDITOR.
+
+#### QA-202610-08 — ADMIN_AREA: eliminación de auditores
+
+- **FIX (Backend / Frontend):** El botón usa DELETE /auth/users/:id/soft para administradores de área; OWNER/PLATFORM_ADMIN conserva la ruta de eliminación física. No se amplían permisos de hard delete.
+
+#### QA-202610-09 — PENTESTER: borrar proyectos y clientes
+
+- **FIX (Backend / Frontend):** Botón y ruta hard delete de proyectos habilitados al grupo operacional; consultas de borrado tras validar acceso al proyecto. Clientes usan desactivación, sin habilitar eliminación física. Matriz RBAC actualizada.
+
+#### QA-202610-10 — PENTESTER: navegación después de cerrar hallazgo
+
+- **FIX (Backend / Frontend):** Después del cierre exitoso se navega a /findings; ante error se conserva el detalle y se muestra el mensaje.
+
+#### M16 — Recuperación de contraseña por correo (self-service) — corregida
+
+- **Estado:** ✅ Completado — función corregida, registrada según lo informado por el usuario el 2026-10-15. Sustituye el estado histórico de pre-configuración.
+- **FIX (Autenticación):** solicitud desde el login, código de seis dígitos por correo, validación de código y expiración, guardado seguro de una nueva contraseña con validación de fortaleza y acceso con ella.
+- **Archivos de referencia:** backend/src/modules/auth/auth.service.ts, backend/src/modules/auth/auth.controller.ts, backend/src/modules/auth/dto/auth.dto.ts y frontend/src/app/features/auth/login/login.component.ts.
+- **Validación:** esta actualización es documental; no ejecutó una nueva prueba SMTP, de recuperación ni de login. Las 35 pruebas del ciclo QA no cubren M16.
+
+#### Validación del ciclo QA
+
+- **Pruebas:** 35 aprobadas; TypeScript sin errores y build frontend development aprobado.
+- **Pendiente:** despliegue y aceptación remota de los diez hallazgos QA.
+- **Referencias:** [issues oficiales](ISSUES.md) y [registro de cambios, archivos y aceptación](docs/QA-CORRECTIONS-2026-10.md).
+
+---
+
+### Endurecimiento de recuperación de contraseña — validación de fortaleza en backend (2026-09-29)
+
+#### M16 — Recuperación de contraseña por correo (self-service) — estado histórico de pre-configuración
+
+- **Estado:** el flujo (botón "¿Olvidaste tu contraseña?" → código por correo → nueva contraseña → login) ya estaba completamente implementado en código antes de esta sesión (`AuthService.forgotPassword()`/`resetPasswordWithCode()`, endpoints `@Public()`, diálogo de 2 pasos en `login.component.ts`). En esa fecha quedó en **pre-configuración de función** por SMTP pendiente. Estado actualizado a **corregida** el 2026-10-15; esta nota se conserva como historial.
+- **FIX (Backend — auth dto):** el frontend ya validaba la fortaleza de la contraseña (mayúscula + número + carácter especial) antes de enviar, pero el backend solo exigía `MinLength(6)`, permitiendo contraseñas débiles si se llamaba la API directamente. Agregado un decorador compartido `IsStrongPassword()` en `auth.dto.ts`, aplicado a `RegisterUserDto.password`, `ResetPasswordDto.newPassword`, `UpdateUserDto.password` y `UpdateProfileDto.newPassword`.
+- **FIX (Backend — auth dto):** la primera versión usaba 3 `@Matches` separados en el mismo campo; class-validator agrupa los errores por nombre de validador ("matches"), por lo que se pisaban entre sí y solo sobrevivía el último mensaje. Combinados en un único regex con lookaheads y un solo mensaje.
+- **FEAT (Backend + Frontend — caracteres especiales ampliados):** a pedido del usuario, se cambió de una lista fija (`-`, `.`, `*`) a aceptar cualquier carácter que no sea letra, número ni espacio, sincronizado entre `auth.dto.ts` (backend) e `isStrongSuggestedPassword()` en `login.component.ts` (frontend).
+
+---
+
+### Evidencia de video + enlace externo, fix de subida en nginx y reporte PDF completo (2026-09-29)
+
+#### M14 — Evidencia de video con límite de tamaño + enlace externo (SharePoint/Drive)
+
+- **FEAT (Backend — evidence schema):** `Evidence.evidenceType: "FILE" | "LINK"` (default `"FILE"`); `storedFilename`/`filePath`/`mimeType`/`size` ahora opcionales (solo aplican a `FILE`); nuevo campo `externalUrl` (solo `LINK`).
+- **FEAT (Backend — extensiones y límite):** `.mp4/.webm/.mov` agregados a las extensiones de evidencia permitidas. `FileInterceptor` de `POST /evidence/upload` configurado con `limits.fileSize` según `EVIDENCE_MAX_FILE_SIZE_MB` (default 100MB, ajustable por variable de entorno).
+- **FEAT (Backend — endpoint de enlace):** nuevo `POST /evidence/link` (`AddEvidenceLinkDto`) crea una evidencia `LINK` sin ocupar disco, pensada para archivos que exceden el límite de subida. `downloadFile()` rechaza un `LINK` con mensaje claro; `delete()` omite el borrado de archivo físico para evidencias `LINK`.
+- **FEAT (Backend — mensaje de error 413):** `HttpExceptionFilter` reemplaza el mensaje genérico de Multer ("File too large") por uno accionable: *"El archivo supera el límite de tamaño permitido. Para archivos grandes (ej. videos), usa la opción de enlace externo (SharePoint, Drive, etc.)"*.
+- **FEAT (Frontend — finding-detail):** nuevo `AddEvidenceLinkDialogComponent` y botón "Agregar Enlace" junto a "Subir Evidencia". Las evidencias tipo `LINK` se muestran con ícono de enlace, URL clickeable y botón "Abrir enlace" en vez de "Descargar". Selector de archivos ahora acepta `.mp4/.webm/.mov`.
+
+#### B19 — nginx bloqueaba subidas de evidencia >1MB independiente del límite del backend
+
+- **FIX (Infra — nginx):** `frontend/nginx.conf` no tenía `client_max_body_size` configurado, por lo que nginx aplicaba su default de 1MB y rechazaba con 413 cualquier subida mayor, sin importar el límite configurado en el backend (`EVIDENCE_MAX_FILE_SIZE_MB`). Encontrado al probar la subida de un video real de 2.32MB. Agregado `client_max_body_size 110M;` en el bloque `location /api/`.
+
+#### M15 — Reporte PDF de hallazgo incompleto (solo 6 campos, sin evidencias)
+
+- **FEAT (Backend — pdf service):** el reporte PDF de un hallazgo mostraba solo 6 campos y no incluía evidencias. Expandido con todo el detalle disponible (código interno, riesgo de negocio, motivo/fecha de cierre, vector CVSS, CVE, CWE, origen de detección, proyecto/cliente, fecha de creación, implicancias, justificación del riesgo, controles, tags) y una nueva sección de Evidencias: imágenes embebidas como miniatura (convertidas a PNG con `sharp`, ya que pdfmake no soporta el WebP de M13 nativamente), videos y enlaces externos (M14) referenciados por texto en vez de intentar "imprimirlos".
+- **FIX (Backend — pdf service):** las notas de video/archivo usaban emojis (🎥/📎) que la fuente estándar del PDF (Helvetica) no soporta, renderizando bytes corruptos. Reemplazados por etiquetas de texto plano (`[Video]`/`[Archivo]`).
+
+---
+
+### Compresión de evidencias, sincronización CVSS y reubicación de Severidad (2026-09-28)
+
+#### B18 — "Riesgo de Negocio" no se sincronizaba con la Calculadora CVSS
+
+- **FIX (Frontend — finding-wizard):** `onCvssCalculated()` solo actualizaba `cvssScore`, `cvssVector` y `severity` en el `patchValue()`; el campo `businessRisk` nunca se tocaba, por lo que quedaba desincronizado del resultado de la calculadora. Se agregó `businessRisk: severity` al mismo `patchValue()` — el campo sigue siendo editable a mano después, ya que Severidad (impacto técnico) y Riesgo de Negocio (impacto organizacional) son ejes distintos que no siempre deben coincidir.
+
+#### M12 — Campo "Severidad" movido de la página 1 a la página 2 del wizard de hallazgos
+
+- **FEAT (Frontend — finding-wizard):** feedback de un pentester sobre lo extraño de seleccionar "Severidad" manualmente en Información Básica para que la Calculadora CVSS (en la página siguiente) la sobreescribiera sin avisar. El control `severity` se movió de `basicForm` a `technicalForm`, y en el template pasó a vivir junto a "Riesgo de Negocio" en la sección de riesgo (mismo estilo visual). `applyTemplate()` y el payload de `createFinding()` actualizados acorde; aplicar una plantilla ahora también sincroniza `businessRisk` con su severidad.
+
+#### M13 — Compresión automática de imágenes de evidencia (PNG/JPEG/BMP/TIFF → WebP)
+
+- **FEAT (Backend — evidence service):** consulta de un pentester sobre el crecimiento del volumen de evidencias en Docker. `EvidenceService.upload()` ahora recomprime automáticamente PNG/JPEG/JPG/BMP/TIFF a WebP (calidad 80), redimensionando a un máximo de 1920px en el lado más largo sin agrandar imágenes pequeñas (`fit: inside`). GIF se excluye para no romper animaciones. Si la versión comprimida no resulta más liviana que el original, se descarta y se conserva el archivo sin modificar. El nombre de archivo y `mimeType` guardados se ajustan a `.webp`/`image/webp` para mantener coherencia entre extensión, tipo de contenido y bytes reales en la descarga.
+- **FEAT (Backend — dependencias):** nueva dependencia `sharp`, con su build habilitado en `pnpm-workspace.yaml` (mismo mecanismo usado en B8 para evitar `ERR_PNPM_IGNORED_BUILDS`).
+- **Probado en vivo:** imagen de prueba de 10.7 MB (2400×1600) → 1.06 MB en WebP (1920×1280), -90%. Descarga verificada sirviendo `Content-Type: image/webp` con un archivo WebP válido.
+
+---
+
+### Fix creación de hallazgos, mejoras UX Calculadora CVSS y navegación proyecto→hallazgos (2026-09-22)
+
+#### B15 — Error 500 al crear hallazgo: "Proyecto no encontrado para asignar prefijo de código"
+
+- **FIX (Backend — finding service):** en `FindingService.create()`, el `tenantId` asignado al hallazgo priorizaba `getCurrentTenantId(currentUser)` (tenant activo del usuario) por sobre `resolveProjectTenantId(project)` (tenant real del proyecto), violando el invariante de que el `tenantId` de un hallazgo se deriva siempre del proyecto. Un usuario OWNER/PLATFORM_ADMIN con un tenant activo distinto al del proyecto donde creaba el hallazgo terminaba guardándolo con un `tenantId` que no coincidía con su `projectId`, y el hook `pre-save` (que busca el proyecto por `{_id: projectId, tenantId}` para asignar el código `VULN-YYYY-NNNNNN`) no lo encontraba, lanzando 500. Invertida la prioridad: proyecto primero, usuario como fallback.
+
+#### B16 — Botón "copiar vector" de la Calculadora CVSS copiaba contenido antiguo del portapapeles
+
+- **FIX (Frontend — cvss-calculator):** `copyVector()` llamaba a `navigator.clipboard.writeText()` sin manejar el rechazo de la promesa; en contextos con Clipboard API bloqueado (ej. preview embebido de VS Code), la escritura fallaba en silencio pero la UI igual mostraba el ✓ de éxito, dejando el portapapeles con contenido de una copia anterior. Ahora se espera la promesa y, si falla o el API no existe, se usa un fallback con `<textarea>` oculto + `document.execCommand('copy')`.
+
+#### B17 — Warning `aria-hidden`/foco retenido al navegar entre pestañas Evidencias ↔ Seguimiento
+
+- **FIX (Frontend — finding-detail):** `goToEvidence()`/`goToUpdate()` cambiaban de pestaña con `selectedTabIndex.set(...)`, ocultando el panel anterior (`aria-hidden` + `inert`) mientras el botón recién clickeado —con foco de teclado— seguía siendo su descendiente, lo que el navegador bloquea y reporta en consola. Se agregó `(document.activeElement as HTMLElement | null)?.blur()` al inicio de ambos métodos para liberar el foco antes de ocultar la pestaña.
+
+#### M9 — Calculadora CVSS: abierta por defecto + formato de score consistente
+
+- **FEAT (Frontend — finding-wizard):** la Calculadora CVSS 3.1 ahora aparece abierta por defecto (antes había que activarla manualmente), agrupada en una tarjeta con encabezado "Puntuación CVSS" y un botón que invierte el flujo ("Ingresar puntaje manualmente"). El campo CVSS Score quedó debajo de la calculadora con hint contextual.
+- **FEAT (Frontend — utils/cvss):** nueva función compartida `formatCvssScore()` que formatea el score a 1 decimal fijo (`5` → `"5.0"`), usada tanto en `finding-wizard.component.ts` (calculadora y plantillas) como en `finding-detail.component.ts` (edición de hallazgo existente), para que el campo manual luzca igual sin importar el origen del valor.
+
+#### M10 — Botón "Ver Hallazgos" en detalle de proyecto poco visible
+
+- **FEAT (Frontend — project-detail):** feedback de un pentester sobre no poder filtrar fácilmente los hallazgos de un proyecto específico. El filtrado (`viewFindings()` → `/findings?projectId=...`, ya leído por `finding-list.component.ts`) ya existía; el problema era que el botón era un ícono sin texto (`bug_report`) entre los íconos de exportar PDF/ZIP. Cambiado a `mat-raised-button` con ícono + texto "Ver Hallazgos" en color primario, con `.header-actions` alineado a la derecha del header.
+
+#### M11 — Enlace inverso Evidencias → Seguimiento
+
+- **FEAT (Frontend — finding-detail):** ya existía el enlace "Ver evidencia asociada" desde un seguimiento hacia su evidencia (con destaque azul). Se agregó el camino inverso: el número `#N` de cada evidencia adjuntada desde un seguimiento es ahora clickeable y navega a la pestaña Seguimiento, resaltando en azul la entrada correspondiente (`evidenceToUpdateMap` computed + `goToUpdate()`, mismo patrón visual que `goToEvidence()`).
+
+---
+
+### Correcciones export 500 PENTESTER y eliminación de console.log spam (2026-07-10)
+
+#### B13 — PENTESTER 500 en exportación de proyecto a Excel / CSV / JSON
+
+- **FIX (Backend — export service):** `exportProjectToExcel`, `exportProjectToCSV` y `exportProjectToJSON` en `export.service.ts` consultaban `findingModel.find({ projectId: ... })` sin `skipTenantFilter: true`. El `multiTenantPlugin` lanzaba `Error("No hay contexto de tenant activo")` cuando PENTESTER no tiene `clientId` (sin tenantId en el CLS namespace), produciendo HTTP 500. Añadido `.setOptions({ skipTenantFilter: true })` en los tres métodos — el scope está garantizado por el `projectId` y el RBAC de proyecto se valida antes de la query.
+
+#### B14 — console.log(currentUser) spam en consola del navegador
+
+- **FIX (Frontend — project-list):** `canCloseProject()` en `project-list.component.ts` contenía un `console.log('currentUser:', user)` de depuración. Este método es evaluado por Angular en cada ciclo de change detection para cada fila de proyecto, produciendo cientos de logs por sesión y degradando el rendimiento. Log eliminado.
+
+---
+
+### Correcciones de permisos PENTESTER (cliente), UI detalle cliente, NORMAL_USER findings y soporte AUDITOR (2026-07-09)
+
+#### B9 — PENTESTER 403 en edición/exportación/eliminación de clientes
+
+- **FIX (Backend — client service):** `validateClientAccess()` en `client.service.ts` no incluía `UserRole.PENTESTER` en los arrays de roles permitidos para `update()` ni `deactivate()`. Los permisos del controlador estaban correctos pero la segunda capa de validación en el servicio los bloqueaba. Añadido `PENTESTER` en ambas llamadas.
+- **FIX (Backend — export service):** `exportClientPortfolio()` y `exportClientPortfolioCSV()` en `export.service.ts` bloqueaban a cualquier usuario no global (`!isGlobalUser`) que no tuviera el mismo `clientId` que el cliente a exportar. Usuarios operacionales (PENTESTER, QA, ANALYST) no tienen `clientId` fijo. Guard ampliado a `!isGlobalUser && !isOperationalUser`.
+
+#### B10 — Detalle de cliente sin información de contacto
+
+- **FIX (Frontend — client-detail):** `client-detail.component.ts` mostraba únicamente nombre, estado activo/inactivo y fecha de creación. Añadida una cuadrícula `client-info-grid` con visualización condicional de `description` (ancho completo), `code`, `contactEmail` (enlace `mailto:`) y `contactPhone` (enlace `tel:`). Si ningún campo tiene valor, se muestra "Sin información de contacto registrada."
+
+#### B11 — NORMAL_USER ve 0 hallazgos
+
+- **FIX (Backend — finding service):** `findAll()` en `finding.service.ts` establecía `query.tenantId` explícitamente Y el `multiTenantPlugin` del schema agregaba su propio `this.where({ tenantId })` desde el contexto CLS. La combinación de ambos filtros producía 0 resultados en Mongoose 7+. Corregido con `skipTenantFilter: true` siempre que `query.tenantId` ya esté establecido en la query.
+- **FIX (Backend — project service):** el badge de hallazgos en `findAll()` de `project.service.ts` contaba **todos** los hallazgos (incluyendo `CLOSED`), mientras la página de Hallazgos excluye cerrados por defecto. Badge corregido con `status: { $ne: FindingStatus.CLOSED }` y `skipTenantFilter: true` forzado para consistencia.
+
+#### B12 — AUDITOR 400 Bad Request en todos los endpoints
+
+- **FIX (Backend — guard):** `TenantContextGuard` lanzaba `BadRequestException` para AUDITOR sin `clientId` porque no estaba en la lista `isOperationalRole`. Añadidos `"AUDITOR"` y `"VIEWER"` al array, igualando el tratamiento que ya tenían PENTESTER/QA/ANALYST.
+- **FIX (Backend — JWT strategy):** `jwt.strategy.ts` no incluía `visibleClientIds` ni `auditorVisibilityScope` en el objeto retornado por `validate()`. Sin ellos, los servicios no podían aplicar el filtrado por scope del AUDITOR. Ambos campos añadidos.
+- **FIX (Backend — client service):** `findAll()` en `client.service.ts` lanzaba `ForbiddenException` para AUDITOR sin `clientId`. Refactorizado el bloque de seguridad: AUDITOR con `clientId` ve solo su cliente; AUDITOR sin `clientId` filtra por `visibleClientIds`; sin ninguno retorna array vacío.
+- **FIX (Backend — project service):** `isRestrictedByArea()` retornaba `true` siempre para AUDITOR, lo que provocaba retorno vacío si no tenían `areaIds`. Corregido para devolver `true` solo cuando tienen `areaIds` asignados (consistente con `finding.service.ts`). Añadido `isAuditorUser()`; `shouldBypassTenantFilter()` actualizado para incluir AUDITOR sin tenant; añadido bloque PER_CLIENT que filtra proyectos por `visibleClientIds`; AUDITOR sin ningún scope retorna `[]`.
+- **FIX (Backend — finding service):** añadido `isAuditorUser()`; `shouldBypassTenantFilter()` actualizado igual que en project service; bloque PER_CLIENT establece `query.tenantId = { $in: visibleClientIds }` para que el `skipTenantFilter` posterior sea seguro; AUDITOR sin scope ni tenant retorna `[]`.
+
 ### Correcciones de permisos para PENTESTER y mejora de importación CSV (2026-07-02)
 
 #### Fixes de permisos PENTESTER

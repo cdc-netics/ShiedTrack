@@ -403,3 +403,11 @@ Fuente: revision de controladores, servicios, guards, schemas e indices de backe
 No ejecutar reindexacion masiva primero.  
 Primero cerrar brechas de autorizacion y corregir definiciones de indices conflictivas.  
 Luego aplicar plan de migracion de indices con ventana controlada y respaldo.
+
+## Referencia a correcciones QA de octubre de 2026
+
+El seguimiento activo de QA-202610-01 a QA-202610-10 está en [ISSUES.md de la raíz](../ISSUES.md). El detalle y la aceptación pendiente están en [QA-CORRECTIONS-2026-10.md](QA-CORRECTIONS-2026-10.md). Este archivo continúa siendo histórico; no duplica los estados del backlog oficial.
+
+## Referencia a recuperación de contraseña (M16)
+
+**Estado vigente:** ✅ Completado — función corregida, actualizado el 2026-10-15 según lo informado por el usuario. Consultar [backlog oficial](../ISSUES.md) y [changelog](../CHANGELOG.md). Las notas antiguas de pre-configuración son históricas.

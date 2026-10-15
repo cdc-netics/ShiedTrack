@@ -164,7 +164,7 @@ export class ProjectController {
    * HARD DELETE PROJECT
    */
   @Delete(":id/hard")
-  @Roles(UserRole.OWNER)
+  @Roles(UserRole.OWNER, UserRole.PENTESTER)
   @ApiOperation({
     summary: "Eliminar proyecto permanentemente",
   })

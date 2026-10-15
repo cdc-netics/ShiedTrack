@@ -9,32 +9,30 @@ Documento único y resumido para entender el modelo de permisos, sin duplicar gu
 | OWNER | Control total. Crea cualquier cosa, ve todo, administra usuarios, clientes, proyectos y hallazgos. |
 | ADMIN_AREA | Administra su área. Puede gestionar usuarios de su área, proyectos y clientes asignados. |
 | PENTESTER / QA | Trabaja transversalmente. Puede crear proyectos y hallazgos. No crea usuarios. |
-| NORMAL_USER | Usuario operativo. Puede crear hallazgos. No necesita cliente/proyecto al crearse. |
 | AUDITOR | Solo lectura. Ve proyectos/clientes según el alcance que defina el Admin Area. |
 
 ## Permisos CRUD resumidos
 
-| Entidad | OWNER | ADMIN_AREA | PENTESTER / QA | NORMAL_USER | AUDITOR |
-| --- | --- | --- | --- | --- | --- |
-| Usuarios | CRUD total | Crear/ver usuarios de su área | No | No | No |
-| Clientes | CRUD total | Ver/editar los de su área | Solo lectura contextual | Solo lectura contextual | Solo lectura por alcance |
-| Proyectos | CRUD total | CRUD en su área | Crear/leer/editar propios | Leer asignados | Leer por alcance |
-| Hallazgos | CRUD total | Leer/actualizar estado | Crear/leer/editar propios | Crear/leer/editar propios | Solo lectura |
-| Evidencia | CRUD total | Leer en su área | Crear/leer/editar propios | Crear/leer/editar propios | Solo lectura |
+| Entidad | OWNER | ADMIN_AREA | PENTESTER / QA | AUDITOR |
+| --- | --- | --- | --- | --- |
+| Áreas | CRUD total | Crear/leer/editar en su alcance | Crear/leer/editar, desactivar/reactivar y eliminar | Sin escritura |
+| Usuarios | CRUD total y reasignación | Crear/ver/editar; desactivar AUDITOR/VIEWER | No | No |
+| Clientes | CRUD total | Ver/editar los de su área | Crear/leer/editar y desactivar | Solo lectura por alcance |
+| Proyectos | CRUD total | Crear/leer/editar en su alcance; sin hard delete | Crear/leer/editar y eliminar dentro del acceso permitido | Leer y descargar por alcance |
+| Hallazgos | CRUD total | Leer/actualizar estado | Crear/leer/editar propios | Solo lectura |
+| Evidencia | CRUD total | Leer en su área | Crear/leer/editar propios | Solo lectura |
 
 ## Reglas clave
 
 - Password mínima general: 6 caracteres.
 - Excepción de OWNER: el formulario no bloquea contraseñas cortas; backend mantiene defensa en profundidad.
-- ADMIN_AREA solo puede crear NORMAL_USER y AUDITOR.
+- ADMIN_AREA solo puede crear AUDITOR.
 - PENTESTER / QA no pueden crear usuarios.
-- NORMAL_USER puede entrar sin cliente/proyecto obligatorio.
 - AUDITOR necesita un scope: por proyecto, por cliente o todo el área.
 
 ## Formulario dinámico
 
-- Si el rol es NORMAL_USER: cliente y proyecto son opcionales.
-- Si el rol es PENTESTER o QA: se ocultan campos de vínculo a cliente.
+- En edición de usuarios por administradores autorizados, el selector de cliente permite reasignar PENTESTER/QA. El cambio actualiza el tenant activo y limpia restricciones anteriores. El formulario de creación dinámica puede conservar un flujo transversal distinto.
 - Si el rol es AUDITOR: se muestra bloque de visibilidad dinámica con selectores múltiples de Proyectos (`visibleProjectIds`) o Clientes (`visibleClientIds`) en tiempo real según el alcance (`PER_PROJECT` o `PER_CLIENT`).
 - Si el rol es OWNER: el formulario no debe forzar restricciones artificiales.
 
@@ -65,3 +63,16 @@ Esta guía queda suficiente si alguien puede responder rápido estas 4 preguntas
 4. Cómo se asigna la visibilidad del AUDITOR.
 
 Si hace falta más detalle, se consulta el código, no otro documento largo.
+
+- AUDITOR puede descargar PDF de proyectos y hallazgos, Excel del proyecto y ZIP con evidencias dentro de su cliente, proyectos y áreas asignados. Las descargas son operaciones de lectura y no habilitan edición ni backups del sistema.
+
+- PENTESTER/QA/ANALYST pueden eliminar proyectos y desactivar clientes. La eliminación física de clientes sigue reservada al OWNER.
+- ADMIN_AREA elimina auditores mediante la ruta de eliminación lógica; la eliminación física de usuarios sigue reservada al OWNER.
+
+## Seguimiento de los cambios QA
+
+Los permisos del grupo PENTESTER/QA también aplican al alias ANALYST. La desactivación de clientes no equivale a borrado físico. El botón de eliminación del ADMIN_AREA usa la ruta soft para auditores; la lista puede conservarlos como desactivados. Registro verificable y pendientes en [QA-CORRECTIONS-2026-10.md](QA-CORRECTIONS-2026-10.md).
+
+## Gestión de áreas por pentester (QA-202610-11)
+
+El grupo operacional PENTESTER/QA/ANALYST accede al menú Áreas y sus acciones CRUD. El cliente fijo limita las operaciones a su tenant; sin cliente fijo se permite consulta transversal y se elige cliente al crear. El borrado permanente afecta al área, sin eliminación automática de proyectos o asignaciones. No amplía permisos de Usuarios ni backups.
