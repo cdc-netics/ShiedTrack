@@ -92,3 +92,9 @@ El autoservicio es distinto de POST /auth/users/:id/reset-password, reservado a 
 ## Gestión de áreas por pentester (QA-202610-11)
 
 POST /areas, PUT /areas/:id, DELETE /areas/:id (desactivación) y DELETE /areas/:id/hard (borrado permanente) admiten PENTESTER y sus alias QA/ANALYST. GET /areas y GET /areas/:id funcionan para el rol operacional sin tenant fijo; con cliente asignado conservan el filtro de tenant. La reactivación usa PUT con isActive: true. No se implementa borrado en cascada de proyectos ni asignaciones.
+
+## Correcciones puntuales ADMIN_AREA y QA (2026-10-15)
+
+- **Áreas:** DELETE /areas/:id y /areas/:id/hard admiten ADMIN_AREA y alias, además de los roles ya habilitados. Se completa su CRUD. Las consultas administrativas usan scope explícito, manteniendo el ID del tenant sin poblar durante el aislamiento; el cliente de la respuesta se resuelve después.
+- **Creación por QA asignado:** POST /projects rechaza clientId o tenantId distinto del cliente asignado; POST /findings valida el cliente del proyecto. La importación CSV/XLSX rechaza filas de otro cliente sin crear entidades y aplica el mismo control en previsualización. El rechazo de fila se devuelve en el resultado de importación, no necesariamente como estado HTTP 403 del lote.
+- **Compatibilidad:** las reglas de otros roles y QA sin cliente fijo se conservan.

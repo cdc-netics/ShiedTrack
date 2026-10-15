@@ -23,7 +23,7 @@ export class AreaService {
   constructor(@InjectModel(Area.name) private areaModel: Model<Area>) {}
 
   private applyAreaScope(query: any, user?: any): any {
-    const operational = normalizeRole(user?.role) === "PENTESTER_QA";
+    const operational = ["PENTESTER_QA", "ADMIN_AREA"].includes(normalizeRole(user?.role));
     const tenantId = user?.activeTenantId || user?.clientId;
     if (roleSatisfies(UserRole.OWNER, user?.role) || (operational && !tenantId)) {
       query.setOptions({ skipTenantFilter: true });
@@ -167,7 +167,7 @@ export class AreaService {
     const isOperationalUser =
       normalizeRole(currentUser?.role) === "PENTESTER_QA";
     const isAreaAdmin = normalizeRole(currentUser?.role) === "ADMIN_AREA";
-    const skipTenantFilter = (isOperationalUser || isAreaAdmin || isGlobalUser) && !scopedTenantId;
+    const skipTenantFilter = isAreaAdmin || ((isOperationalUser || isGlobalUser) && !scopedTenantId);
 
     if (!isGlobalUser && scopedTenantId && clientId && clientId !== scopedTenantId.toString()) {
       throw new BadRequestException('El cliente no coincide con el asignado al usuario');
@@ -184,7 +184,6 @@ export class AreaService {
     const areaQuery = this.areaModel
       .find(query)
       .populate("clientId", "name") // LEGACY (si existe)
-      .populate("tenantId", "name")
       .sort({ name: 1 });
 
     if (skipTenantFilter) {
@@ -193,12 +192,21 @@ export class AreaService {
 
     const areas = await areaQuery.lean();
 
+    // Mantener tenantId como ObjectId durante los hooks de aislamiento.
+    // Populate de tenantId antes del post-find convierte el ID en un objeto
+    // y puede provocar una falsa violación de aislamiento al comparar toString().
+    const clients = areas.length ? await this.areaModel.db.model("Client")
+      .find({ _id: { $in: areas.map(area => area.tenantId) } })
+      .select("_id name").setOptions({ skipTenantFilter: true }).lean() : [];
+    const clientsById = new Map(clients.map((client: any) => [client._id.toString(), client]));
+
     // Para cada área, obtener sus administradores desde UserAreaAssignment
     const AreasWithAdmins = await Promise.all(
       areas.map(async (area) => {
         const admins = await this.getAreaAdmins(area._id.toString());
         return {
           ...area,
+          tenantId: clientsById.get(area.tenantId?.toString()) || area.tenantId,
           admins,
         };
       }),

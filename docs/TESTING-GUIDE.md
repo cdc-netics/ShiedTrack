@@ -266,3 +266,17 @@ Las 35 pruebas del ciclo QA no cubren M16. Ver [issue oficial](../ISSUES.md).
 Suite automática: backend/src/modules/area/area-permissions.spec.ts. Validación remota después del despliegue pendiente.
 
 Resultado local (2026-10-15): 45 pruebas aprobadas en cuatro suites (10 nuevas de Áreas), compilación TypeScript y build frontend development aprobados. Jest se ejecutó sobre JavaScript compilado con TypeScript; se retiraron la configuración y salida temporales.
+
+## QA-202610-12 y QA-202610-13 — ADMIN_AREA y QA asignado
+
+### QA-202610-12 — ADMIN_AREA: carga y gestión completa de Áreas
+
+Probar listado con datos reales y cliente fijo, creación, edición, configuración, desactivación/reactivación y borrado de área desechable; sin tenant fijo, elegir cliente al crear.
+
+### QA-202610-13 — QA asignado: creación limitada a su cliente
+
+QA asignado a cliente A crea proyecto y hallazgo propios; no puede elegir B. POST directo con IDs de B o campos clientId/tenantId contradictorios se rechaza. Importar fila de B produce fallo sin escrituras, también en previsualización. Verificar PENTESTER y QA sin cliente fijo como regresión.
+
+Suites: backend/src/modules/area/area-permissions.spec.ts y backend/src/common/rbac/qa-client-scope.spec.ts. Se incluyen pruebas positivas del cliente propio y de PENTESTER/OWNER, negativas de API e importación y compatibilidad de QA sin asignación. Las pruebas con modelos simulados no sustituyen la aceptación en QA.
+
+Resultado local (2026-10-15, QA-202610-12/13): 65 pruebas aprobadas en cinco suites (20 nuevas), compilación TypeScript completa y build frontend development aprobados. Jest se ejecutó sobre JavaScript compilado; temporales retirados. Despliegue y aceptación con datos reales en QA pendientes.

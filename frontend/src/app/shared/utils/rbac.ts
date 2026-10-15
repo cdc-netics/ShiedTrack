@@ -42,3 +42,10 @@ export function roleSatisfies(requiredRole: UserRole, actualRole?: string): bool
 
   return normalizeRole(requiredRole) === normalizeRole(actualRole);
 }
+
+/** Cliente fijo exclusivo de QA; los demás roles conservan su comportamiento. */
+export function assignedQaClientId(user?: any): string | undefined {
+  if (user?.role !== UserRole.QA) return undefined;
+  const client = user.clientId || user.activeTenantId;
+  return client ? String(client._id || client) : undefined;
+}

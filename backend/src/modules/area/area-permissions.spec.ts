@@ -46,3 +46,35 @@ describe('Gestión de áreas por pentester', () => {
     expect(q.where).toHaveBeenCalledWith({ tenantId });
   });
 });
+
+describe('ADMIN_AREA: gestión completa de áreas', () => {
+  const guard = new RolesGuard(new Reflector());
+  it.each(['create', 'update', 'deactivate', 'hardDelete'] as const)('autoriza %s', method => {
+    expect(guard.canActivate({ getHandler: () => AreaController.prototype[method], getClass: () => AreaController,
+      switchToHttp: () => ({ getRequest: () => ({ user: { role: UserRole.ADMIN_AREA } }) }) } as any)).toBe(true);
+  });
+  it.each(['findById', 'update', 'deactivate', 'hardDelete'] as const)('%s sin contexto CLS usa scope explícito', async method => {
+    const q = query({ name: 'Área' });
+    const model: any = { findById: () => q, findByIdAndUpdate: () => q, findByIdAndDelete: () => q };
+    const service = new AreaService(model);
+    if (method === 'update') await service.update(new Types.ObjectId().toString(), {}, { role: UserRole.ADMIN_AREA });
+    else await service[method](new Types.ObjectId().toString(), { role: UserRole.ADMIN_AREA });
+    expect(q.setOptions).toHaveBeenCalledWith({ skipTenantFilter: true });
+  });
+  it('lista áreas con cliente fijo conservando tenantId como ID durante la consulta', async () => {
+    const tenantId = new Types.ObjectId();
+    const area = { _id: new Types.ObjectId(), tenantId, name: 'Área' };
+    const q: any = query([area]);
+    q.sort = q.lean = jest.fn(() => q);
+    const clients: any = query([{ _id: tenantId, name: 'PJUD' }]);
+    clients.select = clients.lean = jest.fn(() => clients);
+    const service = new AreaService({ find: jest.fn(() => q), db: { model: () => ({ find: () => clients }) } } as any);
+    jest.spyOn(service as any, 'getAreaAdmins').mockResolvedValue([]);
+    const areas = await service.findByClient(tenantId.toString(), false, { role: UserRole.ADMIN_AREA, clientId: tenantId });
+    expect(q.setOptions).toHaveBeenCalledWith({ skipTenantFilter: true });
+    expect(q.populate).not.toHaveBeenCalledWith('tenantId', expect.anything());
+    expect(area.tenantId).toBe(tenantId);
+    expect(areas[0].tenantId).toEqual({ _id: tenantId, name: 'PJUD' });
+    expect(canRolePerform(UserRole.ADMIN_AREA, 'areas', 'delete')).toBe(true);
+  });
+});

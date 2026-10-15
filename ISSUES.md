@@ -16,6 +16,8 @@ Este documento contiene únicamente los problemas, mejoras y funcionalidades que
 
 | ID | Estado | Sección | Tarea | Notas |
 | --- | --- | --- | --- | --- |
+| QA-202610-12 | ⚠️ Pendiente de validación QA | Bugs - Permisos | ADMIN_AREA: carga y gestión completa de Áreas | Implementado (2026-10-15). ADMIN_AREA y sus alias administrativos pueden listar, crear, configurar, editar, desactivar/reactivar y borrar áreas dentro de su alcance. Se aplica scope explícito sin depender de CLS para operaciones administrativas y se resuelve el nombre del cliente después de los hooks de aislamiento, conservando tenantId como ObjectId durante la consulta. |
+| QA-202610-13 | ⚠️ Pendiente de validación QA | Bugs - Permisos | QA asignado: creación limitada a su cliente | Implementado (2026-10-15). Solo para el rol exacto QA con clientId o activeTenantId asignado: formularios limitan el cliente de proyectos/hallazgos; backend rechaza otro clientId o tenantId antes de crear proyecto y valida el cliente del proyecto al crear hallazgo. CSV/XLSX aplica la restricción por fila, también en dry-run y antes de crear clientes o proyectos. El cliente asignado tiene prioridad sobre otro contexto activo. QA sin asignación, PENTESTER y los demás roles conservan sus reglas. |
 | QA-202610-11 | ⚠️ Pendiente de validación QA | Permisos - Áreas | Gestión completa de áreas para PENTESTER | Menú, creación, edición, configuración, desactivación y borrado permanente habilitados al grupo operacional. Respeta cliente fijo; sin tenant fijo consulta transversal. Implementado 2026-10-15. |
 | QA-202610-01 | ⚠️ Pendiente de validación QA | Bugs - QA por roles | PENTESTER: exportación de clientes ZIP/CSV | Implementado. Consulta del cliente con bypass de tenant para roles globales/operacionales; proyectos filtrados por tenantId del cliente. [Evidencia y aceptación](docs/QA-CORRECTIONS-2026-10.md) (2026-10-15). |
 | QA-202610-02 | ⚠️ Pendiente de validación QA | Bugs - QA por roles | PDF de hallazgos importados por CSV | Implementado. Hallazgo lean para evitar mutaciones de pdfmake sobre arrays Mongoose; populate y evidencias con contexto adecuado y autorización operacional. [Evidencia y aceptación](docs/QA-CORRECTIONS-2026-10.md) (2026-10-15). |
@@ -58,6 +60,22 @@ Este documento contiene únicamente los problemas, mejoras y funcionalidades que
 ---
 
 ## 📋 Detalle de Tareas Backlog Activo
+
+### **QA-202610-12 — ADMIN_AREA: carga y gestión completa de Áreas**
+
+- **Estado:** ⚠️ Pendiente de validación QA — implementado (2026-10-15).
+- **Lo resuelto:** ADMIN_AREA y sus alias administrativos pueden listar, crear, configurar, editar, desactivar/reactivar y borrar áreas dentro de su alcance. Se aplica scope explícito sin depender de CLS para operaciones administrativas y se resuelve el nombre del cliente después de los hooks de aislamiento, conservando tenantId como ObjectId durante la consulta.
+- **Archivos modificados:** area.service.ts, area.controller.ts, rbac-policy.ts y area-list.component.ts.
+- **Pruebas:** area-permissions.spec.ts y qa-client-scope.spec.ts; validación local documentada en la guía de pruebas al finalizar.
+- **Criterio de cierre:** Probar listado con datos reales y cliente fijo, creación, edición, configuración, desactivación/reactivación y borrado de área desechable; sin tenant fijo, elegir cliente al crear.
+
+### **QA-202610-13 — QA asignado: creación limitada a su cliente**
+
+- **Estado:** ⚠️ Pendiente de validación QA — implementado (2026-10-15).
+- **Lo resuelto:** Solo para el rol exacto QA con clientId o activeTenantId asignado: formularios limitan el cliente de proyectos/hallazgos; backend rechaza otro clientId o tenantId antes de crear proyecto y valida el cliente del proyecto al crear hallazgo. CSV/XLSX aplica la restricción por fila, también en dry-run y antes de crear clientes o proyectos. El cliente asignado tiene prioridad sobre otro contexto activo. QA sin asignación, PENTESTER y los demás roles conservan sus reglas.
+- **Archivos modificados:** qa-client-scope.ts, project.service.ts, finding.service.ts, project-detail.component.ts, finding-wizard.component.ts y shared/utils/rbac.ts.
+- **Pruebas:** area-permissions.spec.ts y qa-client-scope.spec.ts; validación local documentada en la guía de pruebas al finalizar.
+- **Criterio de cierre:** QA asignado a cliente A crea proyecto y hallazgo propios; no puede elegir B. POST directo con IDs de B o campos clientId/tenantId contradictorios se rechaza. Importar fila de B produce fallo sin escrituras, también en previsualización. Verificar PENTESTER y QA sin cliente fijo como regresión.
 
 ### **QA-202610-11 — Gestión completa de áreas para PENTESTER**
 
