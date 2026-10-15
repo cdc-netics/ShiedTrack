@@ -88,3 +88,7 @@ Las descargas del auditor no habilitan escritura ni backups. Los alias de rutas 
 | POST /auth/reset-password | Pública; recibe email, code y newPassword. Valida código y vencimiento, exige contraseña fuerte, guarda su hash e invalida el código utilizado. |
 
 El autoservicio es distinto de POST /auth/users/:id/reset-password, reservado a administración. El registro de corrección no implica una nueva prueba SMTP en esta actualización.
+
+## Gestión de áreas por pentester (QA-202610-11)
+
+POST /areas, PUT /areas/:id, DELETE /areas/:id (desactivación) y DELETE /areas/:id/hard (borrado permanente) admiten PENTESTER y sus alias QA/ANALYST. GET /areas y GET /areas/:id funcionan para el rol operacional sin tenant fijo; con cliente asignado conservan el filtro de tenant. La reactivación usa PUT con isActive: true. No se implementa borrado en cascada de proyectos ni asignaciones.

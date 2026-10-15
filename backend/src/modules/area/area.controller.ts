@@ -32,7 +32,7 @@ export class AreaController {
   constructor(private readonly areaService: AreaService) {}
 
   @Post()
-  @Roles(UserRole.OWNER, UserRole.PLATFORM_ADMIN, UserRole.CLIENT_ADMIN)
+  @Roles(UserRole.OWNER, UserRole.PLATFORM_ADMIN, UserRole.CLIENT_ADMIN, UserRole.PENTESTER)
   @ApiOperation({ summary: "Crear una nueva área" })
   async create(@Body() dto: CreateAreaDto, @CurrentUser() user: any) {
     return this.areaService.create(dto, user);
@@ -52,8 +52,8 @@ export class AreaController {
 
   @Get(":id")
   @ApiOperation({ summary: "Obtener área por ID" })
-  async findById(@Param("id") id: string) {
-    return this.areaService.findById(id);
+  async findById(@Param("id") id: string, @CurrentUser() user: any) {
+    return this.areaService.findById(id, user);
   }
 
   @Put(":id")
@@ -62,24 +62,25 @@ export class AreaController {
     UserRole.PLATFORM_ADMIN,
     UserRole.CLIENT_ADMIN,
     UserRole.AREA_ADMIN,
+    UserRole.PENTESTER,
   )
   @ApiOperation({ summary: "Actualizar área" })
-  async update(@Param("id") id: string, @Body() dto: UpdateAreaDto) {
-    return this.areaService.update(id, dto);
+  async update(@Param("id") id: string, @Body() dto: UpdateAreaDto, @CurrentUser() user: any) {
+    return this.areaService.update(id, dto, user);
   }
 
   @Delete(":id")
-  @Roles(UserRole.OWNER, UserRole.PLATFORM_ADMIN)
+  @Roles(UserRole.OWNER, UserRole.PLATFORM_ADMIN, UserRole.PENTESTER)
   @ApiOperation({ summary: "Desactivar área" })
-  async deactivate(@Param("id") id: string) {
-    return this.areaService.deactivate(id);
+  async deactivate(@Param("id") id: string, @CurrentUser() user: any) {
+    return this.areaService.deactivate(id, user);
   }
 
   @Delete(":id/hard")
-  @Roles(UserRole.OWNER)
+  @Roles(UserRole.OWNER, UserRole.PENTESTER)
   @ApiOperation({ summary: "Eliminar área permanentemente" })
-  async hardDelete(@Param("id") id: string) {
-    await this.areaService.hardDelete(id);
+  async hardDelete(@Param("id") id: string, @CurrentUser() user: any) {
+    await this.areaService.hardDelete(id, user);
     return { message: "Área eliminada permanentemente" };
   }
 }

@@ -13,6 +13,8 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
+import { UserRole } from '../../../shared/enums';
+import { roleSatisfies } from '../../../shared/utils/rbac';
 import { AuthService } from '../../../core/services/auth.service';
 import { AreaDialogComponent } from './area-dialog.component';
 import { environment } from '../../../../environments/environment';
@@ -150,7 +152,7 @@ interface Area {
                 <button mat-icon-button (click)="openAreaDialog(area)" matTooltip="Editar área">
                   <mat-icon>edit</mat-icon>
                 </button>
-                @if (isOwner()) {
+                @if (canDeleteArea()) {
                   <button mat-icon-button (click)="deleteArea(area)" matTooltip="Eliminar área" color="warn">
                     <mat-icon>delete</mat-icon>
                   </button>
@@ -301,12 +303,16 @@ export class AreaListComponent implements OnInit {
 
   isOwner(): boolean {
     // Helper para permisos basicos
-    return this.authService.currentUser()?.role === 'OWNER';
+    return roleSatisfies(UserRole.OWNER, this.authService.currentUser()?.role);
+  }
+
+  canDeleteArea(): boolean {
+    return this.isOwner() || roleSatisfies(UserRole.PENTESTER, this.authService.currentUser()?.role);
   }
 
   ngOnInit(): void {
     // Carga inicial depende del rol (OWNER puede elegir cliente)
-    if (this.isOwner()) {
+    if (this.isOwner() || (this.canDeleteArea() && !this.authService.currentUser()?.clientId)) {
       this.loadClients();
     } else {
       this.selectedClient = this.authService.currentUser()?.clientId || '';
@@ -411,13 +417,13 @@ export class AreaListComponent implements OnInit {
   }
 
   deleteArea(area: Area): void {
+    if (!this.canDeleteArea()) return;
     // Eliminacion fuerte con doble confirmacion manual
     const confirmed = confirm(
       `Esta seguro de eliminar permanentemente el area "${area.name}"?\n\n` +
       `Esta accion NO se puede deshacer y eliminara:\n` +
       `- El area y su configuracion\n` +
-      `- Las asignaciones de usuarios a esta area\n` +
-      `- Los proyectos asociados (si los hay)\n\n` +
+      `Los proyectos y las asignaciones asociadas no se eliminan automáticamente.\n\n` +
       `Escriba el nombre del area para confirmar.`
     );
     

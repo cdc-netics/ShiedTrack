@@ -254,3 +254,15 @@ Desde frontend: pnpm exec ng build --configuration development. Estos comandos p
 4. Comprobar que el código utilizado no se reutiliza y que la contraseña anterior deja de funcionar.
 
 Las 35 pruebas del ciclo QA no cubren M16. Ver [issue oficial](../ISSUES.md).
+
+## QA-202610-11 — Áreas para pentester
+
+1. Verificar acceso a Áreas desde el menú con PENTESTER, sin habilitar Usuarios.
+2. Crear un área, editar nombre/prefijo/configuración, desactivar y reactivar. Sin tenant fijo, seleccionar explícitamente el cliente de creación.
+3. Eliminar un área de prueba con confirmación; verificar que no se promete ni ejecuta eliminación de sus proyectos o asignaciones.
+4. Con tenant fijo, intentar editar/borrar un área de otro cliente y verificar rechazo o recurso no encontrado.
+5. Como AUDITOR, intentar POST/PUT/DELETE directamente y verificar 403.
+
+Suite automática: backend/src/modules/area/area-permissions.spec.ts. Validación remota después del despliegue pendiente.
+
+Resultado local (2026-10-15): 45 pruebas aprobadas en cuatro suites (10 nuevas de Áreas), compilación TypeScript y build frontend development aprobados. Jest se ejecutó sobre JavaScript compilado con TypeScript; se retiraron la configuración y salida temporales.

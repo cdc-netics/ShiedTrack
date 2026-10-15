@@ -22,6 +22,17 @@ export class AreaService {
 
   constructor(@InjectModel(Area.name) private areaModel: Model<Area>) {}
 
+  private applyAreaScope(query: any, user?: any): any {
+    const operational = normalizeRole(user?.role) === "PENTESTER_QA";
+    const tenantId = user?.activeTenantId || user?.clientId;
+    if (roleSatisfies(UserRole.OWNER, user?.role) || (operational && !tenantId)) {
+      query.setOptions({ skipTenantFilter: true });
+    } else if (operational && tenantId) {
+      query.setOptions({ skipTenantFilter: true }).where({ tenantId });
+    }
+    return query;
+  }
+
   /**
    * Obtiene el siguiente TenantId de forma correlativa (Round-Robin)
    * Útil para balancear la carga de datos entre tenants durante pruebas o migraciones.
@@ -242,8 +253,8 @@ export class AreaService {
   /**
    * Busca área por ID
    */
-  async findById(id: string): Promise<Area> {
-    const area = await this.areaModel.findById(id).populate("clientId");
+  async findById(id: string, currentUser?: any): Promise<Area> {
+    const area = await this.applyAreaScope(this.areaModel.findById(id), currentUser).populate("clientId");
     if (!area) {
       throw new NotFoundException(`Área con ID ${id} no encontrada`);
     }
@@ -253,8 +264,8 @@ export class AreaService {
   /**
    * Actualiza un área
    */
-  async update(id: string, dto: UpdateAreaDto): Promise<Area> {
-    const area = await this.areaModel.findByIdAndUpdate(id, dto, { new: true });
+  async update(id: string, dto: UpdateAreaDto, currentUser?: any): Promise<Area> {
+    const area = await this.applyAreaScope(this.areaModel.findByIdAndUpdate(id, dto, { new: true }), currentUser);
 
     if (!area) {
       throw new NotFoundException(`Área con ID ${id} no encontrada`);
@@ -267,12 +278,12 @@ export class AreaService {
   /**
    * Soft delete - Desactiva un área
    */
-  async deactivate(id: string): Promise<Area> {
-    const area = await this.areaModel.findByIdAndUpdate(
+  async deactivate(id: string, currentUser?: any): Promise<Area> {
+    const area = await this.applyAreaScope(this.areaModel.findByIdAndUpdate(
       id,
       { isActive: false },
       { new: true },
-    );
+    ), currentUser);
 
     if (!area) {
       throw new NotFoundException(`Área con ID ${id} no encontrada`);
@@ -285,8 +296,8 @@ export class AreaService {
   /**
    * Hard delete - Solo OWNER
    */
-  async hardDelete(id: string): Promise<void> {
-    const result = await this.areaModel.findByIdAndDelete(id);
+  async hardDelete(id: string, currentUser?: any): Promise<void> {
+    const result = await this.applyAreaScope(this.areaModel.findByIdAndDelete(id), currentUser);
 
     if (!result) {
       throw new NotFoundException(`Área con ID ${id} no encontrada`);

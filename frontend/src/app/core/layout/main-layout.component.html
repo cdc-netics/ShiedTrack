@@ -70,7 +70,7 @@
         </a>
       </mat-nav-list>
 
-      @if (canManageUsers() || canAccessNotifications()) {
+      @if (canManageAreas() || canManageUsers() || canAccessNotifications()) {
         <section
           class="app-nav__section"
           aria-labelledby="nav-admin-label"
@@ -79,6 +79,7 @@
             Administraci&oacute;n
           </p>
           <mat-nav-list class="app-nav__list app-nav__list--nested" role="navigation">
+            @if (canManageUsers() || canAccessNotifications()) {
             <a
               mat-list-item
               class="app-nav__link"
@@ -88,6 +89,7 @@
               <mat-icon aria-hidden="true">admin_panel_settings</mat-icon>
               <span>Centro de administraci&oacute;n</span>
             </a>
+            }
             <mat-expansion-panel class="admin-accordion" [hideToggle]="false">
               <mat-expansion-panel-header>
                 <mat-panel-title>
@@ -97,6 +99,8 @@
               </mat-expansion-panel-header>
               @if (canManageUsers()) {
                 <a mat-list-item class="app-nav__link app-nav__link--nested-item" routerLink="/admin/users" routerLinkActive="app-nav__link--active"><mat-icon>people</mat-icon><span>Usuarios</span></a>
+              }
+              @if (canManageAreas()) {
                 <a mat-list-item class="app-nav__link app-nav__link--nested-item" routerLink="/admin/areas" routerLinkActive="app-nav__link--active"><mat-icon>business</mat-icon><span>&Aacute;reas</span></a>
               }
               @if (authService.isAdmin()) {
