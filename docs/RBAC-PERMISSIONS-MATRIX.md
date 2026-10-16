@@ -47,11 +47,11 @@ Documento único y resumido para entender el modelo de permisos, sin duplicar gu
 
 ## Referencia técnica
 
-- [backend/src/modules/auth/dto/auth-new.dto.ts](../backend/src/modules/auth/dto/auth-new.dto.ts)
-- [backend/src/modules/auth/validation/auth.validation.zod.ts](../backend/src/modules/auth/validation/auth.validation.zod.ts)
-- [backend/src/modules/auth/auth-improved.service.ts](../backend/src/modules/auth/auth-improved.service.ts)
-- [frontend/src/app/features/admin/users/user-create-dynamic.component.ts](../frontend/src/app/features/admin/users/user-create-dynamic.component.ts)
-- [frontend/src/app/features/admin/users/user-dialog.component.ts](../frontend/src/app/features/admin/users/user-dialog.component.ts)
+- [backend/src/common/rbac/rbac-policy.ts](../backend/src/common/rbac/rbac-policy.ts): grupos de roles, matriz de permisos, `normalizeRole()` y `roleSatisfies()` (fuente de verdad).
+- [backend/src/common/rbac/qa-client-scope.ts](../backend/src/common/rbac/qa-client-scope.ts): restricción de QA a su cliente asignado.
+- [backend/src/common/enums/index.ts](../backend/src/common/enums/index.ts): enum `UserRole`.
+- [backend/src/modules/auth/guards/](../backend/src/modules/auth/guards/): `JwtAuthGuard`, `RolesGuard`.
+- [frontend/src/app/features/admin/users/user-dialog.component.ts](../frontend/src/app/features/admin/users/user-dialog.component.ts): formulario de usuarios.
 
 ## Criterio de cierre
 

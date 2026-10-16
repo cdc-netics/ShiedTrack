@@ -8,8 +8,7 @@
     "start": "docker compose up --build",
     "start:detached": "docker compose up --build -d",
     "stop": "docker compose down",
-    "start:local:win": "powershell -ExecutionPolicy Bypass -File ./start-shieldtrack.ps1",
-    "start:local:unix": "bash ./start-shieldtrack.sh",
+    "logs": "docker compose logs -f --tail 200",
     "install:all": "pnpm --dir backend install && pnpm --dir frontend install"
   },
   "dependencies": {

@@ -1,44 +1,43 @@
-# Documentacion ShieldTrack
+# Documentación de ShieldTrack
 
-Este archivo es el indice maestro de documentacion. Si hay duplicados o contradicciones, esta tabla define la fuente canonica.
+Índice de la documentación. Cada tema tiene un único documento de referencia; los demás enlazan a él en lugar de repetirlo.
 
-## Fuentes canonicas
+## Instalar y operar
 
-| Tema | Documento canonico | Estado |
+| Documento | Para quién | Contenido |
 | --- | --- | --- |
-| Inicio del proyecto y mapa general | ../README.md | Activo |
-| Instalacion y entorno local/docker | SETUP.md | Activo |
-| Despliegue y variables de entorno | DEPLOYMENT.md | Activo |
-| Credenciales de desarrollo | DEVELOPMENT-CREDENTIALS.md | Activo |
-| API y contratos HTTP | API.md | Activo |
-| Arquitectura y modelo de datos | architecture.md | Activo |
-| Multi-tenancy y alcance | MULTI-TENANCY.md | Activo |
-| Matriz RBAC resumida | RBAC-PERMISSIONS-MATRIX.md | Activo |
-| Pruebas QA P0 | TESTING-GUIDE.md | Activo |
-| Backlog de producto y bugs | ../ISSUES.md | Activo |
-| Historial de cambios | ../CHANGELOG.md | Activo |
-| Material historico / referencia | archive/Promp.txt | Archivo |
+| [SETUP.md](SETUP.md) | Desarrolladores | Instalación con Docker y desarrollo local con recarga en caliente |
+| [DEPLOYMENT.md](DEPLOYMENT.md) | Infraestructura / DevOps | Topología, variables de entorno, despliegue manual y con Jenkins, checklist de producción |
+| [OPERATIONS.md](OPERATIONS.md) | Operación / administradores | Configuración inicial, actualizaciones, respaldos y restauración, usuarios, rotación de secretos, tareas programadas |
+| [TROUBLESHOOTING.md](TROUBLESHOOTING.md) | Todos | Problemas frecuentes y su solución |
+| [DEVELOPMENT-CREDENTIALS.md](DEVELOPMENT-CREDENTIALS.md) | Desarrollo / QA | Seeds y usuarios de prueba |
+
+## Referencia técnica
+
+| Documento | Contenido |
+| --- | --- |
+| [architecture.md](architecture.md) | Componentes, módulos, modelo de datos, flujos, seguridad y limitaciones conocidas |
+| [MULTI-TENANCY.md](MULTI-TENANCY.md) | Aislamiento por tenant y compatibilidad legacy |
+| [RBAC-PERMISSIONS-MATRIX.md](RBAC-PERMISSIONS-MATRIX.md) | Roles y permisos |
+| [API.md](API.md) | Convenciones HTTP; el detalle por endpoint está en Swagger (`/api/docs`) |
+
+## Calidad
+
+| Documento | Contenido |
+| --- | --- |
+| [TESTING-GUIDE.md](TESTING-GUIDE.md) | Suite P0 (Postman/Newman) y regresiones QA |
+| [ShieldTrack-P0-Tests.postman_collection.json](ShieldTrack-P0-Tests.postman_collection.json) | Colección Postman |
+| [QA-CORRECTIONS-2026-10.md](QA-CORRECTIONS-2026-10.md) | Correcciones de los ciclos QA de octubre 2026 y su aceptación pendiente |
+
+## Seguimiento (raíz del repositorio)
+
+- [ISSUES.md](../ISSUES.md): backlog de bugs y mejoras.
+- [CHANGELOG.md](../CHANGELOG.md): historial de cambios.
+- [CONTRIBUTING.md](../CONTRIBUTING.md): flujo de trabajo y convenciones.
 
 ## Reglas de mantenimiento
 
-1. No duplicar contenido entre documentos. Se enlaza al canonico.
-2. `ISSUES.md` canonico es el de la raiz del repositorio.
-3. Los documentos en `docs/archive/` son historicos y no deben usarse como fuente de implementacion nueva.
-4. Cualquier cambio funcional relevante debe reflejarse tambien en `../CHANGELOG.md`.
-
-## Estructura recomendada de lectura
-
-1. `../README.md` para contexto general.
-2. `SETUP.md` para arrancar el entorno.
-3. `DEPLOYMENT.md` para variables, compose y produccion.
-4. `API.md` + Swagger para contratos de backend.
-5. `RBAC-PERMISSIONS-MATRIX.md` y `MULTI-TENANCY.md` para reglas de acceso y alcance.
-6. `../ISSUES.md` para estado de trabajo y pendientes.
-
-## Nota de orden
-
-La documentacion operativa (`SETUP` y `TROUBLESHOOTING`) se mantiene dentro de `docs/` para evitar dispersion en la raiz del repositorio.
-
-## Correcciones QA de octubre de 2026
-
-[Registro de cambios, archivos, evidencia local y aceptación pendiente](QA-CORRECTIONS-2026-10.md). Los estados se mantienen en [ISSUES.md](../ISSUES.md) y el historial en [CHANGELOG.md](../CHANGELOG.md).
+1. Todo cambio en variables de entorno, puertos o volúmenes se refleja en `.env.example`, [DEPLOYMENT.md](DEPLOYMENT.md) y, si afecta la operación, en [OPERATIONS.md](OPERATIONS.md).
+2. Todo cambio funcional relevante se registra en `CHANGELOG.md`.
+3. Los comandos documentados deben funcionar en Linux (bash). Si un paso difiere en Windows, se indica la variante en la misma línea.
+4. No se versionan logs, salidas de pruebas, scripts personales ni configuración de asistentes IA (`CLAUDE.md`, `.claude/`, `Skills/`).

@@ -1,34 +1,21 @@
 # 🐛 Issues y Funcionalidades Pendientes - ShieldTrack
 
 **Fecha de Reporte:** 29 de Mayo de 2026  
-**Última actualización:** 15 de Octubre de 2026
+**Última actualización:** 16 de Octubre de 2026
 **Versión:** HONESTO-2.0  
 **Tipo:** Backlog de Tareas Activas / Pendientes
 
 ---
 
 ## 📌 Resumen Ejecutivo
-Este documento contiene únicamente los problemas, mejoras y funcionalidades que están actualmente pendientes, en revisión o con resolución parcial.
+Este documento reúne el backlog pendiente y el historial de mejoras completadas. Los pendientes actuales son M5 (notificaciones por correo) y M6 (métricas exportables para BI).
 
 ---
 
-## 📅 Tareas en Proceso y Pendientes (Tabla de Control)
+## 📅 Tabla de control: pendientes e historial
 
 | ID | Estado | Sección | Tarea | Notas |
 | --- | --- | --- | --- | --- |
-| QA-202610-12 | ⚠️ Pendiente de validación QA | Bugs - Permisos | ADMIN_AREA: carga y gestión completa de Áreas | Implementado (2026-10-15). ADMIN_AREA y sus alias administrativos pueden listar, crear, configurar, editar, desactivar/reactivar y borrar áreas dentro de su alcance. Se aplica scope explícito sin depender de CLS para operaciones administrativas y se resuelve el nombre del cliente después de los hooks de aislamiento, conservando tenantId como ObjectId durante la consulta. |
-| QA-202610-13 | ⚠️ Pendiente de validación QA | Bugs - Permisos | QA asignado: creación limitada a su cliente | Implementado (2026-10-15). Solo para el rol exacto QA con clientId o activeTenantId asignado: formularios limitan el cliente de proyectos/hallazgos; backend rechaza otro clientId o tenantId antes de crear proyecto y valida el cliente del proyecto al crear hallazgo. CSV/XLSX aplica la restricción por fila, también en dry-run y antes de crear clientes o proyectos. El cliente asignado tiene prioridad sobre otro contexto activo. QA sin asignación, PENTESTER y los demás roles conservan sus reglas. |
-| QA-202610-11 | ⚠️ Pendiente de validación QA | Permisos - Áreas | Gestión completa de áreas para PENTESTER | Menú, creación, edición, configuración, desactivación y borrado permanente habilitados al grupo operacional. Respeta cliente fijo; sin tenant fijo consulta transversal. Implementado 2026-10-15. |
-| QA-202610-01 | ⚠️ Pendiente de validación QA | Bugs - QA por roles | PENTESTER: exportación de clientes ZIP/CSV | Implementado. Consulta del cliente con bypass de tenant para roles globales/operacionales; proyectos filtrados por tenantId del cliente. [Evidencia y aceptación](docs/QA-CORRECTIONS-2026-10.md) (2026-10-15). |
-| QA-202610-02 | ⚠️ Pendiente de validación QA | Bugs - QA por roles | PDF de hallazgos importados por CSV | Implementado. Hallazgo lean para evitar mutaciones de pdfmake sobre arrays Mongoose; populate y evidencias con contexto adecuado y autorización operacional. [Evidencia y aceptación](docs/QA-CORRECTIONS-2026-10.md) (2026-10-15). |
-| QA-202610-03 | ⚠️ Pendiente de validación QA | Bugs - QA por roles | AUDITOR: descargas PDF, Excel y ZIP | Implementado. Permiso en cuatro rutas y validación del cliente, proyectos visibles y áreas asignadas; sin permisos de edición ni backups. [Evidencia y aceptación](docs/QA-CORRECTIONS-2026-10.md) (2026-10-15). |
-| QA-202610-04 | ⚠️ Pendiente de validación QA | Bugs - QA por roles | ADMIN: error 400 al guardar color de marca | Implementado. El frontend envía solo appName, faviconUrl, logoUrl, primaryColor y secondaryColor; omite metadatos devueltos por GET. Se conserva validación hexadecimal. [Evidencia y aceptación](docs/QA-CORRECTIONS-2026-10.md) (2026-10-15). |
-| QA-202610-05 | ⚠️ Pendiente de validación QA | Bugs - QA por roles | ADMIN: reasignación de usuarios a otro cliente | Implementado. Sincronización de clientId, activeTenantId y tenantIds; limpieza de restricciones previas al cambiar cliente. Asignaciones centralizadas persisten clientes aunque no tengan áreas y consultan áreas por tenantId o clientId legacy. [Evidencia y aceptación](docs/QA-CORRECTIONS-2026-10.md) (2026-10-15). |
-| QA-202610-06 | ⚠️ Pendiente de validación QA | Bugs - QA por roles | ADMIN_AREA: carga y creación de áreas con error 500 | Implementado. Listado sin tenant fijo con opción explícita de consulta; cliente seleccionado al crear cuando no hay contexto fijo; búsqueda del código dentro del tenant destino y rechazo de cliente distinto para administrador con tenant. [Evidencia y aceptación](docs/QA-CORRECTIONS-2026-10.md) (2026-10-15). |
-| QA-202610-07 | ⚠️ Pendiente de validación QA | Bugs - QA por roles | Todos los roles habilitados: PDF del proyecto con cero hallazgos | Implementado. Consulta por project._id (ObjectId), exclusión de CLOSED y skipTenantFilter explícito; mantiene arrays lean. Regresión con 17 hallazgos para OWNER, ADMIN_AREA, PENTESTER y AUDITOR. [Evidencia y aceptación](docs/QA-CORRECTIONS-2026-10.md) (2026-10-15). |
-| QA-202610-08 | ⚠️ Pendiente de validación QA | Bugs - QA por roles | ADMIN_AREA: eliminación de auditores | Implementado. El botón usa DELETE /auth/users/:id/soft para administradores de área; OWNER/PLATFORM_ADMIN conserva la ruta de eliminación física. No se amplían permisos de hard delete. [Evidencia y aceptación](docs/QA-CORRECTIONS-2026-10.md) (2026-10-15). |
-| QA-202610-09 | ⚠️ Pendiente de validación QA | Bugs - QA por roles | PENTESTER: borrar proyectos y clientes | Implementado. Botón y ruta hard delete de proyectos habilitados al grupo operacional; consultas de borrado tras validar acceso al proyecto. Clientes usan desactivación, sin habilitar eliminación física. Matriz RBAC actualizada. [Evidencia y aceptación](docs/QA-CORRECTIONS-2026-10.md) (2026-10-15). |
-| QA-202610-10 | ⚠️ Pendiente de validación QA | Bugs - QA por roles | PENTESTER: navegación después de cerrar hallazgo | Implementado. Después del cierre exitoso se navega a /findings; ante error se conserva el detalle y se muestra el mensaje. [Evidencia y aceptación](docs/QA-CORRECTIONS-2026-10.md) (2026-10-15). |
 | B2c | ✅ Completado | Bugs - Navegación | Botón “Nuevo Proyecto” va a `/projects/new` | Ruta registrada, formulario carga/guarda correctamente (clientId, fechas, estado). Fix en `feature/importar-csv` |
 | B5b | ✅ Completado | Bugs - Asignaciones | Endpoint `/assignments` no persiste | `visibleProjectIds` ahora se persiste en el modelo de usuario; `getAssignments` devuelve los proyectos exactos asignados. Fix en `feature/importar-csv` |
 | B6 | ✅ Completado | Bugs - Permisos | PENTESTER recibe 403 al exportar proyecto | Corregido en `export.service.ts`: lógica de comparación de tenant era demasiado estricta para roles operacionales. Fix en `feature/importar-csv` |
@@ -59,112 +46,7 @@ Este documento contiene únicamente los problemas, mejoras y funcionalidades que
 
 ---
 
-## 📋 Detalle de Tareas Backlog Activo
-
-### **QA-202610-12 — ADMIN_AREA: carga y gestión completa de Áreas**
-
-- **Estado:** ⚠️ Pendiente de validación QA — implementado (2026-10-15).
-- **Lo resuelto:** ADMIN_AREA y sus alias administrativos pueden listar, crear, configurar, editar, desactivar/reactivar y borrar áreas dentro de su alcance. Se aplica scope explícito sin depender de CLS para operaciones administrativas y se resuelve el nombre del cliente después de los hooks de aislamiento, conservando tenantId como ObjectId durante la consulta.
-- **Archivos modificados:** area.service.ts, area.controller.ts, rbac-policy.ts y area-list.component.ts.
-- **Pruebas:** area-permissions.spec.ts y qa-client-scope.spec.ts; validación local documentada en la guía de pruebas al finalizar.
-- **Criterio de cierre:** Probar listado con datos reales y cliente fijo, creación, edición, configuración, desactivación/reactivación y borrado de área desechable; sin tenant fijo, elegir cliente al crear.
-
-### **QA-202610-13 — QA asignado: creación limitada a su cliente**
-
-- **Estado:** ⚠️ Pendiente de validación QA — implementado (2026-10-15).
-- **Lo resuelto:** Solo para el rol exacto QA con clientId o activeTenantId asignado: formularios limitan el cliente de proyectos/hallazgos; backend rechaza otro clientId o tenantId antes de crear proyecto y valida el cliente del proyecto al crear hallazgo. CSV/XLSX aplica la restricción por fila, también en dry-run y antes de crear clientes o proyectos. El cliente asignado tiene prioridad sobre otro contexto activo. QA sin asignación, PENTESTER y los demás roles conservan sus reglas.
-- **Archivos modificados:** qa-client-scope.ts, project.service.ts, finding.service.ts, project-detail.component.ts, finding-wizard.component.ts y shared/utils/rbac.ts.
-- **Pruebas:** area-permissions.spec.ts y qa-client-scope.spec.ts; validación local documentada en la guía de pruebas al finalizar.
-- **Criterio de cierre:** QA asignado a cliente A crea proyecto y hallazgo propios; no puede elegir B. POST directo con IDs de B o campos clientId/tenantId contradictorios se rechaza. Importar fila de B produce fallo sin escrituras, también en previsualización. Verificar PENTESTER y QA sin cliente fijo como regresión.
-
-### **QA-202610-11 — Gestión completa de áreas para PENTESTER**
-
-- **Estado:** ⚠️ Pendiente de validación QA — implementado (2026-10-15).
-- **Descripción original:** permitir que pentester ingrese al apartado Áreas y pueda crear, editar y borrar.
-- **Lo resuelto:** acceso de menú independiente de Usuarios; permisos en POST, PUT y DELETE de áreas; consulta de detalle y modificaciones operan sin tenant fijo. El grupo PENTESTER/QA/ANALYST comparte los permisos por la política de alias existente. Con cliente fijo se mantiene el alcance por tenant.
-- **Límites:** no habilita gestión de usuarios ni backups. Borrar un área no elimina automáticamente sus proyectos ni asignaciones; se informa en la confirmación.
-- **Archivos modificados:** area.controller.ts, area.service.ts, rbac-policy.ts, main-layout.component.ts/html y area-list.component.ts. Pruebas en backend/src/modules/area/area-permissions.spec.ts.
-- **Criterio de cierre:** pentester puede entrar desde el menú, crear área con cliente explícito si falta tenant, editar/configurar, desactivar/reactivar y eliminar tras confirmar; un auditor no puede ejecutar escrituras por API. Repetir con y sin cliente fijo.
-
-### **QA-202610-01 — PENTESTER: exportación de clientes ZIP/CSV**
-
-- **Estado:** ⚠️ Pendiente de validación QA — implementado (2026-10-15).
-- **Descripción original:** PENTESTER: exportación de clientes ZIP/CSV.
-- **Lo resuelto:** Consulta del cliente con bypass de tenant para roles globales/operacionales; proyectos filtrados por tenantId del cliente.
-- **Validación:** último ciclo con 35 pruebas aprobadas, TypeScript sin errores y build frontend development aprobado.
-- **Archivos y criterio de cierre:** [registro de correcciones](docs/QA-CORRECTIONS-2026-10.md). Repetir el caso en QA después de desplegar backend y frontend.
-
-### **QA-202610-02 — PDF de hallazgos importados por CSV**
-
-- **Estado:** ⚠️ Pendiente de validación QA — implementado (2026-10-15).
-- **Descripción original:** PDF de hallazgos importados por CSV.
-- **Lo resuelto:** Hallazgo lean para evitar mutaciones de pdfmake sobre arrays Mongoose; populate y evidencias con contexto adecuado y autorización operacional.
-- **Validación:** último ciclo con 35 pruebas aprobadas, TypeScript sin errores y build frontend development aprobado.
-- **Archivos y criterio de cierre:** [registro de correcciones](docs/QA-CORRECTIONS-2026-10.md). Repetir el caso en QA después de desplegar backend y frontend.
-
-### **QA-202610-03 — AUDITOR: descargas PDF, Excel y ZIP**
-
-- **Estado:** ⚠️ Pendiente de validación QA — implementado (2026-10-15).
-- **Descripción original:** AUDITOR: descargas PDF, Excel y ZIP.
-- **Lo resuelto:** Permiso en cuatro rutas y validación del cliente, proyectos visibles y áreas asignadas; sin permisos de edición ni backups.
-- **Validación:** último ciclo con 35 pruebas aprobadas, TypeScript sin errores y build frontend development aprobado.
-- **Archivos y criterio de cierre:** [registro de correcciones](docs/QA-CORRECTIONS-2026-10.md). Repetir el caso en QA después de desplegar backend y frontend.
-
-### **QA-202610-04 — ADMIN: error 400 al guardar color de marca**
-
-- **Estado:** ⚠️ Pendiente de validación QA — implementado (2026-10-15).
-- **Descripción original:** ADMIN: error 400 al guardar color de marca.
-- **Lo resuelto:** El frontend envía solo appName, faviconUrl, logoUrl, primaryColor y secondaryColor; omite metadatos devueltos por GET. Se conserva validación hexadecimal.
-- **Validación:** último ciclo con 35 pruebas aprobadas, TypeScript sin errores y build frontend development aprobado.
-- **Archivos y criterio de cierre:** [registro de correcciones](docs/QA-CORRECTIONS-2026-10.md). Repetir el caso en QA después de desplegar backend y frontend.
-
-### **QA-202610-05 — ADMIN: reasignación de usuarios a otro cliente**
-
-- **Estado:** ⚠️ Pendiente de validación QA — implementado (2026-10-15).
-- **Descripción original:** ADMIN: reasignación de usuarios a otro cliente.
-- **Lo resuelto:** Sincronización de clientId, activeTenantId y tenantIds; limpieza de restricciones previas al cambiar cliente. Asignaciones centralizadas persisten clientes aunque no tengan áreas y consultan áreas por tenantId o clientId legacy.
-- **Validación:** último ciclo con 35 pruebas aprobadas, TypeScript sin errores y build frontend development aprobado.
-- **Archivos y criterio de cierre:** [registro de correcciones](docs/QA-CORRECTIONS-2026-10.md). Repetir el caso en QA después de desplegar backend y frontend.
-
-### **QA-202610-06 — ADMIN_AREA: carga y creación de áreas con error 500**
-
-- **Estado:** ⚠️ Pendiente de validación QA — implementado (2026-10-15).
-- **Descripción original:** ADMIN_AREA: carga y creación de áreas con error 500.
-- **Lo resuelto:** Listado sin tenant fijo con opción explícita de consulta; cliente seleccionado al crear cuando no hay contexto fijo; búsqueda del código dentro del tenant destino y rechazo de cliente distinto para administrador con tenant.
-- **Validación:** último ciclo con 35 pruebas aprobadas, TypeScript sin errores y build frontend development aprobado.
-- **Archivos y criterio de cierre:** [registro de correcciones](docs/QA-CORRECTIONS-2026-10.md). Repetir el caso en QA después de desplegar backend y frontend.
-
-### **QA-202610-07 — Todos los roles habilitados: PDF del proyecto con cero hallazgos**
-
-- **Estado:** ⚠️ Pendiente de validación QA — implementado (2026-10-15).
-- **Descripción original:** Todos los roles habilitados: PDF del proyecto con cero hallazgos.
-- **Lo resuelto:** Consulta por project._id (ObjectId), exclusión de CLOSED y skipTenantFilter explícito; mantiene arrays lean. Regresión con 17 hallazgos para OWNER, ADMIN_AREA, PENTESTER y AUDITOR.
-- **Validación:** último ciclo con 35 pruebas aprobadas, TypeScript sin errores y build frontend development aprobado.
-- **Archivos y criterio de cierre:** [registro de correcciones](docs/QA-CORRECTIONS-2026-10.md). Repetir el caso en QA después de desplegar backend y frontend.
-
-### **QA-202610-08 — ADMIN_AREA: eliminación de auditores**
-
-- **Estado:** ⚠️ Pendiente de validación QA — implementado (2026-10-15).
-- **Descripción original:** ADMIN_AREA: eliminación de auditores.
-- **Lo resuelto:** El botón usa DELETE /auth/users/:id/soft para administradores de área; OWNER/PLATFORM_ADMIN conserva la ruta de eliminación física. No se amplían permisos de hard delete.
-- **Validación:** último ciclo con 35 pruebas aprobadas, TypeScript sin errores y build frontend development aprobado.
-- **Archivos y criterio de cierre:** [registro de correcciones](docs/QA-CORRECTIONS-2026-10.md). Repetir el caso en QA después de desplegar backend y frontend.
-
-### **QA-202610-09 — PENTESTER: borrar proyectos y clientes**
-
-- **Estado:** ⚠️ Pendiente de validación QA — implementado (2026-10-15).
-- **Descripción original:** PENTESTER: borrar proyectos y clientes.
-- **Lo resuelto:** Botón y ruta hard delete de proyectos habilitados al grupo operacional; consultas de borrado tras validar acceso al proyecto. Clientes usan desactivación, sin habilitar eliminación física. Matriz RBAC actualizada.
-- **Validación:** último ciclo con 35 pruebas aprobadas, TypeScript sin errores y build frontend development aprobado.
-- **Archivos y criterio de cierre:** [registro de correcciones](docs/QA-CORRECTIONS-2026-10.md). Repetir el caso en QA después de desplegar backend y frontend.
-
-### **QA-202610-10 — PENTESTER: navegación después de cerrar hallazgo**
-
-- **Estado:** ⚠️ Pendiente de validación QA — implementado (2026-10-15).
-- **Descripción original:** PENTESTER: navegación después de cerrar hallazgo.
-- **Lo resuelto:** Después del cierre exitoso se navega a /findings; ante error se conserva el detalle y se muestra el mensaje.
-- **Validación:** último ciclo con 35 pruebas aprobadas, TypeScript sin errores y build frontend development aprobado.
-- **Archivos y criterio de cierre:** [registro de correcciones](docs/QA-CORRECTIONS-2026-10.md). Repetir el caso en QA después de desplegar backend y frontend.
+## 📋 Detalle de pendientes e historial
 
 ### **B2c — Botón “Nuevo Proyecto” apunta a ruta inexistente**
 - **Estado:** ✅ Completado — resuelto en rama `feature/importar-csv`
@@ -463,5 +345,5 @@ Este documento contiene únicamente los problemas, mejoras y funcionalidades que
   - **Caracteres especiales ampliados:** a pedido del usuario, se cambió de una lista fija (`-`, `.`, `*`) a aceptar cualquier carácter que no sea letra, número ni espacio (`!@#$%^&*()-_=+` etc.), tanto en el backend (`auth.dto.ts`) como en el frontend (`isStrongSuggestedPassword()` en `login.component.ts`), manteniendo ambos sincronizados.
   - **Probado en vivo:** contraseña débil rechazada con mensaje claro; contraseña fuerte con caracteres antes no aceptados (`!`, `+`) pasa la validación y llega correctamente a la lógica de negocio.
 - **Configuración del ambiente:** mantener SMTP válido para entregar códigos. La nota de septiembre sobre un placeholder localhost es histórica y no describe una comprobación actual.
-- **Validación de esta actualización:** revisión del flujo existente y registro de la corrección informada por el usuario; no se ejecutó una nueva prueba de envío, recuperación ni login. Las 35 pruebas del ciclo QA no cubren M16.
+- **Validación de esta actualización:** revisión del flujo existente y registro de la corrección informada por el usuario; no se ejecutó una nueva prueba de envío, recuperación ni login.
 - **Archivos modificados:** `backend/src/modules/auth/dto/auth.dto.ts`, `frontend/src/app/features/auth/login/login.component.ts`

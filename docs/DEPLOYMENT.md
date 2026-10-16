@@ -1,123 +1,163 @@
 # Despliegue de ShieldTrack
 
-Guia operativa para desarrollo, Docker Compose y produccion.
-La API backend usa prefijo global `api` y la documentacion OpenAPI esta en `api/docs`.
+Cómo desplegar ShieldTrack en un servidor (QA o producción). Para instalar en un equipo de desarrollo, ver [SETUP.md](SETUP.md). Para la operación diaria una vez desplegado, ver [OPERATIONS.md](OPERATIONS.md).
 
-## Requisitos
+---
 
-| Componente | Version recomendada |
-| --- | --- |
-| Node.js | 24.x (ver `engines` en `package.json` raiz) |
-| MongoDB | 8.x (local, Atlas o contenedor `mongo:8.0`) |
-| Docker / Compose | Recomendado para flujo principal |
+## 1. Topología
 
-## Dos archivos `.env` (no confundir)
+ShieldTrack se despliega como **un único stack Docker Compose** con tres contenedores en la red `shieldtrack-network`:
 
-| Ubicacion | Uso |
-| --- | --- |
-| `.env` en la raiz | Variables de Docker Compose: puertos, `MONGODB_URI`, `MONGO_INITDB_ROOT_*`, `JWT_SECRET`, `CORS_ORIGINS`, etc. |
-| `backend/.env` | Solo para correr backend fuera de Docker. |
+| Servicio Compose | Contenedor | Imagen | Puerto interno | Puerto en el host |
+| --- | --- | --- | --- | --- |
+| `frontend` | `shieldtrack-frontend` | Nginx con el build de Angular | 80 | `FRONTEND_PORT` (80) |
+| `backend` | `shieldtrack-backend` | Node 22 + NestJS (`dist/main.js`) | 3000 | `BACKEND_PORT` (3000) |
+| `mongodb` | `shieldtrack-db` | `mongo:8.0` | 27017 | `MONGO_PORT` (27017) |
 
-Con stack completo en Docker, basta el `.env` de la raiz.
+- El navegador solo necesita llegar al **frontend**: Nginx sirve la SPA y reenvía `/api/*` a `backend:3000` (ver [frontend/nginx.conf](../frontend/nginx.conf)).
+- El puerto del backend se publica para Swagger (`/api/docs`) y el health check de Jenkins.
+- El puerto de Mongo se publica para administración (Compass, `mongosh`, backups externos).
 
-## Variables principales
+### Volúmenes persistentes
 
-| Variable | Descripcion |
-| --- | --- |
-| `MONGODB_URI` | URI de conexion (en Compose usa host `mongodb` y `authSource=admin`). |
-| `MONGO_INITDB_ROOT_USERNAME` / `MONGO_INITDB_ROOT_PASSWORD` | Usuario root inicial de Mongo al crear el volumen por primera vez. |
-| `JWT_SECRET` | Secreto JWT (obligatorio robusto en produccion). |
-| `JWT_EXPIRES_IN` | Caducidad del token (ej: `8h`). |
-| `PORT` | Puerto interno del backend (normalmente `3000`). |
-| `NODE_ENV` | `production` para endurecimiento de runtime. |
-| `FRONTEND_URL` | URL base esperada del frontend. |
-| `CORS_ORIGINS` | Lista de origenes permitidos separados por coma. |
-| `SKIP_LOCAL_MONGO_DIAGNOSTICS` | Recomendado `true` en contenedores. |
+| Volumen | Montado en | Contenido |
+| --- | --- | --- |
+| `mongodb_data` | `/data/db` (mongodb) | Base de datos |
+| `evidence_uploads` | `/app/backend/uploads/evidence` (backend) | Archivos de evidencia subidos |
+| `backups_data` | `/app/backend/backups` (backend) | Respaldos generados desde la aplicación |
 
-### Puertos publicados
+`docker compose down` conserva los volúmenes. **`docker compose down -v` los borra**: base de datos, evidencias y respaldos.
 
-| Variable | Efecto |
-| --- | --- |
-| `MONGO_PORT` | Mongo expuesto en host |
-| `BACKEND_PORT` | API y Swagger |
-| `FRONTEND_PORT` | Aplicacion web |
+---
 
-Defaults comunes: `27017`, `3000`, `80`.
+## 2. Requisitos del servidor
 
-## Mongo con autenticacion en Compose
+- Linux x86_64 con Docker Engine 24+ y el plugin `docker compose` v2.
+- 2 vCPU y 4 GB RAM como mínimo (el build de Angular es lo que más consume).
+- Disco para Mongo, evidencias (límite de 100 MB por archivo) y respaldos.
+- Acceso a Docker Hub (`node:22-alpine`, `nginx:alpine`, `mongo:8.0`) y al registry de npm durante el build.
+- Puertos `FRONTEND_PORT`, `BACKEND_PORT` y `MONGO_PORT` libres.
 
-- `MONGO_INITDB_ROOT_*` aplica en primera inicializacion del volumen `mongodb_data`.
-- Si cambias a autenticacion con volumen ya creado sin auth, en desarrollo puede requerir `docker compose down -v` y volver a levantar.
-- `MONGODB_URI` debe coincidir con esas credenciales y usar `authSource=admin`.
+No hace falta Node.js ni pnpm en el servidor: todo se compila dentro de las imágenes.
 
-## Persistencia de datos
+---
 
-- `mongodb_data`: datos de MongoDB.
-- `backups_data`: respaldos del backend en `/app/backups`.
+## 3. Variables de entorno
 
-## Levantar con Docker Compose
+Compose lee **solo el `.env` de la raíz** (plantilla: [.env.example](../.env.example)).
 
-```bash
-docker compose build --no-cache
-docker compose up -d
-docker compose ps
-```
+| Variable | Obligatoria | Descripción |
+| --- | --- | --- |
+| `JWT_SECRET` | Sí | Secreto de firma JWT. Cadena aleatoria larga (`openssl rand -base64 48`). Cambiarlo invalida todas las sesiones. |
+| `MONGO_INITDB_ROOT_USERNAME` / `MONGO_INITDB_ROOT_PASSWORD` | Sí | Usuario root de Mongo. **Solo se aplican al crear el volumen `mongodb_data` por primera vez.** |
+| `OWNER_SEED_EMAIL` / `OWNER_SEED_PASSWORD` | Sí | Primer usuario OWNER, creado al arrancar el backend si no existe. |
+| `PUBLIC_HOST` | Sí en servidores | Host o IP con que los usuarios abren el sitio. Se usa para `FRONTEND_URL` y `CORS_ORIGINS`. |
+| `NODE_ENV` | Recomendado | `production` en servidores (CORS estricto). Compose usa `development` si no se define. |
+| `FRONTEND_PORT` / `BACKEND_PORT` / `MONGO_PORT` | No | Puertos del host. Defaults `80` / `3000` / `27017`. |
+| `SMTP_ENCRYPTION_KEY` | Sí en producción | Clave AES (32 caracteres) con que se cifra la contraseña SMTP guardada en Mongo. Si no se define, se usa una clave por defecto conocida. Definirla **antes** de configurar SMTP; si se cambia después, hay que reingresar la contraseña SMTP. |
+| `JWT_EXPIRES_IN` | No | Duración de la sesión. Default `8h`. |
+| `ALLOW_OWNER_RESET` | No | `true` reescribe la contraseña y el rol del OWNER en cada arranque. Úsalo solo para recuperar acceso y vuelve a `false`. |
+| `RUN_TEST_SEEDS` | No | `true` carga usuarios y datos de prueba. **Nunca en producción.** |
 
-Script equivalente desde raiz:
+Variables que **no** se definen en `.env` porque [docker-compose.yml](../docker-compose.yml) las construye:
 
-```bash
-pnpm run start:detached
-```
+- `MONGODB_URI` = `mongodb://<user>:<pass>@mongodb:27017/shieldtrack?authSource=admin`
+- `FRONTEND_URL` = `http://<PUBLIC_HOST>:<FRONTEND_PORT>`
+- `CORS_ORIGINS` = localhost, 127.0.0.1, `:4200` (dev) y `http://<PUBLIC_HOST>:<FRONTEND_PORT>`
 
-URLs:
+Si la contraseña de Mongo tiene caracteres reservados de URI (`@ : / ? # %`), cámbiala por una alfanumérica o la URI no funcionará.
 
-- Frontend: `http://localhost` o `http://localhost:<FRONTEND_PORT>`
-- API Docs: `http://localhost:<BACKEND_PORT>/api/docs`
+> **SMTP y branding** no son variables de entorno del stack Docker: se configuran desde la aplicación (**Administración → Configuración**, `/admin/config`) y quedan guardados en MongoDB. Ver [OPERATIONS.md](OPERATIONS.md#configuración-inicial-después-del-primer-despliegue).
 
-## Seeds de usuarios de desarrollo
+---
 
-El backend ejecuta seeds al iniciar (entrypoint). Para relanzar manualmente:
+## 4. Despliegue manual en un servidor
 
 ```bash
-docker compose exec backend pnpm run seed:owner
-docker compose exec backend pnpm run seed:test
-```
+# 1. Obtener el código
+git clone https://github.com/cdc-netics/ShiedTrack.git /opt/shieldtrack
+cd /opt/shieldtrack
+git checkout main            # o la rama/tag a desplegar
 
-Credenciales: `docs/DEVELOPMENT-CREDENTIALS.md`.
-
-## Sin Docker
-
-Backend:
-
-```bash
-cd backend
-pnpm install --frozen-lockfile
+# 2. Configurar entorno
 cp .env.example .env
-pnpm run build
-pnpm run start:prod
+#   editar .env: JWT_SECRET, MONGO_INITDB_ROOT_PASSWORD, OWNER_SEED_PASSWORD,
+#                PUBLIC_HOST, NODE_ENV=production, RUN_TEST_SEEDS=false
+chmod 600 .env
+
+# 3. Construir y levantar
+docker compose up -d --build
+
+# 4. Verificar
+docker compose ps                          # los 3 servicios "running"; mongodb "healthy"
+docker compose logs backend --tail 50      # buscar "seed:owner finalizado" y el arranque de Nest
+curl -fs http://localhost:${BACKEND_PORT:-3000}/api/docs >/dev/null && echo OK
 ```
 
-Frontend:
+Luego abrir `http://<PUBLIC_HOST>:<FRONTEND_PORT>` e iniciar sesión con `OWNER_SEED_EMAIL` / `OWNER_SEED_PASSWORD`. Cambiar esa contraseña desde el perfil en el primer ingreso.
+
+### Alternativa: generar el `.env` desde variables
+
+[deploy/compose-env.sh](../deploy/compose-env.sh) escribe el `.env` a partir de variables exportadas (es lo que usa Jenkins). Por defecto deja `NODE_ENV=production` y `RUN_TEST_SEEDS=false`.
 
 ```bash
-cd frontend
-pnpm install --frozen-lockfile
-pnpm run build
+export JWT_SECRET='...' ADMIN_PASSWORD='...' MONGO_INITDB_ROOT_PASSWORD='...'
+export PUBLIC_HOST=10.0.101.70 FRONTEND_PORT=8090 BACKEND_PORT=3001 MONGO_PORT=27018
+sh ./deploy/compose-env.sh prod
 ```
 
-## Checklist de produccion
+`ADMIN_PASSWORD` se escribe como `OWNER_SEED_PASSWORD`.
 
-- [ ] `JWT_SECRET` robusto y unico
-- [ ] `MONGODB_URI` al cluster correcto (TLS en Atlas)
-- [ ] `MONGO_INITDB_*` y `MONGODB_URI` alineados si usas Mongo en contenedor
-- [ ] `CORS_ORIGINS` limitado a origenes validos
-- [ ] `NODE_ENV=production`
-- [ ] Puertos/firewall revisados
-- [ ] Backups probados y persistencia validada
-- [ ] Flujo critico de login y operacion validado end-to-end
+---
 
-## Referencias
+## 5. Despliegue automatizado con Jenkins (ambiente QA)
 
-- Setup: `SETUP.md`
-- Testing: `docs/TESTING-GUIDE.md`
-- Multi-tenant: `docs/MULTI-TENANCY.md`
+El [Jenkinsfile](../Jenkinsfile) despliega en el servidor de QA (`10.0.101.70`, directorio `/opt/shieldtrack`).
+
+**Parámetros del job**
+
+| Parámetro | Default | Uso |
+| --- | --- | --- |
+| `BRANCH` | `development` | Rama a desplegar |
+| `MONGO_PORT` | `27018` | Puerto de Mongo en el host QA |
+| `BACKEND_PORT` | `3001` | Puerto de API/Swagger |
+| `FRONTEND_PORT` | `8090` | Puerto de la aplicación web |
+
+**Credenciales requeridas en Jenkins**
+
+| ID | Tipo | Se usa como |
+| --- | --- | --- |
+| `github-token` | Usuario/token | Checkout del repo |
+| `jenkins-ssh-key` | SSH private key | Acceso `root` al servidor QA |
+| `shieldtrack-mongo-password` | Secret text | `MONGO_INITDB_ROOT_PASSWORD` |
+| `certvault-jwt-secret` | Secret text | `JWT_SECRET` |
+| `shieldtrack-admin-password` | Secret text | `OWNER_SEED_PASSWORD` |
+
+**Etapas**
+
+1. **Checkout** de `BRANCH`.
+2. **Generate .env** con `deploy/compose-env.sh qa` (`PUBLIC_HOST=10.0.101.70`).
+3. **Deploy to QA**: `docker compose down -v` en el servidor, borra `/opt/shieldtrack`, copia el workspace por `scp` y ejecuta `docker compose up -d --build`.
+4. **Health check**: espera hasta 2 minutos a que `http://10.0.101.70:<BACKEND_PORT>/api/docs` responda.
+5. **Post**: envía un correo con el resultado y limpia el workspace.
+
+> ⚠️ **El job de QA borra los volúmenes en cada ejecución** (`down -v`): base de datos, evidencias y respaldos de QA se pierden en cada despliegue. Es intencional para QA. **No reutilizar este flujo para producción**: allí se debe usar `docker compose up -d --build` sin `down -v` (ver [OPERATIONS.md](OPERATIONS.md#actualizar-a-una-nueva-versión)).
+
+URLs de QA con los parámetros por defecto:
+
+- Aplicación: `http://10.0.101.70:8090`
+- Swagger: `http://10.0.101.70:3001/api/docs`
+
+---
+
+## 6. Checklist de producción
+
+- [ ] `JWT_SECRET`, `MONGO_INITDB_ROOT_PASSWORD`, `OWNER_SEED_PASSWORD` y `SMTP_ENCRYPTION_KEY` únicos y robustos; `.env` con permisos `600`.
+- [ ] `NODE_ENV=production`, `RUN_TEST_SEEDS=false`, `ALLOW_OWNER_RESET=false`.
+- [ ] `PUBLIC_HOST` igual al host con que los usuarios abren el sitio (si no, el navegador recibe errores de CORS).
+- [ ] **TLS**: el contenedor frontend sirve HTTP en el puerto 80. Poner delante un proxy inverso con certificado (Nginx/Traefik/balanceador corporativo) y publicar solo el 443 hacia los usuarios. Si el sitio se sirve por `https://`, agrega ese origen a `CORS_ORIGINS` en `docker-compose.yml`.
+- [ ] Firewall: no exponer `MONGO_PORT` a la red. Restringir `BACKEND_PORT` a la red de administración o quitar su `ports:` si no se necesita Swagger desde fuera.
+- [ ] Respaldos automáticos probados, incluida una restauración (ver [OPERATIONS.md](OPERATIONS.md#respaldos-y-restauración)). Respaldar también el volumen `evidence_uploads`.
+- [ ] SMTP configurado y probado desde la aplicación (recuperación de contraseña y notificaciones de retest dependen de él).
+- [ ] Contraseña del OWNER inicial cambiada.
+- [ ] Login, creación de proyecto/hallazgo, subida de evidencia y exportación validados de punta a punta.

@@ -40,19 +40,14 @@ Para proponer nuevas funcionalidades:
 ## 🔧 Setup de Desarrollo
 
 ```bash
-# Fork del repositorio
-# Clonar tu fork
-git clone https://github.com/TU_USUARIO/ShieldTrack.git
-cd ShieldTrack
+git clone https://github.com/cdc-netics/ShiedTrack.git
+cd ShiedTrack
+git checkout development
 
-# Agregar upstream
-git remote add upstream https://github.com/OWNER_ORIGINAL/ShieldTrack.git
+# Instalar dependencias (solo pnpm; npm/yarn estan bloqueados)
+pnpm run install:all
 
-# Instalar dependencias
-cd backend && pnpm install
-cd ../frontend && pnpm install
-
-# Crear rama para tu feature
+# Crear rama para tu feature a partir de development
 git checkout -b feature/mi-nueva-funcionalidad
 ```
 
@@ -224,6 +219,7 @@ Sigue la guía en `docs/TESTING-GUIDE.md` para validar tu funcionalidad.
 - ❌ Uploads o evidencias (`uploads/`)
 - ❌ Logs (`*.log`)
 - ❌ Scripts personalizados locales
+- ❌ Configuración privada de asistentes IA (`CLAUDE.md`, `.claude/`, `Skills/`)
 
 Revisa `.gitignore` antes de hacer commit.
 
@@ -231,7 +227,7 @@ Revisa `.gitignore` antes de hacer commit.
 
 ```
 main (producción)
-  ├── develop (desarrollo)
+  ├── development (desarrollo / QA)
   │   ├── feature/nueva-funcionalidad
   │   ├── fix/correccion-bug
   │   └── refactor/mejora-codigo
@@ -239,7 +235,7 @@ main (producción)
 ```
 
 - `main`: Código estable para producción
-- `develop`: Integración de features
+- `development`: Integración de features; Jenkins despliega esta rama al ambiente QA
 - `feature/*`: Nuevas funcionalidades
 - `fix/*`: Correcciones
 - `hotfix/*`: Problemas críticos en producción

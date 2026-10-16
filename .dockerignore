@@ -12,6 +12,9 @@ node_modules
 dist
 .git
 .gitignore
+.env
+.env.*
+!.env.example
 .env.local
 .env.development.local
 .env.test.local
@@ -45,3 +48,9 @@ docker-compose.yml
 docker-compose.*.yml
 .dockerignore
 Dockerfile
+
+# Informacion privada / local (nunca enviar al contexto de build)
+.claude
+Skills
+CLAUDE.md
+docs
