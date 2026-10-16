@@ -14,7 +14,8 @@ Documento canónico (2026). Describe el **estado del código** y la relación en
 
 ## Backend (NestJS + Mongoose)
 
-- **Contexto de tenant:** `TenantContextGuard`, interceptors y utilidades en `backend/src/common/` establecen y validan el tenant activo (p. ej. desde JWT o cabecera `X-Tenant-Id` cuando corresponda).
+- **Contexto de tenant:** `TenantContextMiddleware`, `TenantContextGuard` e interceptors en `backend/src/common/` establecen el tenant activo con prioridad: cabecera `X-Tenant-Id` > `activeTenantId` > `clientId` > `tenantIds[0]` del usuario.
+- **Bypass explícito:** para consultas cross-tenant deliberadas se usa `.setOptions({ skipTenantFilter: true })`, siempre después de validar el alcance del usuario.
 - **Plugins:** en `main.ts` se registra un plugin global de Mongoose (`tenantPlugin`) para filtrado por tenant; los schemas críticos pueden usar además `multiTenantPlugin` donde esté aplicado.
 - **Área (`Area`):** incluye `tenantId` **obligatorio** e índices compuestos por tenant; `clientId` es opcional y **legacy** (ver `area.schema.ts`).
 
@@ -24,7 +25,7 @@ No confiar solo en el frontend: toda query debe respetar el contexto de tenant y
 
 ## Autorización
 
-Los roles (OWNER, PLATFORM_ADMIN, CLIENT_ADMIN, AREA_ADMIN, ANALYST, VIEWER) y el aislamiento por cliente/área/tenant se aplican con guards de JWT y roles. El detalle de flujos está repartido entre `docs/architecture.md` y el código de `auth` / `user-area`.
+Los roles canónicos son OWNER, ADMIN_AREA, PENTESTER, QA y AUDITOR; los nombres antiguos (PLATFORM_ADMIN, CLIENT_ADMIN, AREA_ADMIN, ANALYST, VIEWER) se aceptan como alias de su grupo (ver [RBAC-PERMISSIONS-MATRIX.md](RBAC-PERMISSIONS-MATRIX.md)). El aislamiento por cliente/área/tenant se aplica con guards de JWT y roles y con validación de alcance en los servicios; ver [architecture.md](architecture.md#3-multi-tenancy).
 
 ---
 

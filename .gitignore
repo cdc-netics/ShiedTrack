@@ -1,5 +1,7 @@
 # Logs
 *.log
+*-log.txt
+backend/scripts/logs/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -18,7 +20,6 @@ coverage/
 # Production
 dist/
 build/
-Skills/
 # Environment Variables (NUNCA commitear credenciales)
 .env
 .env.local
@@ -26,9 +27,13 @@ Skills/
 .env.production
 .env.development
 
-# Claude Code
+# Asistentes IA / informacion privada (no subir)
 CLAUDE.md
+CLAUDE.local.md
 .claude/
+.mcp.json
+Skills/
+skills/
 
 # IDE
 .idea/

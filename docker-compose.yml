@@ -1,6 +1,6 @@
 # Requiere archivo .env en esta carpeta (copiar desde .env.example).
 # Puertos: MONGO_PORT, BACKEND_PORT, FRONTEND_PORT en .env
-# Documentación: docs/DEVELOPMENT-CREDENTIALS.md, docs/DEPLOYMENT.md, docs/SETUP.md
+# Documentación: docs/SETUP.md, docs/DEPLOYMENT.md, docs/OPERATIONS.md
 
 services:
   mongodb:
@@ -49,6 +49,9 @@ services:
       OWNER_SEED_EMAIL: ${OWNER_SEED_EMAIL:-admin@shieldtrack.com}
       OWNER_SEED_PASSWORD: ${OWNER_SEED_PASSWORD:-Admin123!}
       ALLOW_OWNER_RESET: ${ALLOW_OWNER_RESET:-false}
+      # Clave AES para cifrar la password SMTP guardada en Mongo. Si se cambia,
+      # hay que volver a ingresar la password SMTP desde Administracion > Configuracion.
+      SMTP_ENCRYPTION_KEY: ${SMTP_ENCRYPTION_KEY:-default-32-char-encryption-key!!}
       # PUBLIC_HOST permite declarar el host/IP real donde se sirve el frontend
       # (ej. un host de QA) ademas de localhost, para que el navegador no choque
       # con la validacion de CORS en NODE_ENV=production (ver main.ts).

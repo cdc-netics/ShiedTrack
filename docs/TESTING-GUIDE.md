@@ -153,7 +153,7 @@ docker run -d -p 27017:27017 mongo:8
 
 - Verificar que backend está corriendo: `pnpm run start:dev`
 - Verificar que tokens se generan en paso "Login Users"
-- Revisar logs: `backend/logs/app.log`
+- Revisar logs: `docker compose logs backend --tail 200` (el backend escribe en stdout, no en archivo)
 
 ### Finding de otro tenant/cliente es accesible (CRITICAL)
 
@@ -193,11 +193,11 @@ Después de ejecutar la suite:
 ## 📝 Logs a Revisar
 
 ```bash
-# Backend logs
-tail -f backend/logs/app.log
+# Backend logs (stdout del contenedor)
+docker compose logs -f backend
 
-# MongoDB queries
-mongo shieldtrack-test --eval "db.setLogLevel(2)"
+# MongoDB queries (mongosh dentro del contenedor)
+docker compose exec mongodb mongosh -u "$MONGO_INITDB_ROOT_USERNAME" -p "$MONGO_INITDB_ROOT_PASSWORD" --authenticationDatabase admin shieldtrack --eval "db.setLogLevel(2)"
 
 # Newman report (si usaste CLI)
 cat results/newman-report.json | jq '.run.stats'
@@ -210,11 +210,8 @@ cat results/newman-report.json | jq '.run.stats'
 Para limpiar y volver a ejecutar:
 
 ```bash
-# 1. Limpiar DB test
-mongo shieldtrack-test --eval "db.dropDatabase()"
-
-# 2. Re-seed
-pnpm run seed:test
+# 1-2. Re-seed: seed-test-data borra sus propios datos de prueba anteriores y los recrea
+docker compose exec backend node scripts/seeds/seed-test-data.js   # o, sin Docker: cd backend && pnpm run seed:test
 
 # 3. Re-ejecutar Postman/Newman
 newman run docs/ShieldTrack-P0-Tests.postman_collection.json ...
@@ -224,7 +221,6 @@ newman run docs/ShieldTrack-P0-Tests.postman_collection.json ...
 
 ## 📞 Referencias
 
-- Especificación funcional maestra: [archive/Promp.txt](archive/Promp.txt)
 - Arquitectura y multi-tenant: [architecture.md](architecture.md), [MULTI-TENANCY.md](MULTI-TENANCY.md)
 
 ---
@@ -237,7 +233,7 @@ La [matriz QA-202610-01 a QA-202610-10](QA-CORRECTIONS-2026-10.md#aceptación-pe
 
 Desde backend, con dependencias ya instaladas:
 
-~~~powershell
+~~~bash
 pnpm exec tsc --noEmit
 pnpm exec jest --runInBand --runTestsByPath src/modules/export/qa-regressions.spec.ts src/modules/export/export.service.spec.ts src/common/rbac/rbac-policy.spec.ts
 ~~~

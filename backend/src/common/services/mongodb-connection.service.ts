@@ -459,7 +459,7 @@ export class MongoDBConnectionService {
         this.logger.error(
           "📝 SOLUCIÓN: Instala MongoDB como servicio ejecutando:",
         );
-        this.logger.error("   .\\install-mongodb-service.ps1");
+        this.logger.error("   docker compose up -d mongodb");
         this.logger.error("");
         reject(new Error("MongoDB no encontrado"));
         return;
@@ -495,7 +495,7 @@ export class MongoDBConnectionService {
                 this.logger.error(
                   "📝 SOLUCIÓN DEFINITIVA: Instala como servicio:",
                 );
-                this.logger.error("   .\\install-mongodb-service.ps1");
+                this.logger.error("   docker compose up -d mongodb");
                 this.logger.error("");
                 reject(adminError);
               } else {
@@ -507,7 +507,7 @@ export class MongoDBConnectionService {
             this.logger.error("❌ No se pudo iniciar MongoDB");
             this.logger.error("");
             this.logger.error("📝 SOLUCIÓN: Instala MongoDB como servicio:");
-            this.logger.error("   .\\install-mongodb-service.ps1");
+            this.logger.error("   docker compose up -d mongodb");
             this.logger.error("");
             reject(error);
           }
